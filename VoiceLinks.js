@@ -13,6 +13,8 @@
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
 // @homepage    https://greasyfork.org/zh-CN/scripts/456775
+// @downloadURL https://update.greasyfork.org/scripts/456775/VoiceLinks.user.js
+// @updateURL https://update.greasyfork.org/scripts/456775/VoiceLinks.meta.js
 // ==/UserScript==
 
 (function () {
