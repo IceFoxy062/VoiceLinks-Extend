@@ -1,19 +1,18 @@
 // ==UserScript==
 // @name        VoiceLinks
 // @namespace   Sanya
-// @description Makes RJ codes more useful.
+// @description Makes RJ codes more useful. (8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.0.0
+// @version     2.1.0
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
-// @updateURL   https://github.com/Sanyarin/VoiceLinks/raw/master/VoiceLinks.user.js
-// @downloadURL https://github.com/Sanyarin/VoiceLinks/raw/master/VoiceLinks.user.js
 // @run-at      document-start
 // ==/UserScript==
 
 (function () {
     'use strict';
-    const RJ_REGEX = new RegExp("R[JE][0-9]{6}", "gi");
+    const RJ_REGEX = new RegExp("(R[JE][0-9]{8})|(R[JE][0-9]{6})", "gi");
+    const RJ_REGEX_NEW = new RegExp("R[JE][0-9]{8}", "gi");
     const VOICELINK_CLASS = 'voicelink';
     const RJCODE_ATTRIBUTE = 'rjcode';
     const css = `
@@ -32,13 +31,13 @@
           text-align: left;
           padding: 10px;
       }
-
+ 
       .voicepopup img {
           width: 270px;
           height: auto;
           margin: 3px 15px 3px 3px;
       }
-
+ 
       .voice-title {
           font-size: 1.4em;
           font-weight: bold;
@@ -46,20 +45,20 @@
           margin: 5px 10px 0 0;
           display: block;
       }
-
+ 
       .rjcode {
           text-align: center;
           font-size: 1.2em;
           font-style: italic;
           opacity: 0.3;
       }
-
+ 
       .error {
           height: 210px;
           line-height: 210px;
           text-align: center;
       }
-
+ 
       .discord-dark {
           background-color: #36393f;
           color: #dcddde;
@@ -88,6 +87,8 @@
                 {
                     acceptNode: function (node) {
                         if (node.parentElement.classList.contains(VOICELINK_CLASS))
+                            return NodeFilter.FILTER_ACCEPT;
+                        if (node.nodeValue.match(RJ_REGEX_NEW))
                             return NodeFilter.FILTER_ACCEPT;
                         if (node.nodeValue.match(RJ_REGEX))
                             return NodeFilter.FILTER_ACCEPT;
@@ -151,7 +152,7 @@
                 else
                     upper = matches[i + 1].index;
                 let substring;
-                if (substring = nodeOriginalText.substring(matches[i].index + 8, upper)) {
+                if (substring = nodeOriginalText.substring(matches[i].index + matches[i].value.length, upper)) {
                     const subtextNode = document.createTextNode(substring);
                     textNode.parentNode.insertBefore(
                         subtextNode,
@@ -301,11 +302,15 @@
             workInfo.rj = rj;
 
             let rj_group;
-            if (rj.slice(5) == "000")
+            if (rj.slice((rj.length == 10 ? 7 : 5)) == "000")
                 rj_group = rj;
             else {
-                rj_group = (parseInt(rj.slice(2, 5)) + 1).toString() + "000";
-                rj_group = "RJ" + ("000000" + rj_group).substring(rj_group.length);
+                rj_group = (parseInt(rj.slice(2, (rj.length == 10 ? 7 : 5))) + 1).toString() + "000";
+                if(rj_group.length < rj.length - 2){
+                    let zero = Math.pow(10, rj.length - rj_group.length - 2).toString().slice(1)
+                    rj_group = zero + rj_group
+                }
+                rj_group = "RJ" + rj_group; //("000000" + rj_group).substring(rj_group.length);
             }
 
             workInfo.img = "https://img.dlsite.jp/modpub/images2/work/doujin/" + rj_group + "/" + rj + "_img_main.jpg";
