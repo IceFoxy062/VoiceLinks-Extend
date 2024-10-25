@@ -5,7 +5,7 @@
 // @match       *://*/*
 // @match       file:///*
 // @exclude     *://copilot.microsoft.com/*
-// @version     4.0.1
+// @version     4.0.2
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -26,7 +26,7 @@
     let settings = {
         //语言设置
         _s_lang: "zh_CN",
-        _s_popup_lang: "en_US",
+        _s_popup_lang: "zh_CN",
 
         //常规设置
         _s_parse_url: true,
