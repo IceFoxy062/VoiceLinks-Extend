@@ -5,6 +5,8 @@
 
 在网站仅以RJ号和纯文本指代作品时（如资源网站的帖子列表等），你可以使用该脚本方便地了解作品信息，包括其标题、封面、制作社团、CV、标签等等，并可以快速跳转到对应作品的DLSite页面。
 
+---
+
 > 原作者Github链接：
 > https://github.com/NANELLON/VoiceLinks
 > 
@@ -17,7 +19,7 @@
 2. 在Sleazy Fork中进行[安装](https://sleazyfork.org/zh-CN/scripts/456775-voicelinks)
 3. 将鼠标悬停在RJ号上，就会弹框显示作品基本信息，点击RJ号即可跳转到作品页面。
 
-![演示](https://s2.loli.net/2024/09/10/n9suWYRiltp2PqI.gif)
+![演示](https://s2.loli.net/2024/10/25/K6rxu4sMT9jqSwh.gif)
 
 ## 功能特性
 1. 支持显示**已下架**作品信息
