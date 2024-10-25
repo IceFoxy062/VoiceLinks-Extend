@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.4
+// @version     2.1.5
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -106,10 +106,10 @@
         },
 
         wrapRJCode: function (rjCode) {
-            var e;
+            let e;
             e = document.createElement("a");
             e.classList = VOICELINK_CLASS;
-            e.href = `https://www.dlsite.com/maniax/work/=/product_id/${rjCode}.html`
+            e.href = `https://www.dlsite.com/maniax/work/=/product_id/${rjCode.toUpperCase()}.html`
             e.innerHTML = rjCode;
             e.target = "_blank";
             e.rel = "noreferrer";
@@ -139,7 +139,8 @@
             let prevNode = null;
             for (let i = 0; i < matches.length; ++i) {
                 // Insert linkified RJ code
-                const rjLinkNode = Parser.wrapRJCode(matches[i].value);
+                let code = matches[i].value
+                const rjLinkNode = Parser.wrapRJCode(code);
                 textNode.parentNode.insertBefore(
                     rjLinkNode,
                     prevNode ? prevNode.nextSibling : textNode.nextSibling,
