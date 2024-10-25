@@ -2720,10 +2720,19 @@
             return data.is_girls;
         },
 
-        getSale: async function(rjCode){
+        getAnnounce: async function(rjCode) {
+            const p = this.getWorkPromise(rjCode);
+            const info = await p.info;
+            return info.is_announce;
+        },
+
+        getSale: async function(rjCode, checkAnnounce = true){
             const p = this.getWorkPromise(rjCode);
             let data = await p.api;
-            return data.is_sale;
+            if(!checkAnnounce){
+                return data.is_sale;
+            }
+            return data.is_sale || await WorkPromise.getAnnounce(rjCode);
         },
 
         getBonus: async function(rjCode) {
@@ -5193,7 +5202,6 @@
     document.addEventListener("DOMContentLoaded", init);
 
     function showUpdateNotice(force = false) {
-        //TODO: 公告待更新
         const firstTimeToken = 104;
         if(GM_getValue("first_token", undefined) === firstTimeToken && !force){
             return;
