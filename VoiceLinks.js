@@ -2,8 +2,9 @@
 // @name        VoiceLinks
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
-// @include     *://*/*
-// @version     3.2.3
+// @match       *://*/*
+// @match       file:///*
+// @version     3.2.4
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -1040,7 +1041,7 @@
                 return info.img;
             }catch (e) {
                 const apiData = await this.getWorkPromise(rjCode).api;
-                if(apiData.img_url) return "https://" + apiData.img_url;
+                if(apiData.work_image) return "https:" + apiData.work_image;
             }
             throw new Error("无法获取图片链接");
         },
@@ -1659,7 +1660,10 @@
         }
     }
 
-    document.addEventListener("DOMContentLoaded", function () {
+    let isInit = false;
+    function init () {
+        if(isInit) return;
+
         const style = document.createElement("style");
         style.innerHTML = Csp.createHTML(css + SettingsPopup.css);
         document.head.appendChild(style);
@@ -1691,7 +1695,11 @@
 
         //显示重要通知
         showUpdateNotice();
-    });
+
+        isInit = true;
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
 
     function showUpdateNotice(force = false) {
         const firstTimeToken = 103;
@@ -1737,8 +1745,6 @@
         document.body.appendChild(popup);
     }
 
-
-
     //Deal with Trusted Types
 
     let Csp = {
@@ -1749,4 +1755,6 @@
             trustedTypes.defaultPolicy ? "VoiceLinkTrustedTypes" : "default",
             Csp);
     }
+
+    init();
 })();
