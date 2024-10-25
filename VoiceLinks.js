@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.9.1
+// @version     2.9.2
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -1068,7 +1068,7 @@
                 is_oly: data.is_oly,
                 is_led: data.is_led,
                 is_special: !data.is_sale && data.is_free && data.is_oly && data.wishlist_count === false,
-                is_girls: data.options.indexOf("OTM") >= 0
+                is_girls: data.options && data.options.indexOf("OTM") >= 0
             }
 
             if(data.regist_date){
