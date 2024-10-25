@@ -3,7 +3,12 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.7.0
+// @version     2.8.0
+// @connect     dlsite.com
+// @connect     media.ci-en.jp
+// @grant       GM_registerMenuCommand
+// @grant       GM_setValue
+// @grant       GM_getValue
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -12,9 +17,34 @@
 
 (function () {
     'use strict';
+
+    //------持久化设置项------
+    const settings = {
+        /***是否解析链接（鼠标移动到指向dlsite对应作品的链接时也显示音声信息）***/
+        parse_url: GM_getValue("parse_url", true),
+
+        /***是否在DLSite相关网站显示音声信息（开启链接解析才可在DL上有效使用）***/
+        use_in_dl: GM_getValue("use_in_dl", false),
+
+        /***DLSite网页是否显示大家翻对应语言的翻译版标题（默认是）***/
+        use_translated_title: GM_getValue("use_translated_title", true),
+
+        save: function () {
+            GM_setValue("use_translated_title", settings.use_translated_title);
+            GM_setValue("use_in_dl", settings.use_in_dl);
+            GM_setValue("parse_url", settings.parse_url);
+        },
+        load: function () {
+            settings.parse_url = GM_getValue("parse_url", true);
+            settings.use_translated_title = GM_getValue("use_translated_title", true);
+            settings.use_in_dl = GM_getValue("use_in_dl", false);
+        }
+    }
+    //----------------------
+
+
     const RJ_REGEX = new RegExp("(R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6})", "gi");
-    const RJ_REGEX_NEW = new RegExp("R[JE][0-9]{8}", "gi");
-    const VBJ_REGEX = new RegExp("([VB]J[0-9]{6})|([VB]J[0-9]{8})", "gi");
+    const URL_REGEX = new RegExp("dlsite.com/.*/product_id/((R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6}))", "g");
     const VOICELINK_CLASS = 'voicelink';
     const RJCODE_ATTRIBUTE = 'rjcode';
     const css = `
@@ -112,6 +142,7 @@
       #${VOICELINK_CLASS}_copy_btn:active {
           scale: 1.1;
       }
+      
   `
 
     /**
@@ -127,6 +158,17 @@
             case "discordapp.com": return "discord-dark";
             default: return null;
         }
+    }
+
+    function getVoiceLinkTarget(target){
+        while (target && !target.classList.contains(VOICELINK_CLASS)){
+            target = target.parentElement;
+        }
+        return target;
+    }
+
+    function isInDLSite(){
+        return document.location.hostname.endsWith("dlsite.com");
     }
 
     /**
@@ -159,14 +201,16 @@
         if(!hostname.endsWith("dlsite.com")){
             return;
         }
+        const rjList = document.URL.match(RJ_REGEX)
+        const rj = rjList[rjList.length - 1]
 
         const title = document.getElementById("work_name");
         if(!title){
             return;
         }
+        let titleStr = title.innerText;
 
         const button = document.createElement("button");
-        const titleStr = title.innerText;
         button.id = `${VOICELINK_CLASS}_copy_btn`;
         button.innerHTML = "📃";
         button.addEventListener("mouseenter", function(){
@@ -190,6 +234,15 @@
         title.style.userSelect = "text";
         title.classList.add(`${VOICELINK_CLASS}_work_title`);
         title.appendChild(button);
+
+        if(settings.use_translated_title){
+            //将Title替换成大家翻对应的语言翻译版本
+            WorkPromise.getWorkTitle(rj).then(t => {
+                titleStr = t
+                title.innerText = t
+                title.appendChild(button)
+            })
+        }
     }
 
     function getXmlHttpRequest() {
@@ -200,17 +253,28 @@
         walkNodes: function (elem) {
             const rjNodeTreeWalker = document.createTreeWalker(
                 elem,
-                NodeFilter.SHOW_TEXT,
+                NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
                 {
                     acceptNode: function (node) {
+                        if(settings.parse_url && node.nodeName === "A"){
+                            if(!settings.use_in_dl && document.location.hostname.endsWith("dlsite.com")){
+                                return NodeFilter.FILTER_SKIP;
+                            }
+
+                            let href = node.href;
+                            if(href.match(URL_REGEX)){
+                                return NodeFilter.FILTER_ACCEPT;
+                            }
+                        }
+
+                        if (node.nodeName !== "#text") return NodeFilter.FILTER_SKIP;
+
                         if (node.parentElement.classList.contains(VOICELINK_CLASS))
-                            return NodeFilter.FILTER_ACCEPT;
-                        if (node.nodeValue.match(RJ_REGEX_NEW))
                             return NodeFilter.FILTER_ACCEPT;
                         if (node.nodeValue.match(RJ_REGEX))
                             return NodeFilter.FILTER_ACCEPT;
-                        if (node.nodeValue.match(VBJ_REGEX))
-                            return NodeFilter.FILTER_ACCEPT;
+
+                        return NodeFilter.FILTER_SKIP;
                     }
                 },
                 false,
@@ -225,8 +289,11 @@
 
                 if (node.parentElement.classList.contains(VOICELINK_CLASS))
                     Parser.rebindEvents(node.parentElement);
-                else
+                else if(node.nodeName === "A") {
+                    Parser.linkifyURL(node);
+                }else{
                     Parser.linkify(node);
+                }
             }
         },
 
@@ -243,6 +310,24 @@
             e.addEventListener("mouseout", Popup.out);
             e.addEventListener("mousemove", Popup.move);
             return e;
+        },
+
+        /***
+         * 处理直链
+         * @param {Node} node
+         ***/
+        linkifyURL: function(node) {
+            const e = node;
+            const href = e.href;
+            const rjs = href.match(RJ_REGEX);
+            const rj = rjs[rjs.length - 1];
+            if(!rj) return;
+
+            e.classList.add(VOICELINK_CLASS);
+            e.setAttribute(RJCODE_ATTRIBUTE, rj.toUpperCase());
+            e.addEventListener("mouseover", Popup.over);
+            e.addEventListener("mouseout", Popup.out);
+            e.addEventListener("mousemove", Popup.move);
         },
 
         linkify: function (textNode) {
@@ -312,59 +397,153 @@
     }
 
     const Popup = {
-        makePopup: function (e, rjCode) {
+        popupElement: {
+            popup: null,
+            img: {container: null},
+            title: null,
+            rjCode: null,
+            flag: null,
+            circle: null,
+            debug: null,
+            translator: null,
+            releaseDate: null,
+            updateDate: null,
+            age: null,
+            cv: null,
+            tags: null,
+            fileSize: null,
+        },
+
+        makePopup: function () {
             const popup = document.createElement("div");
+            const ele = Popup.popupElement;
+            ele.popup = popup;
+
             popup.className = "voicepopup voicepopup-maniax " + (getAdditionalPopupClasses() || '');
-            popup.id = "voice-" + rjCode;
+            popup.id = `${VOICELINK_CLASS}-voice-popup`;  // + rjCode;
             popup.style = "display: flex";
             document.body.appendChild(popup);
 
-            let workFound = true;
-            WorkPromise.getFound(rjCode).then(found => {
-                if(!found) {
-                    popup.innerHTML = "Work Not Found.";
-                    workFound = false;
-                }
-            })
-
-            WorkPromise.getGirls(rjCode).then(isGirls => {
-                if(isGirls) popup.className += (" voicepopup-girls")
-            });
-
             const imgContainer = document.createElement("div")
-            const img = document.createElement("img");
-            imgContainer.appendChild(img);
-            WorkPromise.getImgLink(rjCode).then(link => {
-                img.src = link;
-            });
-
-            /*let html = `
-                      <div>
-                          <div class='voice-title'>${workInfo.title}</div>
-                          <div class='rjcode'>[${workInfo.rj}]</div>
-                          <br />
-                          Circle: <a>${workInfo.circle}</a>
-                          <br />
-                  `;*/
+            // const img = document.createElement("img");
+            ele.img.container = imgContainer;
+            // imgContainer.appendChild(img);
 
             const infoContainer = document.createElement("div");
 
             const titleElement = document.createElement("div");
+            ele.title = titleElement;
             titleElement.classList.add("voice-title");
-            titleElement.innerText = "Loading...";
-            WorkPromise.getWorkTitle(rjCode).then(title => titleElement.innerText = title)
-                .catch(_ => titleElement.innerHTML = "");
             infoContainer.appendChild(titleElement);
 
             const rjCodeElement = document.createElement("div");
+            ele.rjCode = rjCodeElement;
             rjCodeElement.classList.add("rjcode");
-            rjCodeElement.innerText = `[${rjCode}]`;
             infoContainer.appendChild(rjCodeElement);
 
             const flagElement = document.createElement("div");
+            ele.flag = flagElement;
+            flagElement.style.marginTop = "20px";
+            infoContainer.appendChild(flagElement);
+
+            const circleElement = document.createElement("div");
+            ele.circle = circleElement;
+            infoContainer.appendChild(circleElement);
+
+            const debugElement = document.createElement("div");
+            ele.debug = debugElement;
+            infoContainer.appendChild(debugElement);
+
+            const translatorElement = document.createElement("div");
+            ele.translator = translatorElement;
+            infoContainer.appendChild(translatorElement);
+
+            const releaseElement = document.createElement("div");
+            ele.releaseDate = releaseElement;
+            infoContainer.appendChild(releaseElement);
+
+            const updateElement = document.createElement("div");
+            ele.updateDate = updateElement;
+            infoContainer.appendChild(updateElement);
+
+            const ageElement = document.createElement("div");
+            ele.age = ageElement;
+            infoContainer.appendChild(ageElement);
+
+            const cvElement = document.createElement("div");
+            ele.cv = cvElement;
+            infoContainer.appendChild(cvElement);
+
+            const tagsElement = document.createElement("div");
+            ele.tags = tagsElement;
+            infoContainer.appendChild(tagsElement);
+
+            const filesizeElement = document.createElement("div");
+            ele.fileSize = filesizeElement;
+            infoContainer.appendChild(filesizeElement);
+
+            infoContainer.style.paddingBottom = "3px";
+            popup.appendChild(infoContainer);
+            popup.insertBefore(imgContainer, popup.childNodes[0]);
+        },
+
+        updatePopup: function(e, rjCode) {
+            const ele = Popup.popupElement;
+            const popup = ele.popup;
+            popup.className = "voicepopup voicepopup-maniax " + (getAdditionalPopupClasses() || '');
+            // popup.id = "voice-" + rjCode;
+            popup.style = "display: flex";
+            popup.setAttribute(RJCODE_ATTRIBUTE, rjCode);
+
+            let workFound = true;
+            WorkPromise.getFound(rjCode).then(found => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(!found) {
+                    popup.innerHTML = "Work Not Found.";
+                    workFound = false;
+                }
+            });
+
+            WorkPromise.getGirls(rjCode).then(isGirls => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(isGirls) popup.className += (" voicepopup-girls")
+            });
+
+            const imgContainer = ele.img.container;
+            let img = ele.img[rjCode];
+            if(!img){
+                //由于切换图片src会导致加载延迟，故根据RJ号保留所有图片的img元素并按需显示
+                img = document.createElement("img");
+                ele.img[rjCode] = img;
+                imgContainer.appendChild(img);
+            }
+            for (let i = 0; i < imgContainer.childNodes.length; ++i) {
+                imgContainer.childNodes[i].style.display = "none";
+            }
+            img.style.display = "block"
+            WorkPromise.getImgLink(rjCode).then(link => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                img.src = link;
+            });
+
+            const titleElement = ele.title;
+            titleElement.innerText = "Loading...";
+            WorkPromise.getWorkTitle(rjCode).then(title => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                titleElement.innerText = title
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                titleElement.innerHTML = ""
+            });
+
+            const rjCodeElement = ele.rjCode;
+            rjCodeElement.innerText = `[${rjCode}]`;
+
+            const flagElement = ele.flag;
             flagElement.style.marginTop = "20px"
             flagElement.innerHTML = "";
             WorkPromise.getWorkPromise(rjCode).api.then(data => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 if(data.is_special){
                     //特典作品
                     flagElement.innerHTML = `<span style="color: gold; font-size: 15px; align-self: center; font-weight: bold">[BONUS]</span>`;
@@ -372,143 +551,137 @@
                 else if(!data.is_sale && !data.is_coming_soon) {
                     flagElement.innerHTML = `<span style="color: darkred; font-size: 15px; align-self: center">(No longer for Sale)</span>`;
                 }
-            })
-                .catch(_ => flagElement.innerHTML = "");
-            infoContainer.appendChild(flagElement);
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                flagElement.innerHTML = "";
+            });
 
-
-            const circleElement = document.createElement("div");
+            const circleElement = ele.circle;
             circleElement.innerHTML = "Circle: Loading...";
-            WorkPromise.getCircle(rjCode).then(circle => circleElement.innerHTML = `Circle: <a>${circle}</a>`)
-                .catch(_ => circleElement.innerHTML = "");
-            infoContainer.appendChild(circleElement);
+            WorkPromise.getCircle(rjCode).then(circle => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                circleElement.innerHTML = `Circle: <a>${circle}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                circleElement.innerHTML = "";
+            });
 
-            const debugElement = document.createElement("div");
+            const debugElement = ele.debug;
             debugElement.innerHTML = "";
-            WorkPromise.getDebug(rjCode).then(debug => debugElement.innerHTML = debug)
-                .catch(_ => debugElement.innerHTML = "");
-            infoContainer.appendChild(debugElement);
+            WorkPromise.getDebug(rjCode).then(debug => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                debugElement.innerHTML = debug;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                debugElement.innerHTML = "";
+            });
 
-            const translatorElement = document.createElement("div");
+            const translatorElement = ele.translator;
             translatorElement.innerHTML = "";
-            WorkPromise.getTranslatorName(rjCode).then(name => translatorElement.innerHTML = `Translator: <a>${name}</a>`)
-                .catch(_ => translatorElement.innerHTML = "");
-            infoContainer.appendChild(translatorElement);
+            WorkPromise.getTranslatorName(rjCode).then(name => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                translatorElement.innerHTML = `Translator: <a>${name}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                translatorElement.innerHTML = "";
+            });
 
-            /*if (workInfo.date)
-                html += `Release: <a>${workInfo.date}</a> <br />`;*/
-
-            const releaseElement = document.createElement("div");
+            const releaseElement = ele.releaseDate;
             releaseElement.innerHTML = "Release: Loading...";
-            WorkPromise.getReleaseDate(rjCode).then(date => releaseElement.innerHTML = `Release: <a>${date}</a>`)
-                .catch(_ => releaseElement.innerHTML = "");
-            infoContainer.appendChild(releaseElement);
+            WorkPromise.getReleaseDate(rjCode).then(date => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                releaseElement.innerHTML = `Release: <a>${date}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                releaseElement.innerHTML = "";
+            });
 
-            /*if (workInfo.update)
-                html += `Update: <a>${workInfo.update}</a> <br />`;*/
-
-            const updateElement = document.createElement("div");
+            const updateElement = ele.updateDate;
             updateElement.innerHTML = "";
-            WorkPromise.getUpdateDate(rjCode).then(date => updateElement.innerHTML = `Update: <a>${date}</a>`)
-                .catch(_ => updateElement.innerHTML = "");
-            infoContainer.appendChild(updateElement);
+            WorkPromise.getUpdateDate(rjCode).then(date => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                updateElement.innerHTML = `Update: <a>${date}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                updateElement.innerHTML = "";
+            });
 
-            /*let ratingClass = "age-all";
-            if (workInfo.rating.includes("18")) {
-                ratingClass = "age-18";
-            }
-            html += `Age rating: <a class="${ratingClass}">${workInfo.rating}</a><br />`*/
-
-            const ageElement = document.createElement("div");
+            const ageElement = ele.age;
             ageElement.innerHTML = "Age rating: Loading...";
             WorkPromise.getAgeRating(rjCode).then(rating => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 let ratingClass = "age-all";
                 if(rating.includes("18")){
                     ratingClass = "age-18";
                 }
                 ageElement.innerHTML = `Age rating: <a class="${ratingClass}">${rating}</a>`;
-            }).catch(_ => ageElement.innerHTML = "");
-            infoContainer.appendChild(ageElement);
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                ageElement.innerHTML = "";
+            });
 
-            /*if (workInfo.cv)
-                html += `CV: <a>${workInfo.cv}</a> <br />`;*/
-
-            const cvElement = document.createElement("div");
+            const cvElement = ele.cv;
             cvElement.innerHTML = "CV: Loading...";
-            WorkPromise.getCV(rjCode).then(cv => cvElement.innerHTML = `CV: <a>${cv}</a>`)
-                .catch(_ => cvElement.innerHTML = "");
-            infoContainer.appendChild(cvElement);
+            WorkPromise.getCV(rjCode).then(cv => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                cvElement.innerHTML = `CV: <a>${cv}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                cvElement.innerHTML = "";
+            });
 
-            /*if (workInfo.tags) {
-                html += `Tags: <a>`
-                workInfo.tags.forEach(tag => {
-                    html += tag + "\u3000";
-                });
-                html += "</a><br />";
-            }*/
-
-            const tagsElement = document.createElement("div");
+            const tagsElement = ele.tags;
             tagsElement.innerHTML = "Tags: Loading...";
             WorkPromise.getTags(rjCode).then(tags => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 let tagsHtml = "Tags: <a>";
                 tags.forEach(tag => {
                     tagsHtml += tag + "\u3000";
                 });
                 tagsHtml += "</a>";
                 tagsElement.innerHTML = tagsHtml;
-            }).catch(_ => tagsElement.innerHTML = "");
-            infoContainer.appendChild(tagsElement);
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                tagsElement.innerHTML = "";
+            });
 
-            /*if (workInfo.filesize)
-                html += `File size: ${workInfo.filesize}<br />`;*/
-
-            const filesizeElement = document.createElement("div");
+            const filesizeElement = ele.fileSize;
             filesizeElement.innerHTML = "File size: Loading...";
-            WorkPromise.getFileSize(rjCode).then(filesize => filesizeElement.innerHTML = `File size: ${filesize}`)
-                .catch(_ => filesizeElement.innerHTML = "");
-            infoContainer.appendChild(filesizeElement);
-
-            /*html += "</div>"
-            popup.innerHTML = html;*/
-
-            infoContainer.style.paddingBottom = "3px";
-            popup.appendChild(infoContainer);
-            popup.insertBefore(imgContainer, popup.childNodes[0]);
-
-            /*if (workInfo === null)
-                popup.innerHTML = "<div class='error'>Work not found.</span>";
-            else {
-
-            }*/
+            WorkPromise.getFileSize(rjCode).then(filesize => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                filesizeElement.innerHTML = `File size: ${filesize}`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                filesizeElement.innerHTML = "";
+            });
 
             Popup.move(e);
         },
 
         over: function (e) {
-            const rjCode = e.target.getAttribute(RJCODE_ATTRIBUTE);
-            const popup = document.querySelector("div#voice-" + rjCode);
+            const target = isInDLSite() ? e.target : getVoiceLinkTarget(e.target);
+            if(!target || !target.classList.contains(VOICELINK_CLASS)) return;
+
+            const rjCode = target.getAttribute(RJCODE_ATTRIBUTE);
+            const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if (popup) {
-                const style = popup.getAttribute("style").replace("none", "flex");
-                popup.setAttribute("style", style);
+                popup.style.display = "flex";
             }
             else {
-                Popup.makePopup(e, rjCode);
+                Popup.makePopup();
             }
+            Popup.updatePopup(e, rjCode);
         },
 
         out: function (e) {
-            const rjCode = e.target.getAttribute("rjcode");
-            const popup = document.querySelector("div#voice-" + rjCode);
+            const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if (popup) {
-
-                const style = popup.getAttribute("style").replace("flex", "none");;
-                popup.setAttribute("style", style);
+                popup.style.display = "none";
             }
         },
 
         move: function (e) {
-            const rjCode = e.target.getAttribute("rjcode");
-            const popup = document.querySelector("div#voice-" + rjCode);
+            const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if (popup) {
                 if (popup.offsetWidth + e.clientX + 10 < window.innerWidth - 10) {
                     popup.style.left = (e.clientX + 10) + "px";
@@ -833,7 +1006,7 @@
                 is_oly: data.is_oly,
                 is_led: data.is_led,
                 is_special: !data.is_sale && data.is_free && data.is_oly && data.wishlist_count === false,
-                is_girls: data.site_id === "girls"
+                is_girls: data.options.indexOf("OTM") >= 0
             }
 
             if(data.regist_date){
@@ -941,7 +1114,7 @@
                     translator_name = data.maker_name;
                 }
 
-                const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${next_rj}&cdn_cache_min=1&locale=${lang}`;
+                const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${next_rj}&cdn_cache_min=1` + (translation_info.is_original ? "" : `&locale=${lang}`);
                 return new Promise(
                     (resolve, reject) => {
                         this.getHttp(url,
@@ -1008,11 +1181,123 @@
         }
     }
 
+    const SettingsPopup = {
+        css: `.${VOICELINK_CLASS}_settings{
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 500px;
+            height: 200px;
+            margin: auto;
+            background-color: white;
+            z-index: 999;
+            
+            padding: 20px 20px;
+            border-radius: 10px;
+            border-style: solid;
+            border-width: 1px;
+            border-color: black;
+        }
+        
+        .${VOICELINK_CLASS}_settings table{
+            box-sizing: border-box;
+            width: 100%;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border-collapse: collapse;
+        }
+        
+        .${VOICELINK_CLASS}_settings table td{
+            font-size: 16px;
+            border: 1px solid lightgrey;
+            padding: 5px;
+            text-align: center;
+        }
+        
+        .${VOICELINK_CLASS}_settings table td abbr{
+            cursor: help;
+        }
+        
+        .${VOICELINK_CLASS}_settings table td input[type=checkbox]{
+            margin: 0;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .${VOICELINK_CLASS}_settings .${VOICELINK_CLASS}_label{
+            text-align: left;
+        }`,
+        popup: null,
+        createPopup: function(){
+            SettingsPopup.popup = document.createElement("div")
+            SettingsPopup.popup.className = `${VOICELINK_CLASS}_settings`
+
+            let form = `
+<table>
+    <tbody>
+        <tr>
+            <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_parse_url">解析URL (<abbr title="鼠标悬停到指向DLSite作品页面的URL时，同样显示作品信息">?</abbr>)</td>
+            <td><input type="checkbox" id="${VOICELINK_CLASS}_parse_url_" name="parse_url" ${settings.parse_url ? "checked" : ""}/></td>
+        </tr>
+        <tr>
+            <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_use_in_dl">&nbsp┕在DLSite上启用URL解析 (<abbr title="URL较多可能影响正常阅读">?</abbr>)</td>
+            <td><input type="checkbox" id="${VOICELINK_CLASS}_use_in_dl_" name="use_in_dl" ${settings.use_in_dl ? "checked" : ""}/></td>
+        </tr>
+        <tr>
+            <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_use_translated_title">在DLSite显示对应语言的翻译标题 (<abbr title="作品信息页面标题修改，会出现加载延迟">?</abbr>)</td>
+            <td><input type="checkbox" id="${VOICELINK_CLASS}_use_translated_title_" name="use_translated_title" ${settings.use_translated_title ? "checked" : ""}/></td>
+        </tr>
+    </tbody>
+</table>
+<div style="box-sizing: border-box; text-align: right;">
+    <input style="font-size: 16px" type="button" value="Cancel"/>
+    <input style="font-size: 16px" type="button" value="Save"/>
+</div>`
+            SettingsPopup.popup.innerHTML = form
+
+            //添加按钮事件
+            let pp = SettingsPopup.popup
+            pp.querySelector("input[type=button][value=Cancel]").addEventListener("click", function(){
+                SettingsPopup.popup.style.display = "none"
+            })
+            pp.querySelector("input[type=button][value=Save]").addEventListener("click", function(){
+                settings.parse_url = pp.querySelector(`#${VOICELINK_CLASS}_parse_url_`).checked
+                settings.use_translated_title = pp.querySelector(`#${VOICELINK_CLASS}_use_translated_title_`).checked
+                settings.use_in_dl = pp.querySelector(`#${VOICELINK_CLASS}_use_in_dl_`).checked
+                settings.save()
+                SettingsPopup.popup.style.display = "none"
+            })
+
+            document.body.appendChild(SettingsPopup.popup)
+        },
+        getPopup: function () {
+            if(!SettingsPopup.popup){
+                SettingsPopup.createPopup()
+            }
+
+            if(SettingsPopup.popup.style.display === "block"){
+                SettingsPopup.popup.style.display = "none"
+            }else{
+                SettingsPopup.updateValues()
+                SettingsPopup.popup.style.display = "block"
+            }
+        },
+        updateValues: function(){
+            let pp = SettingsPopup.popup
+            pp.querySelector(`#${VOICELINK_CLASS}_parse_url_`).checked = settings.parse_url
+            pp.querySelector(`#${VOICELINK_CLASS}_use_translated_title_`).checked = settings.use_translated_title
+            pp.querySelector(`#${VOICELINK_CLASS}_use_in_dl_`).checked = settings.use_in_dl
+        }
+    }
 
     document.addEventListener("DOMContentLoaded", function () {
         const style = document.createElement("style");
-        style.innerHTML = css;
+        style.innerHTML = Csp.createHTML(css + SettingsPopup.css);
         document.head.appendChild(style);
+        // SettingsPopup.getPopup()
+        GM_registerMenuCommand("Settings", SettingsPopup.getPopup)
 
         Parser.walkNodes(document.body);
 
@@ -1034,8 +1319,67 @@
         });
 
         observer.observe(document.body, { childList: true, subtree: true })
-
-        // Make title selectable
         setUserSelectTitle();
+
+        //显示重要通知
+        showUpdateNotice();
     });
+
+    function showUpdateNotice(){
+        const firstTimeToken = 101;
+        if(GM_getValue("first_token", undefined) === firstTimeToken){
+            return;
+        }
+
+        let popup = document.createElement("div");
+        popup.style = `
+        position: fixed; 
+        width: 500px; 
+        height: auto;
+        margin: 20px auto; 
+        padding: 10px;
+        left: 0; 
+        right: 0; 
+        top: 0;  
+        background: rgba(255, 255, 255, 0.9); 
+        z-index: 999;
+        
+        border-radius: 10px;
+        border: 2px solid gray`;
+        popup.innerHTML = `
+        <h1 style="text-indent: 0; color: black;">Notice from VoiceLinks</h1>
+        <p style="font-size: 16px">本次更新后，可通过点击Tampermonkey的扩展程序图标，找到VoiceLinks脚本的设置按钮进行部分设置。</p>
+        <p style="font-size: 14px; font-style: italic">Users now can find a setting button for the "VoiceLinks" script by clicking on the Tampermonkey extension icon.</p>
+        <p> </p>
+        <p style="font-size: 14px; line-height: 20px">主要更新：
+        <br/>- 使用单一弹框，避免单页面生成过多弹框对象等问题。
+        <br/>- 添加设置页面。
+        <br/>- 添加URL解析，悬停至作品URL上也可显示信息（可在设置中开关）。
+        <br/>- DLSite作品信息界面，作品名称将会显示为对应语言的标题（可在设置中开关）。
+        <br/>- 原版作品弹框标题本地化。
+        <br/>- 部分CSP限制页面也可进行解析。
+        </p>
+        <br/>
+        <input style="font-size: 16px; text-align: center; width: 100%; padding: 5px 10px" type="button" value="OK">
+        `
+        popup.querySelector("input[type=button][value=OK]").addEventListener("click", function(){
+            popup.style.display = "none";
+            GM_setValue("first_token", firstTimeToken);
+        })
+
+        document.body.appendChild(popup);
+    }
+
+
+
+    //Deal with Trusted Types
+
+    let Csp = {
+        createHTML: (str) => str
+    };
+    if(window.isSecureContext === true && trustedTypes){
+        Csp = trustedTypes.createPolicy(
+            trustedTypes.defaultPolicy ? "VoiceLinkTrustedTypes" : "default",
+            Csp);
+    }
 })();
