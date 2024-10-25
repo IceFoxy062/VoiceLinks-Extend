@@ -5,7 +5,7 @@
 // @match       *://*/*
 // @match       file:///*
 // @exclude     *://copilot.microsoft.com/*
-// @version     4.0.3
+// @version     4.0.4
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -48,6 +48,7 @@
             "voice__scenario",
             "voice__illustration",
             "voice__voice_actor",
+            "voice__music",
             "voice__genre",
             "voice__file_size"
         ],
@@ -59,6 +60,7 @@
         _s_voice__scenario: false,
         _s_voice__illustration: false,
         _s_voice__voice_actor: true,
+        _s_voice__music: true,
         _s_voice__genre: true,
         _s_voice__file_size: true,
         _s_game__info_display_order: [
@@ -70,6 +72,7 @@
             "game__scenario",
             "game__illustration",
             "game__voice_actor",
+            "game__music",
             "game__genre",
             "game__file_size"
         ],
@@ -81,6 +84,7 @@
         _s_game__scenario: true,
         _s_game__illustration: true,
         _s_game__voice_actor: true,
+        _s_game__music: true,
         _s_game__genre: true,
         _s_game__file_size: true,
         _s_manga__info_display_order: [
@@ -92,6 +96,7 @@
             "manga__scenario",
             "manga__illustration",
             "manga__voice_actor",
+            "manga__music",
             "manga__genre",
             "manga__file_size"
         ],
@@ -103,6 +108,7 @@
         _s_manga__scenario: true,
         _s_manga__illustration: true,
         _s_manga__voice_actor: true,  //音声漫画
+        _s_manga__music: true,
         _s_manga__genre: true,
         _s_manga__file_size: true,
         _s_video__info_display_order: [
@@ -114,6 +120,7 @@
             "video__scenario",
             "video__illustration",
             "video__voice_actor",
+            "video__music",
             "video__genre",
             "video__file_size"
         ],
@@ -125,6 +132,7 @@
         _s_video__scenario: true,
         _s_video__illustration: true,
         _s_video__voice_actor: true,
+        _s_video__music: true,
         _s_video__genre: true,
         _s_video__file_size: true,
         _s_novel__info_display_order: [
@@ -136,6 +144,7 @@
             "novel__scenario",
             "novel__illustration",
             "novel__voice_actor",
+            "novel__music",
             "novel__genre",
             "novel__file_size"
         ],
@@ -147,6 +156,7 @@
         _s_novel__scenario: true,
         _s_novel__illustration: true,
         _s_novel__voice_actor: false,
+        _s_novel__music: false,
         _s_novel__genre: true,
         _s_novel__file_size: true,
         _s_other__info_display_order: [
@@ -158,6 +168,7 @@
             "other__scenario",
             "other__illustration",
             "other__voice_actor",
+            "other__music",
             "other__genre",
             "other__file_size"
         ],
@@ -169,6 +180,7 @@
         _s_other__scenario: true,
         _s_other__illustration: true,
         _s_other__voice_actor: true,
+        _s_other__music: true,
         _s_other__genre: true,
         _s_other__file_size: true,
 
@@ -250,7 +262,13 @@
         load: function(){
             for(let key in this){
                 if(!key.startsWith("_s_")) continue;
-                const val = GM_getValue(key.substring(3), this[key]);
+                let val = GM_getValue(key.substring(3), this[key]);
+                if(typeof val !== typeof this[key]){
+                    val = this[key];
+                }
+                if(Array.isArray(val) && val.length !== this[key].length){
+                    val = this[key];
+                }
                 this[key] = val !== undefined ? val : this[key];
             }
         },
@@ -502,6 +520,12 @@
             zh_CN: "声优",
             zh_TW: "聲優",
             en_US: "Voice Actor"
+        },
+
+        music: {
+            zh_CN: "音乐",
+            zh_TW: "音樂",
+            en_US: "Music"
         },
 
         genre: {
@@ -1425,11 +1449,11 @@
         }
         .${VOICELINK_CLASS}_tags > label.${VOICELINK_CLASS}_tag_tight,
         .${VOICELINK_CLASS}_tags > span.${VOICELINK_CLASS}_tag_tight{
-            padding: 3px 7.5px;
+            padding: 2px 7px;
         }
         .${VOICELINK_CLASS}_tags > label.${VOICELINK_CLASS}_tag_small,
         .${VOICELINK_CLASS}_tags > span.${VOICELINK_CLASS}_tag_small{
-            padding: 3px 7.5px;
+            padding: 2px 7px;
             font-size: 12px;
         }
 
@@ -1984,6 +2008,7 @@
             scenario: null,
             illustration: null,
             voice_actor: null,
+            music: null,
             genre: null,
             file_size: null,
         },
@@ -2049,6 +2074,7 @@
             ele.scenario = document.createElement("div");
             ele.illustration = document.createElement("div");
             ele.voice_actor = document.createElement("div");
+            ele.music = document.createElement("div");
             ele.genre = document.createElement("div");
             ele.file_size = document.createElement("div");
 
@@ -2170,6 +2196,7 @@
             ele.update_date.style.display = found ? "block" : "none";
             ele.age_rating.style.display = found ? "block" : "none";
             ele.voice_actor.style.display = found ? "block" : "none";
+            ele.music.style.display = found ? "block" : "none";
             ele.genre.style.display = found ? "block" : "none";
             ele.file_size.style.display = found ? "block" : "none";
         },
@@ -2329,6 +2356,25 @@
             });
 
             ele.info_container.appendChild(voiceActorElement);
+        },
+        set_music: function (rjCode, category) {
+            const id = `${category}__music`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const musicElement = ele.music;
+            musicElement.innerHTML = `${localizePopup(localizationMap.music)}: Loading...`;
+            WorkPromise.getMusic(rjCode).then(name => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                musicElement.innerHTML = `${localizePopup(localizationMap.music)}: <a>${name}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                musicElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(musicElement);
         },
         set_genre: function (rjCode, category){
             const id = `${category}__genre`;
@@ -3079,6 +3125,25 @@
             return info.cv;
         },
 
+        getMusic: async function(rjCode) {
+            const p = this.getWorkPromise(rjCode);
+            const api2 = await p.api2;
+            if(api2.creaters && api2.creaters.music_by && api2.creaters.music_by.length > 0){
+                let ms = api2.creaters.music_by;
+                let text = "";
+                for (let m of ms){
+                    text += " / " + m.name;
+                }
+                text = text.substring(3);
+                return text;
+            }
+
+            //无法获取api2则直接通过html获取
+            const info = await this.getWorkPromise(rjCode).info;
+            this.checkNotNull(info.music);
+            return info.music;
+        },
+
         getTags: async function(rjCode) {
             //注意该方法返回字符串数组而不是纯字符串
             const p = this.getWorkPromise(rjCode);
@@ -3195,6 +3260,10 @@
                         "Pengisi suara", "Doppiatore/Doppiatrice", "Ator de voz", "Röstskådespelare", "นักพากย์",
                         "Diễn viên lồng tiếng"].some(lambda)):
                         workInfo.cv = row_data.innerText;
+                        break;
+                    case (["音楽", "Music", "音乐", "音樂", "음악", "Música", "Musik", "Musique", "Musik", "Musica.",
+                        "Música", "musik", "ดนตรี", "Âm nhạc"].some(lambda)):
+                        workInfo.music = row_data.innerText;
                         break;
                     case (["ファイル容量", "文件容量", "檔案容量", "File size", "파일 용량", "Tamaño del Archivo", "Dateigröße",
                         "Taille du fichier", "Ukuran file", "Dimensione del file", "Tamanho do arquivo", "Filstorlek",
@@ -3797,6 +3866,12 @@
                                     id: "voice__voice_actor",
                                 },
                                 {
+                                    //音乐作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.music),
+                                    id: "voice__music",
+                                },
+                                {
                                     //作品标签/分类
                                     type: "checkbox",
                                     title: localize(localizationMap.genre),
@@ -3866,6 +3941,12 @@
                                     type: "checkbox",
                                     title: localize(localizationMap.voice_actor),
                                     id: "game__voice_actor",
+                                },
+                                {
+                                    //音乐作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.music),
+                                    id: "game__music",
                                 },
                                 {
                                     //作品标签/分类
@@ -3940,6 +4021,12 @@
                                     tooltip: localize(localizationMap.work_type_voice_comic)
                                 },
                                 {
+                                    //音乐作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.music),
+                                    id: "manga__music",
+                                },
+                                {
                                     //作品标签/分类
                                     type: "checkbox",
                                     title: localize(localizationMap.genre),
@@ -4009,6 +4096,12 @@
                                     type: "checkbox",
                                     title: localize(localizationMap.voice_actor),
                                     id: "video__voice_actor",
+                                },
+                                {
+                                    //音乐作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.music),
+                                    id: "video__music",
                                 },
                                 {
                                     //作品标签/分类
@@ -4082,6 +4175,12 @@
                                     id: "novel__voice_actor",
                                 },
                                 {
+                                    //音乐作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.music),
+                                    id: "novel__music",
+                                },
+                                {
                                     //作品标签/分类
                                     type: "checkbox",
                                     title: localize(localizationMap.genre),
@@ -4151,6 +4250,12 @@
                                     type: "checkbox",
                                     title: localize(localizationMap.voice_actor),
                                     id: "other__voice_actor",
+                                },
+                                {
+                                    //音乐作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.music),
+                                    id: "other__music",
                                 },
                                 {
                                     //作品标签/分类
