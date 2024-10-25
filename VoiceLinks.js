@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.8
+// @version     2.1.9
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -113,6 +113,12 @@
             );
             while (rjNodeTreeWalker.nextNode()) {
                 const node = rjNodeTreeWalker.currentNode;
+
+                //Ignore Element which let user input (textarea), input can be ignored because it's not a text node.
+                if(node.parentElement.nodeName === "TEXTAREA"){
+                    continue;
+                }
+
                 if (node.parentElement.classList.contains(VOICELINK_CLASS))
                     Parser.rebindEvents(node.parentElement);
                 else
