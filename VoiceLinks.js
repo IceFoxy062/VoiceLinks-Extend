@@ -1243,6 +1243,9 @@
             box-sizing: border-box;
             color: #666666FF;
             font-size: 13.3333px;
+            height: unset;
+            max-height: unset;
+            max-width: unset;
             /*margin-bottom: 10px;*/
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting input[type="checkbox"] {
@@ -1259,6 +1262,7 @@
             margin: 0;
             width: 60px;
             height: 30px;
+            padding: 0;
             background: #ccc;
             border-radius: 15px;
             position: relative;
@@ -5190,7 +5194,7 @@
 
     function showUpdateNotice(force = false) {
         //TODO: 公告待更新
-        const firstTimeToken = 103;
+        const firstTimeToken = 104;
         if(GM_getValue("first_token", undefined) === firstTimeToken && !force){
             return;
         }
@@ -5213,18 +5217,37 @@
         border: 2px solid gray`;
         popup.innerHTML = `
         <h1 style="text-indent: 0; color: black;">Notice from VoiceLinks</h1>
-        <p style="font-size: 16px">可通过点击Tampermonkey的扩展程序图标，找到VoiceLinks脚本的设置按钮进行部分设置。</p>
-        <p style="font-size: 14px; font-style: italic">Users now can find a setting button for the "VoiceLinks" script by clicking on the Tampermonkey extension icon.</p>
-        <p> </p>
-        <p style="font-size: 14px; line-height: 20px">主要更新：
-        <br/>- 现在，当链接文本绝大部分都是RJ号时，为了保证原链接不被覆盖，添加了URL导向文本插入功能，可在设置中进行选择。
-        <br/>- - 选择<strong>不插入</strong>，所有内容将保持不变。
-        <br/>- - 选择<strong>前缀插入</strong>，就会在RJ号覆盖率较高时（>71%)，<strong>在链接文本前面插入导向文本</strong>（默认为🔗，以后可通过设置修改）
-        <br/>- - 选择<strong>插入替代RJ号链接</strong>，就会在覆盖率较高时，<strong>将RJ号原有的功能</strong>（悬停弹出信息，点击进入DL作品页面）<strong>放在导向文本上</strong>，导向文本将会放在RJ号的前面。此时点击RJ号也会跳转到原有的链接，而不是DL页面。
+        <p>
+        <strong><span style="font-size:14px;">重大更新，添加大量自定义设置，部分原有设置被重置，请打开<a data-link="settings">设置</a>界面重新设置。</span></strong>
         </p>
-        <br/>
+        <p>
+        <strong><span style="font-size:14px;">A large number of custom settings have been added, and some original settings have been reset. Please open the <a data-link="settings">settings</a> interface to set up.</span></strong>
+        </p>
+        <p>
+        <br />
+        </p>
+        <p>
+        具体更新：
+        </p>
+        <p>
+        - <strong>设置界面完全重构</strong>，并增加大量可设置项，包括<strong>自定义信息的显示情况与显示顺序</strong>
+        </p>
+        <p>
+        - 使用<strong>标签</strong>来标记额外的作品信息
+        </p>
+        <p>
+        - 现在可以查看<strong>翻译申请情况</strong>了
+        </p>
         <input style="font-size: 16px; text-align: center; width: 100%; padding: 5px 10px" type="button" value="OK">
         `
+        popup.querySelectorAll("a[data-link=settings]").forEach(link => {
+            link.style.color = "blue";
+            link.style.cursor = "pointer";
+            link.style.textDecoration = "underline";
+            link.addEventListener("click", function () {
+                SettingsPopup.showPopup();
+            })
+        })
         popup.querySelector("input[type=button][value=OK]").addEventListener("click", function(){
             popup.remove();
             GM_setValue("first_token", firstTimeToken);
