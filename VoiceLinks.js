@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     3.2.4
+// @version     3.2.5
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -292,6 +292,10 @@
                 NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
                 {
                     acceptNode: function (node) {
+                        if(node.nodeName === "SCRIPT" || node.parentElement && node.parentElement.nodeName === "SCRIPT"){
+                            return NodeFilter.FILTER_REJECT;
+                        }
+
                         if(settings._s_parse_url && node.nodeName === "A"){
                             if(!settings._s_use_in_dl && document.location.hostname.endsWith("dlsite.com")){
                                 return NodeFilter.FILTER_SKIP;
