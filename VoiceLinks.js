@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.9.3
+// @version     3.0.1
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -23,23 +23,31 @@
     //------持久化设置项------
     const settings = {
         /***是否解析链接（鼠标移动到指向dlsite对应作品的链接时也显示音声信息）***/
-        parse_url: GM_getValue("parse_url", true),
+        _s_parse_url: GM_getValue("parse_url", true),
 
         /***是否在DLSite相关网站显示音声信息（开启链接解析才可在DL上有效使用）***/
-        use_in_dl: GM_getValue("use_in_dl", false),
+        _s_use_in_dl: GM_getValue("use_in_dl", false),
 
         /***DLSite网页是否显示大家翻对应语言的翻译版标题（默认是）***/
-        use_translated_title: GM_getValue("use_translated_title", true),
+        _s_use_translated_title: GM_getValue("use_translated_title", true),
+
+        /***为了防止URL被整个解析覆盖，会在链接开头（1）或末尾（2）添加额外文本***/
+        _s_url_insert: GM_getValue("url_insert", "before_rj_with_coverage"),
+
+        /***自定义url插入文本***/
+        _s_url_insert_text: GM_getValue("url_insert_text", "🔗"),
 
         save: function () {
-            GM_setValue("use_translated_title", settings.use_translated_title);
-            GM_setValue("use_in_dl", settings.use_in_dl);
-            GM_setValue("parse_url", settings.parse_url);
+            for(let key in settings){
+                if(!key.startsWith("_s_")) continue;
+                GM_setValue(key.substring(3), settings[key]);
+            }
         },
         load: function () {
-            settings.parse_url = GM_getValue("parse_url", true);
-            settings.use_translated_title = GM_getValue("use_translated_title", true);
-            settings.use_in_dl = GM_getValue("use_in_dl", false);
+            for(let key in settings){
+                if(!key.startsWith("_s_")) continue;
+                settings[key] = GM_getValue(key.substring(3), settings[key]);
+            }
         }
     }
     //----------------------
@@ -48,6 +56,7 @@
     const RJ_REGEX = new RegExp("(R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6})", "gi");
     const URL_REGEX = new RegExp("dlsite.com/.*/product_id/((R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6}))", "g");
     const VOICELINK_CLASS = 'voicelink';
+    const VOICELINK_IGNORED_CLASS = `${VOICELINK_CLASS}_ignored`;
     const RJCODE_ATTRIBUTE = 'rjcode';
     const css = `
       .voicepopup {
@@ -66,35 +75,35 @@
           padding: 10px;
           pointer-events: none;
       }
- 
+      
       .voicepopup-maniax{
           background-color:#8080C0;
       }
- 
+      
       .voicepopup-girls{
           background-color:#B33761;
       }
- 
+
       .voicepopup img {
           width: 270px;
           height: auto;
           margin: 3px 15px 3px 3px;
           max-width: fit-content;
       }
- 
+      
       .voicepopup a {
-          text-decoration: none;
-          color: pink;
+          text-decoration: none !important;
+          color: pink !important;
       }
- 
+      
       .voicepopup .age-18{
-          color: hsl(300deg 76% 77%);
+          color: hsl(300deg 76% 77%) !important;
       }
- 
+      
       .voicepopup .age-all{
-          color: hsl(157deg 82% 52%);
+          color: hsl(157deg 82% 52%) !important;
       }
- 
+
       .voice-title {
           font-size: 1.4em;
           font-weight: bold;
@@ -102,30 +111,30 @@
           margin: 5px 10px 0 0;
           display: block;
       }
- 
+
       .rjcode {
           text-align: center;
           font-size: 1.2em;
           font-style: italic;
           opacity: 0.3;
       }
- 
+
       .error {
           height: 210px;
           line-height: 210px;
           text-align: center;
       }
- 
+
       .discord-dark {
           background-color: #36393f;
           color: #dcddde;
           font-size: 0.9375rem;
       }
- 
+      
       .${VOICELINK_CLASS}_work_title:hover #${VOICELINK_CLASS}_copy_btn {
           opacity: 1;
       }
- 
+      
       #${VOICELINK_CLASS}_copy_btn {
           background: transparent;
           border-color: transparent;
@@ -136,15 +145,15 @@
           user-select: none;
           position: absolute;
       }
- 
+      
       #${VOICELINK_CLASS}_copy_btn:hover {
           scale: 1.2;
       }
- 
+      
       #${VOICELINK_CLASS}_copy_btn:active {
           scale: 1.1;
       }
- 
+      
   `
 
     /**
@@ -237,7 +246,7 @@
         title.classList.add(`${VOICELINK_CLASS}_work_title`);
         title.appendChild(button);
 
-        if(settings.use_translated_title){
+        if(settings._s_use_translated_title){
             //将Title替换成大家翻对应的语言翻译版本
             WorkPromise.getWorkTitle(rj).then(t => {
                 titleStr = t
@@ -258,8 +267,12 @@
                 NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
                 {
                     acceptNode: function (node) {
-                        if(settings.parse_url && node.nodeName === "A"){
-                            if(!settings.use_in_dl && document.location.hostname.endsWith("dlsite.com")){
+                        if(node.parentElement.classList.contains(VOICELINK_IGNORED_CLASS)){
+                            return NodeFilter.FILTER_SKIP;
+                        }
+
+                        if(settings._s_parse_url && node.nodeName === "A"){
+                            if(!settings._s_use_in_dl && document.location.hostname.endsWith("dlsite.com")){
                                 return NodeFilter.FILTER_SKIP;
                             }
 
@@ -289,11 +302,13 @@
                     continue;
                 }
 
-                if (node.parentElement.classList.contains(VOICELINK_CLASS))
+                if (node.parentElement.classList.contains(VOICELINK_CLASS)) {
                     Parser.rebindEvents(node.parentElement);
-                else if(node.nodeName === "A") {
+                }else if(node.nodeName === "A") {
+                    // alert("准备解析链接：" + node.nodeValue)
                     Parser.linkifyURL(node);
                 }else{
+                    // alert("准备解析文本：" + node.nodeValue)
                     Parser.linkify(node);
                 }
             }
@@ -314,6 +329,13 @@
             return e;
         },
 
+        calculateCoverage: function(text){
+            const matches = text.match(RJ_REGEX);
+            //覆盖大小 = 所有匹配项的长度总和
+            const coverSize = matches.reduce((total, current) => total + current.length, 0);
+            return (coverSize / text.length) * 100;
+        },
+
         /***
          * 处理直链
          * @param {Node} node
@@ -324,6 +346,8 @@
             const rjs = href.match(RJ_REGEX);
             const rj = rjs[rjs.length - 1];
             if(!rj) return;
+
+            // alert(`解析链接：${e.nodeValue}`)
 
             e.classList.add(VOICELINK_CLASS);
             e.setAttribute(RJCODE_ATTRIBUTE, rj.toUpperCase());
@@ -336,6 +360,12 @@
             const nodeOriginalText = textNode.nodeValue;
             const matches = [];
 
+            let insert = settings._s_url_insert;
+            let tagA = textNode.parentElement.closest("a");
+            if(!tagA || insert.includes("_with_coverage") && this.calculateCoverage(tagA.innerText) < 71){
+                insert = "none";
+            }
+
             let match;
             while (match = RJ_REGEX.exec(nodeOriginalText)) {
                 matches.push({
@@ -343,9 +373,16 @@
                     value: match[0],
                 });
             }
+            if(matches.length === 0) return;
+
+            // alert(`解析文本：${textNode.nodeValue}`)
 
             // Keep text in text node until first RJ code
             textNode.nodeValue = nodeOriginalText.substring(0, matches[0].index);
+            if(insert.startsWith("prefix")){
+                //加前缀
+                textNode.nodeValue = `${settings._s_url_insert_text}${textNode.nodeValue}`
+            }
 
             // Insert rest of text while linkifying RJ codes
             let prevNode = null;
@@ -353,19 +390,24 @@
                 // Insert linkified RJ code
                 let code = matches[i].value
                 const rjLinkNode = Parser.wrapRJCode(code);
+                if(insert.startsWith("before_rj")){
+                    //用导向文本替代RJ号链接，RJ号保留到后面的文本里不变
+                    rjLinkNode.innerHTML = settings._s_url_insert_text;
+                }
                 textNode.parentNode.insertBefore(
                     rjLinkNode,
                     prevNode ? prevNode.nextSibling : textNode.nextSibling,
                 );
 
                 // Insert text after if there is any
-                let upper;
-                if (i === matches.length - 1)
-                    upper = undefined;
-                else
-                    upper = matches[i + 1].index;
-                let substring;
-                if (substring = nodeOriginalText.substring(matches[i].index + matches[i].value.length, upper)) {
+                //找到当前RJ和下一个RJ之间的字符串
+                let nextRJ = undefined;
+                if (i < matches.length - 1) {
+                    nextRJ = matches[i + 1].index;
+                }
+                let substring = nodeOriginalText.substring(matches[i].index + (insert.startsWith("before_rj") ? 0 : matches[i].value.length), nextRJ);
+
+                if (substring) {
                     const subtextNode = document.createTextNode(substring);
                     textNode.parentNode.insertBefore(
                         subtextNode,
@@ -377,6 +419,9 @@
                     prevNode = rjLinkNode;
                 }
             }
+
+            //保证后续游走时忽略当前节点
+            textNode.parentElement.classList.add(VOICELINK_IGNORED_CLASS);
         },
 
         rebindEvents: function (elem) {
@@ -396,6 +441,102 @@
             }
         },
 
+    }
+
+    const DateParser = {
+        parseDateStr: function(dateStr, lang){
+            dateStr = dateStr.trim().replace(/ /g, "");
+            lang = lang.trim().toLowerCase().replace(/_/g, "-");
+            let nums = this.parseNumbers(dateStr);
+            if(!nums || nums.length < 3 && lang !== "en-us" || nums.length < 2 && lang === "en-us"){
+                //数字不够，无法解析
+                return null;
+            }
+
+            let parsers = [
+                this.parseAsiaDateStr,
+                this.parseEnglishDateStr,
+                this.parseEuropeanDateStr,
+                this.parseSpanishDateStr
+            ]
+            let date = null;
+            for (let i = 0; i < parsers.length; i++){
+                date = parsers[i](dateStr, nums, lang);
+                if(date){
+                    break;
+                }
+            }
+
+            return date;
+        },
+        parseNumbers: function (dateStr){
+            let nums = dateStr.match(/\d+/g);
+            if(!nums) return null;
+
+            for (let i = 0; i < nums.length; i++) {
+                nums[i] = Number(nums[i]);
+            }
+            return nums;
+        },
+        parseAsiaDateStr: function(dateStr, nums, lang){
+            //2024年10月05日
+            //2024년 10월 05일（已去除空格）
+            if (!dateStr.match(/\d{4}年\d{1,2}月\d{1,2}日/)
+                && !dateStr.match(/\d{4}년\d{1,2}월\d{1,2}일/)) {
+                return null;
+            }
+            return new Date(nums[0], nums[1] - 1, nums[2]);
+        },
+        parseEnglishDateStr: function(dateStr, nums, lang){
+            //Oct/05/2024
+            if(!dateStr.match(/[a-zA-Z]{3}\/\d{1,2}\/\d{4}/)){
+                return null;
+            }
+            const monthMap = {
+                "Jan": 0, "Feb": 1, "Mar": 2,
+                "Apr": 3, "May": 4, "Jun": 5,
+                "Jul": 6, "Aug": 7, "Sep": 8,
+                "Oct": 9, "Nov": 10, "Dec": 11
+            }
+            let monthStr = dateStr.substring(0, dateStr.indexOf("/")).toLowerCase();
+            monthStr = monthStr[0].toUpperCase() + monthStr.substring(1);
+            return new Date(nums[1], monthMap[monthStr], nums[0])
+        },
+        parseSpanishDateStr: function (dateStr, nums, lang) {
+            //10/05/2024
+            if(lang !== "es-es" || !dateStr.match(/\d{1,2}\/\d{1,2}\/\d{4}/)){
+                return null;
+            }
+            return new Date(nums[2], nums[0] - 1, nums[1]);
+        },
+        parseEuropeanDateStr: function (dateStr, nums, lang) {
+            //05/10/2024
+            if(lang === "es-es" || !dateStr.match(/\d{1,2}\/\d{1,2}\/\d{4}/)){
+                return null;
+            }
+            return new Date(nums[2], nums[1] - 1, nums[0]);
+        },
+        /***
+         获得带倒计时的文本HTML
+         @param date {Date}
+         ***/
+        getCountDownDateText: function(date){
+            if(!date) return "";
+
+            const today = new Date();
+            today.setHours(0);
+            today.setMinutes(0);
+            today.setSeconds(0);
+            today.setMilliseconds(0);
+            date.setHours(0);
+            date.setMinutes(0);
+            date.setSeconds(0);
+            date.setMilliseconds(0);
+
+            if(date.getTime() < today.getTime()) return "";
+            let days = (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+            return `<span style="color:#ffeb3b; font-size: 16px; font-style: italic; margin-left: 16px">(Coming in ${days} day${(days > 1 ? "s" : "")})</span>`
+        },
     }
 
     const Popup = {
@@ -491,6 +632,7 @@
             infoContainer.appendChild(filesizeElement);
 
             infoContainer.style.paddingBottom = "3px";
+            infoContainer.style.flexGrow = "1";
             popup.appendChild(infoContainer);
             popup.insertBefore(imgContainer, popup.childNodes[0]);
         },
@@ -505,22 +647,22 @@
 
             let workFound = true;
             Popup.setFoundState(true);
-            WorkPromise.getFound(rjCode).then(found => {
-                //尝试ParentWork
+            WorkPromise.getFound(rjCode).then(async found => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
 
-                return new Promise(async (resolve, _) => {
-                    if (found) {
-                        resolve({found: true, parentRJ: rjCode});
-                        return;
-                    }
-                    let parentRJ = await WorkPromise.getParentRJ(rjCode);
-                    if(parentRJ === rjCode) {
-                        resolve({found: false, parentRJ: rjCode});
-                    }
-                    found = await WorkPromise.getFound(parentRJ);
-                    resolve({found: found, parentRJ: parentRJ});
-                });
+                if(found){
+                    //找到则直接返回交给下一级处理
+                    return {found: true, parentRJ: rjCode};
+                }
+
+                //没找到则尝试找到父作品的RJ号，填补子作品信息的缺失
+                let parentRJ = await WorkPromise.getParentRJ(rjCode);
+                if(parentRJ === rjCode || !parentRJ) {
+                    return {found: false, parentRJ: rjCode};
+                }
+                found = await WorkPromise.getFound(parentRJ);
+                return {found: found, parentRJ: parentRJ};
+
             }).then((state) => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
 
@@ -528,7 +670,7 @@
                 const rj = state.parentRJ;
                 if(found && rj !== rjCode){
                     //如果找到了父作品的信息但子作品找不到，就重新update
-                    this.updatePopup(e, rj, true);
+                    Popup.updatePopup(e, rj, true);
                     return;
                 }
 
@@ -575,13 +717,15 @@
             const flagElement = ele.flag;
             flagElement.style.marginTop = "20px"
             flagElement.innerHTML = "";
-            WorkPromise.getWorkPromise(rjCode).api.then(data => {
+            WorkPromise.getWorkPromise(rjCode).api.then(async data => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+
+                let info = await WorkPromise.getWorkPromise(rjCode).info;
                 if(data.is_special){
                     //特典作品
                     flagElement.innerHTML = `<span style="color: gold; font-size: 15px; align-self: center; font-weight: bold">[BONUS]</span>`;
                 }
-                else if(!data.is_sale && !data.is_coming_soon) {
+                else if(!data.is_sale && !info.is_announce) {
                     flagElement.innerHTML = `<span style="color: darkred; font-size: 15px; align-self: center">(No longer for Sale)</span>`;
                 }
             }).catch(_ => {
@@ -775,7 +919,7 @@
         getFound: async function(rjCode){
             try{
                 const data = await this.getWorkPromise(rjCode).api;
-                return data !== null;
+                return data !== null && data.is_sale !== undefined;
             }catch (e){
                 //说明是网络问题，删除缓存并返回true
                 delete work_promise[rjCode];
@@ -814,14 +958,14 @@
 
         getImgLink: async function(rjCode){
             try{
-                const apiData = await this.getWorkPromise(rjCode).api;
-                if(apiData.img_url) return "https://" + apiData.img_url;
-                this.checkNotNull(apiData.img_url);
-            }catch (e) {
                 const info = await this.getWorkPromise(rjCode).info;
                 this.checkNotNull(info.img);
                 return info.img;
+            }catch (e) {
+                const apiData = await this.getWorkPromise(rjCode).api;
+                if(apiData.img_url) return "https://" + apiData.img_url;
             }
+            throw new Error("无法获取图片链接");
         },
 
         getWorkTitle: async function(rjCode){
@@ -838,29 +982,34 @@
 
         getCircle: async function(rjCode){
             let work = this.getWorkPromise(rjCode);
+            const api = await work.api;
             let info = await work.info;
 
-            if(!info.circleId){
-                //页面解析失败，可能作品无法显示，此时直接获取RG信息
+            if(info.circleId && info.circle && info.circleId !== "RG60289"){
+                //RG魔法值为大家翻的RG号
+                return info.circle;
+            }
+
+            if(api.maker_id !== "RG60289"){
+                //如果社团不是大家翻，但作品已经下架导致html无法解析，则通过circle接口获取社团名
                 const circleInfo = await work.circle;
                 this.checkNotNull(circleInfo);
                 this.checkNotNull(circleInfo.name);
                 return circleInfo.name;
             }
 
-            if(info.circleId && info.circleId !== "RG60289"){
-                //RG魔法值为大家翻的RG号
-                this.checkNotNull(info.circle);
-                return info.circle;
-            }
-
             //匹配原版社团名，而不是大家翻
-            const api = await work.api;
             this.checkNotNull(api.original_rj);
             work = this.getWorkPromise(api.original_rj)
+
+            //优先匹配html的（因为circle接口不一定能获取到社团信息）
             info = await work.info;
-            this.checkNotNull(info.circle);
-            return info.circle;
+            if(info.circle) return info.circle;
+
+            //若作品已下架导致html无法解析，则通过circle接口获取社团名
+            let circle = await work.circle;
+            this.checkNotNull(circle.name);
+            return circle.name;
         },
 
         getTranslatorName: async function(rjCode){
@@ -871,7 +1020,10 @@
 
         getReleaseDate: async function(rjCode){
             const info = await this.getWorkPromise(rjCode).info;
-            if(info && info.date) return info.date;
+            if(info && !info.is_announce && info.date) return info.date;
+            if(info && info.is_announce && info.dateAnnounce) {
+                return `<span style="color: gold">${info.dateAnnounce}</span>${DateParser.getCountDownDateText(DateParser.parseDateStr(info.dateAnnounce, info.lang))}`
+            }
 
             //从api中查找发售时间
             const api = await this.getWorkPromise(rjCode).api;
@@ -926,20 +1078,6 @@
             const workInfo = {};
             workInfo.rj = rj;
 
-            let rj_group;
-            if (rj.slice((rj.length === 10 ? 7 : 5)) === "000")
-                rj_group = rj;
-            else {
-                rj_group = (parseInt(rj.slice(2, (rj.length === 10 ? 7 : 5))) + 1).toString() + "000";
-                if(rj_group.length < rj.length - 2){
-                    let zero = Math.pow(10, rj.length - rj_group.length - 2).toString().slice(1)
-                    rj_group = zero + rj_group
-                }
-                rj_group = "RJ" + rj_group; //("000000" + rj_group).substring(rj_group.length);
-            }
-
-            workInfo.img = "https://img.dlsite.jp/modpub/images2/work/doujin/" + rj_group + "/" + rj + "_img_main.jpg";
-
             let metaList = dom.getElementsByTagName("meta")
             for (let i = 0; i < metaList.length; i++){
                 let meta = metaList[i];
@@ -949,34 +1087,46 @@
                 }
             }
 
+            workInfo.lang = dom.querySelector("html").getAttribute("lang");
             workInfo.title = dom.getElementById("work_name").innerText;
             workInfo.circle = dom.querySelector("span.maker_name").innerText;
             workInfo.circleId = dom.querySelector("#work_maker a").href;
             workInfo.circleId = workInfo.circleId.substring(workInfo.circleId.lastIndexOf("/") + 1, workInfo.circleId.lastIndexOf(".")).trim();
 
             const table_outline = dom.querySelector("table#work_outline");
-            for (var i = 0, ii = table_outline.rows.length; i < ii; i++) {
+            for (let i = 0, ii = table_outline.rows.length; i < ii; i++) {
                 const row = table_outline.rows[i];
-                const row_header = row.cells[0].innerText;
+                const row_header = row.cells[0].innerText.trim();
                 const row_data = row.cells[1];
+                const lambda = text => row_header === text;
                 switch (true) {
-                    case (row_header.includes("販売日")||row_header.includes("贩卖日")||row_header.includes("Release date")||row_header.includes("販賣日")||row_header.includes("판매일")):
+                    case (["販売日", "贩卖日", "販賣日", "Release date", "판매일", "Lanzamiento", "Veröffentlicht",
+                        "Date de sortie", "Tanggal rilis", "Data di rilascio", "Lançamento", "Utgivningsdatum",
+                        "วันที่ขาย", "Ngày phát hành"].some(lambda)):
                         workInfo.date = row_data.innerText;
                         break;
-                    case (row_header.includes("更新情報")||row_header.includes("更新信息")||row_header.includes("Update information")||row_header.includes("更新資訊")||row_header.includes("갱신 정보")):
+                    case (["更新情報", "更新信息", "更新資訊", "Update information", "갱신 정보", "Actualizar información",
+                        "Aktualisierungen", "Mise à jour des informations", "Perbarui informasi", "Aggiorna informazioni",
+                        "Atualizar informações", "Uppdatera information", "ข้อมูลอัปเดต", "Thông tin cập nhật"].some(lambda)):
                         workInfo.update = row_data.firstChild.data;
                         break;
-                    case (row_header.includes("年齢指定")||row_header.includes("年龄指定")||row_header.includes("Age")||row_header.includes("年齡指定")||row_header.includes("연령 지정")):
+                    case (["年齢指定", "年龄指定", "年齡指定", "Age", "연령 지정", "Edad", "Altersfreigabe", "Âge", "Batas usia",
+                        "Età", "Idade", "Ålder", "การกำหนดอายุ", "Độ tuổi chỉ định"].some(lambda)):
                         workInfo.rating = row_data.innerText;
                         break;
-                    case (row_header.includes("ジャンル")||row_header.includes("分类")||row_header.includes("Genre")||row_header.includes("分類")||row_header.includes("장르")):
+                    case (["ジャンル", "分类", "分類", "Genre", "장르", "Género", "Genre", "Genre", "Genre", "Genere", "Gênero",
+                        "Genre", "ประเภท", "Thể loại"].some(lambda)):
                         const tag_nodes = row_data.querySelectorAll("a");
                         workInfo.tags = [...tag_nodes].map(a => { return a.innerText });
                         break;
-                    case (row_header.includes("声優")||row_header.includes("声优")||row_header.includes("Voice Actor")||row_header.includes("聲優")||row_header.includes("성우")):
+                    case (["声優", "声优", "聲優", "Voice Actor", "성우", "Doblador", "Synchronsprecher", "Doubleur",
+                        "Pengisi suara", "Doppiatore/Doppiatrice", "Ator de voz", "Röstskådespelare", "นักพากย์",
+                        "Diễn viên lồng tiếng"].some(lambda)):
                         workInfo.cv = row_data.innerText;
                         break;
-                    case (row_header.includes("ファイル容量")||row_header.includes("文件容量")||row_header.includes("File size")||row_header.includes("檔案容量")||row_header.includes("파일 용량")):
+                    case (["ファイル容量", "文件容量", "檔案容量", "File size", "파일 용량", "Tamaño del Archivo", "Dateigröße",
+                        "Taille du fichier", "Ukuran file", "Dimensione del file", "Tamanho do arquivo", "Filstorlek",
+                        "ขนาดไฟล์", "Dung lượng tệp"].some(lambda)):
                         workInfo.filesize = row_data.innerText.trim();
                         break;
                     default:
@@ -984,55 +1134,14 @@
                 }
             }
 
+            //获取发售预告时间
             const work_date_ana = dom.querySelector("strong.work_date_ana");
             if (work_date_ana) {
                 workInfo.dateAnnounce = work_date_ana.innerText;
-                workInfo.img = "https://img.dlsite.jp/modpub/images2/ana/doujin/" + rj_group + "/" + rj + "_ana_img_main.jpg"
+                //workInfo.img = "https://img.dlsite.jp/modpub/images2/ana/doujin/" + rj_group + "/" + rj + "_ana_img_main.jpg"
             }
 
             return workInfo;
-        },
-
-        request: function (rjCode, callback) {
-            const url = `https://www.dlsite.com/maniax/work/=/product_id/${rjCode}.html`;
-            getXmlHttpRequest()({
-                method: "GET",
-                url,
-                headers: {
-                    "Accept": "text/xml",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)"
-                },
-                onload: function (resp) {
-                    if (resp.readyState === 4 && resp.status === 200) {
-                        const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
-                        const workInfo = DLsite.parseWorkDOM(dom, rjCode);
-                        callback(workInfo);
-                    }
-                    else if (resp.readyState === 4 && resp.status === 404)
-                        DLsite.requestAnnounce(rjCode, callback);
-                },
-            });
-        },
-
-        requestAnnounce: function (rjCode, callback) {
-            const url = `https://www.dlsite.com/maniax/announce/=/product_id/${rjCode}.html`;
-            getXmlHttpRequest()({
-                method: "GET",
-                url,
-                headers: {
-                    "Accept": "text/xml",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)"
-                },
-                onload: function (resp) {
-                    if (resp.readyState === 4 && resp.status === 200) {
-                        const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
-                        const workInfo = DLsite.parseWorkDOM(dom, rjCode);
-                        callback(workInfo);
-                    }
-                    else if (resp.readyState === 4 && resp.status === 404)
-                        callback(null);
-                },
-            });
         },
 
         // Get language code for DLSite API
@@ -1080,160 +1189,149 @@
                 apiData.regist_date = `${releaseDate.getFullYear()} / ${releaseDate.getMonth() + 1} / ${releaseDate.getDate()}`;
                 if(apiData.regist_timestamp > Date.now()){
                     apiData.is_coming_soon = true;
-
-                    //计算倒计时天数
-                    let date_reg = new Date(releaseDate.getFullYear(), releaseDate.getMonth(), releaseDate.getDate());
-                    let date_today = new Date(Date.now());
-                    date_today = new Date(date_today.getFullYear(), date_today.getMonth(), date_today.getDate());
-                    let days = (date_reg.getTime() - date_today.getTime()) / (1000 * 60 * 60 * 24);
-
-                    apiData.regist_date += `<span style="color:#ffeb3b; font-size: 16px; font-style: italic; margin-left: 16px">(Coming in ${days} day${(days > 1 ? "s" : "")})</span>`;
                 }
             }
             return apiData;
         },
 
-        getHttp: function (url, onload, onerror){
-            return getXmlHttpRequest()({
-                method: "GET",
-                url,
-                headers: {
-                    "Accept": "text/xml",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)"
-                },
-                onload: onload,
-                onerror: onerror
-            });
+        getHttpAsync: async function (url){
+            return new Promise((resolve, reject) => {
+                getXmlHttpRequest()({
+                    method: "GET",
+                    url,
+                    headers: {
+                        "Accept": "text/xml",
+                        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)"
+                    },
+                    onload: resolve,
+                    onerror: reject
+                });
+            })
         },
 
-        getAnnouncePromise: function (rjCode, parentRJ) {
+        getAnnouncePromise: async function (rjCode, parentRJ) {
             const url = `https://www.dlsite.com/maniax/announce/=/product_id/${rjCode}.html`;
-            return new Promise(
-                (resolve, reject) => {
-                    this.getHttp(url, resp => {
-                        if (resp.readyState === 4 && resp.status === 200) {
-                            const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
-                            const workInfo = DLsite.parseWorkDOM(dom, rjCode);
-                            workInfo.parentWork = parentRJ === rjCode ? null : parentRJ;
-                            resolve(workInfo);
-                        }
-                        else if (resp.readyState === 4 && resp.status === 404) {
-                            resolve({parentWork: parentRJ === rjCode ? null : parentRJ});
-                        }
-                    }, () => reject(null))
-                }
-            )
-        },
-
-        getHtmlPromise: function (rjCode) {
-            const url = `https://www.dlsite.com/maniax/work/=/product_id/${rjCode}.html`;
-            return new Promise(
-                (resolve, reject) => {
-                    this.getHttp(url, resp => {
-                        if (resp.readyState === 4 && resp.status === 200) {
-                            const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
-                            const workInfo = DLsite.parseWorkDOM(dom, rjCode);
-                            workInfo.parentWork = DLsite.getParentWorkRjCode(resp.finalUrl);
-                            workInfo.parentWork = workInfo.parentWork === rjCode ? null : workInfo.parentWork;
-                            resolve(workInfo);
-                        }
-                        else if (resp.readyState === 4 && resp.status === 404) {
-                            resolve(this.getAnnouncePromise(rjCode, DLsite.getParentWorkRjCode(resp.finalUrl)));
-                        }
-                    }, () => reject(null))
-                }
-            )
-        },
-
-        getApiPromise: function (rjCode){
-            const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${rjCode}&cdn_cache_min=1`
-            const p1 = new Promise(
-                (resolve, reject) => {
-                    this.getHttp(url, resp => {
-                        if (resp.readyState === 4 && resp.status === 200) {
-                            const data = JSON.parse(resp.responseText);
-                            if(Array.prototype.isPrototypeOf(data)){
-                                resolve(data)
-                            }
-                            resolve(data[rjCode]);
-                        }
-                        else if (resp.readyState === 4 && resp.status === 404) {
-                            reject(null);
-                        }
-                    })
-                }
-            )
-
-            return p1.then(data => {
-                if(Array.prototype.isPrototypeOf(data)){
-                    return data;
-                }
-
-                const translation_info = data.translation_info ? data.translation_info : {};
-                const lang = this.getLangCode(translation_info.lang);
-                let next_rj = rjCode;
-                let translator_name = undefined;
-                if(translation_info.is_child) {
-                    //找到父级RJ信息，因为子级信息不全面
-                    next_rj = translation_info.parent_workno;
-
-                    //子级可以先获取翻译者的信息
-                    translator_name = data.maker_name;
-                }
-
-                const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${next_rj}&cdn_cache_min=1` + (translation_info.is_original ? "" : `&locale=${lang}`);
-                return new Promise(
-                    (resolve, reject) => {
-                        this.getHttp(url,
-                            resp => {
-                                if (resp.readyState === 4 && resp.status === 200) {
-                                    const data = JSON.parse(resp.responseText);
-                                    data[next_rj].maker_name = translator_name;
-                                    resolve(data[next_rj]);
-                                }
-                                else if (resp.readyState === 4 && resp.status === 404) {
-                                    reject(null);
-                                }
-                            })
-                    }
-                )
-            }).then(data => {
-                if(Array.prototype.isPrototypeOf(data)){
-                    return null;
-                }
-                return this.parseApiData(rjCode, data)
-            });
-        },
-
-        getCirclePromise: function (rjCode, apiPromise){
-            return apiPromise.then(data => {
-                if(!data.maker_id) return null;
-                const maker_id = data.maker_id;
-                const url = `https://media.ci-en.jp/dlsite/lookup/${maker_id}.json`;
-                return new Promise(
-                    (resolve, reject) => {
-                        this.getHttp(url, resp => {
-                            if (resp.readyState === 4 && resp.status === 200) {
-                                const data = JSON.parse(resp.responseText);
-                                data[0] = data[0] ? data[0] : {};
-                                data[0].maker_id = maker_id;
-                                resolve(data[0]);
-                            }
-                            else if (resp.readyState === 4 && resp.status === 404) {
-                                reject(null);
-                            }
-                        })
-                    }
-                )
-            }).then(data => {
-                data = data ? data : {}
+            let resp = await this.getHttpAsync(url);
+            if (resp.readyState === 4 && resp.status === 200) {
+                const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
+                const workInfo = DLsite.parseWorkDOM(dom, rjCode);
+                workInfo.parentWork = parentRJ === rjCode ? null : parentRJ;
+                workInfo.is_announce = true;
+                return workInfo;
+            }
+            else if (resp.readyState === 4 && resp.status === 404) {
                 return {
-                    maker_id: data.maker_id,
-                    id: data.id,
-                    name: data.name,
-                    rating: data.rating,
+                    parentWork: parentRJ === rjCode ? null : parentRJ,
+                    is_announce: false
+                };
+            }
+
+        },
+
+        getHtmlPromise: async function (rjCode) {
+            const url = `https://www.dlsite.com/maniax/work/=/product_id/${rjCode}.html`;
+            let resp = await this.getHttpAsync(url);
+            if (resp.readyState === 4 && resp.status === 200) {
+                const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
+                const workInfo = DLsite.parseWorkDOM(dom, rjCode);
+                workInfo.parentWork = DLsite.getParentWorkRjCode(resp.finalUrl);
+                workInfo.parentWork = workInfo.parentWork === rjCode ? null : workInfo.parentWork;
+                workInfo.is_announce = false;
+                return workInfo;
+            }
+            else if (resp.readyState === 4 && resp.status === 404) {
+                return await this.getAnnouncePromise(rjCode, DLsite.getParentWorkRjCode(resp.finalUrl));
+            }
+        },
+
+        getApiPromise: async function (rjCode){
+            let url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${rjCode}&cdn_cache_min=1`
+            let p = this.getHttpAsync(url);
+            let resp = await p;
+            let data = undefined;
+            if (resp.readyState === 4 && resp.status === 200) {
+                data = JSON.parse(resp.responseText);
+                data = data ? data[rjCode] : {};
+                data = data ? data : {}
+            }
+            else if (resp.readyState === 4 && resp.status === 404) {
+                return {};
+            }
+            else {
+                throw new Error(`无法通过API获取${rjCode}的信息：${resp.status} ${resp.statusText}`);
+            }
+
+            const translation_info = data.translation_info ? data.translation_info : {};
+            const lang = this.getLangCode(translation_info.lang);
+            let next_rj = rjCode;
+            let translator_name = undefined;
+            if(translation_info.is_child) {
+                //找到父级RJ信息，因为子级信息不全面
+                next_rj = translation_info.parent_workno;
+
+                //子级可以先获取翻译者的信息
+                translator_name = data.maker_name;
+            }
+
+            //第二次请求，获取对应语言下的实际信息
+            url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${next_rj}&cdn_cache_min=1` + (translation_info.is_original ? "" : `&locale=${lang}`);
+            p = this.getHttpAsync(url);
+            resp = await p;
+            if (resp.readyState === 4 && resp.status === 200) {
+                data = JSON.parse(resp.responseText);
+                data = data ? data[next_rj] : {};
+                data = data ? data : {};
+                data.maker_name = translator_name;
+            }
+            else if(resp.readyState === 4 && resp.status === 404){
+                return {};
+            }
+            else {
+                throw new Error(`无法通过API获取${rjCode}的信息：${resp.status} ${resp.statusText}`);
+            }
+
+            return this.parseApiData(rjCode, data);
+        },
+
+        getCirclePromise: async function (rjCode, apiPromise){
+            let apiData = await apiPromise;
+            if(!apiData.maker_id) return null;
+            const maker_id = apiData.maker_id;
+
+            let url = undefined;
+            let resp = undefined;
+            let data = undefined;
+            try {
+                url = `https://media.ci-en.jp/dlsite/lookup/${maker_id}.json`;
+                resp = await this.getHttpAsync(url);
+                data = undefined;
+                if (resp.readyState === 4 && resp.status === 200) {
+                    data = JSON.parse(resp.responseText);
+                    data = data ? data[0] : {};
+                    data = data ? data : {};
+                    data.maker_id = maker_id;
                 }
-            });
+            }catch (e){}
+
+            if(!data || !data.name){
+                //未获取到社团名称则使用html解析获取
+                url = `https://www.dlsite.com/maniax/circle/profile/=/maker_id/${maker_id}.html`;
+                resp = await this.getHttpAsync(url);
+                data = data ? data : {};
+                if(resp.readyState === 4 && resp.status === 200){
+                    let doc = new DOMParser().parseFromString(resp.responseText, "text/html");
+                    let name = doc.querySelector("strong.prof_maker_name");
+                    name = name ? name.innerText : null;
+                    data.name = name;
+                }
+            }
+
+            return {
+                maker_id: data.maker_id,
+                id: data.id,
+                name: data.name,
+                rating: data.rating,
+            }
         },
 
         getWorkRequestPromise: function (rjCode) {
@@ -1259,20 +1357,20 @@
             top: 0;
             left: 0;
             right: 0;
-            bottom: 0;
-            width: 500px;
-            height: 200px;
+            width: 60%;
+            max-width: 600px;
+            height: auto;
             margin: auto;
             background-color: white;
             z-index: 999;
- 
+            
             padding: 20px 20px;
             border-radius: 10px;
             border-style: solid;
             border-width: 1px;
             border-color: black;
         }
- 
+        
         .${VOICELINK_CLASS}_settings table{
             box-sizing: border-box;
             width: 100%;
@@ -1280,27 +1378,47 @@
             margin-bottom: 10px;
             border-collapse: collapse;
         }
- 
+        
         .${VOICELINK_CLASS}_settings table td{
-            font-size: 16px;
-            border: 1px solid lightgrey;
-            padding: 5px;
-            text-align: center;
+            font-size: 16px !important;
+            border: 1px solid lightgrey !important;
+            padding: 5px !important;
+            text-align: center !important;
+            display: table-cell !important;
+            vertical-align: middle !important;
         }
- 
+        
         .${VOICELINK_CLASS}_settings table td abbr{
             cursor: help;
         }
- 
+        
         .${VOICELINK_CLASS}_settings table td input[type=checkbox]{
-            margin: 0;
-            width: 20px;
-            height: 20px;
+            margin: 0 !important;
+            width: 20px !important;
+            height: 20px !important;
         }
- 
+        
         .${VOICELINK_CLASS}_settings .${VOICELINK_CLASS}_label{
-            text-align: left;
-        }`,
+            text-align: left !important;
+        }
+        
+        .voicelink_settings div input[type=button] {
+            margin: 0 !important;
+            width: 100px !important;
+            height: 30px !important;
+            font-size: 16px !important;
+            margin-top: 10px !important;
+            margin-left: 5px !important;
+            border: gray solid 1px !important;
+            border-radius: 4px !important;
+            cursor: default !important;
+        }
+        
+        .voicelink_settings div input[type=button]:active {
+            background-color: lightgray !important;
+        }
+        
+        `,
         popup: null,
         createPopup: function(){
             SettingsPopup.popup = document.createElement("div")
@@ -1311,15 +1429,25 @@
     <tbody>
         <tr>
             <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_parse_url">解析URL (<abbr title="鼠标悬停到指向DLSite作品页面的URL时，同样显示作品信息">?</abbr>)</td>
-            <td><input type="checkbox" id="${VOICELINK_CLASS}_parse_url_" name="parse_url" ${settings.parse_url ? "checked" : ""}/></td>
+            <td><input type="checkbox" id="${VOICELINK_CLASS}_parse_url_" name="parse_url" ${settings._s_parse_url ? "checked" : ""}/></td>
         </tr>
         <tr>
             <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_use_in_dl">&nbsp┕在DLSite上启用URL解析 (<abbr title="URL较多可能影响正常阅读">?</abbr>)</td>
-            <td><input type="checkbox" id="${VOICELINK_CLASS}_use_in_dl_" name="use_in_dl" ${settings.use_in_dl ? "checked" : ""}/></td>
+            <td><input type="checkbox" id="${VOICELINK_CLASS}_use_in_dl_" name="use_in_dl" ${settings._s_use_in_dl ? "checked" : ""}/></td>
         </tr>
         <tr>
             <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_use_translated_title">在DLSite显示对应语言的翻译标题 (<abbr title="作品信息页面标题修改，会出现加载延迟">?</abbr>)</td>
-            <td><input type="checkbox" id="${VOICELINK_CLASS}_use_translated_title_" name="use_translated_title" ${settings.use_translated_title ? "checked" : ""}/></td>
+            <td><input type="checkbox" id="${VOICELINK_CLASS}_use_translated_title_" name="use_translated_title" ${settings._s_use_translated_title ? "checked" : ""}/></td>
+        </tr>
+        <tr>
+            <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_use_translated_title">URL插入原链接导向文本 (<abbr title="如果链接被解析成功，为保证原链接不被完全覆盖，会在URL中的文本前/后插入特定导向文本">?</abbr>)</td>
+            <td>
+                <select id="${VOICELINK_CLASS}_url_insert_">
+                    <option value="none" ${settings._s_url_insert === "none" ? "selected" : ""}>不插入</option>
+                    <option value="prefix_with_coverage" ${settings._s_url_insert === "prefix_with_coverage" ? "selected" : ""}>高覆盖时前缀插入</option>
+                    <option value="before_rj_with_coverage" ${settings._s_url_insert === "before_rj_with_coverage" ? "selected" : ""}>高覆盖时插入代替RJ号链接</option>
+                </select>
+            </td>
         </tr>
     </tbody>
 </table>
@@ -1335,9 +1463,10 @@
                 SettingsPopup.popup.style.display = "none"
             })
             pp.querySelector("input[type=button][value=Save]").addEventListener("click", function(){
-                settings.parse_url = pp.querySelector(`#${VOICELINK_CLASS}_parse_url_`).checked
-                settings.use_translated_title = pp.querySelector(`#${VOICELINK_CLASS}_use_translated_title_`).checked
-                settings.use_in_dl = pp.querySelector(`#${VOICELINK_CLASS}_use_in_dl_`).checked
+                settings._s_parse_url = pp.querySelector(`#${VOICELINK_CLASS}_parse_url_`).checked;
+                settings._s_use_translated_title = pp.querySelector(`#${VOICELINK_CLASS}_use_translated_title_`).checked;
+                settings._s_use_in_dl = pp.querySelector(`#${VOICELINK_CLASS}_use_in_dl_`).checked;
+                settings._s_url_insert = pp.querySelector(`#${VOICELINK_CLASS}_url_insert_`).value;
                 settings.save()
                 SettingsPopup.popup.style.display = "none"
             })
@@ -1358,9 +1487,9 @@
         },
         updateValues: function(){
             let pp = SettingsPopup.popup
-            pp.querySelector(`#${VOICELINK_CLASS}_parse_url_`).checked = settings.parse_url
-            pp.querySelector(`#${VOICELINK_CLASS}_use_translated_title_`).checked = settings.use_translated_title
-            pp.querySelector(`#${VOICELINK_CLASS}_use_in_dl_`).checked = settings.use_in_dl
+            pp.querySelector(`#${VOICELINK_CLASS}_parse_url_`).checked = settings._s_parse_url
+            pp.querySelector(`#${VOICELINK_CLASS}_use_translated_title_`).checked = settings._s_use_translated_title
+            pp.querySelector(`#${VOICELINK_CLASS}_use_in_dl_`).checked = settings._s_use_in_dl
         }
     }
 
@@ -1370,6 +1499,7 @@
         document.head.appendChild(style);
         // SettingsPopup.getPopup()
         GM_registerMenuCommand("Settings", SettingsPopup.getPopup)
+        GM_registerMenuCommand("Notice", () => showUpdateNotice(true))
 
         Parser.walkNodes(document.body);
 
@@ -1397,45 +1527,44 @@
         showUpdateNotice();
     });
 
-    function showUpdateNotice(){
-        const firstTimeToken = 101;
-        if(GM_getValue("first_token", undefined) === firstTimeToken){
+    function showUpdateNotice(force = false) {
+        const firstTimeToken = 103;
+        if(GM_getValue("first_token", undefined) === firstTimeToken && !force){
             return;
         }
 
         let popup = document.createElement("div");
         popup.style = `
-        position: fixed;
-        width: 500px;
+        position: fixed; 
+        width: 60%;
+        max-width: 800px; 
         height: auto;
-        margin: 20px auto;
+        margin: 20px auto; 
         padding: 10px;
-        left: 0;
-        right: 0;
-        top: 0;
-        background: rgba(255, 255, 255, 0.9);
+        left: 0; 
+        right: 0; 
+        top: 0;  
+        background: rgba(255, 255, 255, 0.9); 
         z-index: 999;
- 
+        
         border-radius: 10px;
         border: 2px solid gray`;
         popup.innerHTML = `
         <h1 style="text-indent: 0; color: black;">Notice from VoiceLinks</h1>
-        <p style="font-size: 16px">本次更新后，可通过点击Tampermonkey的扩展程序图标，找到VoiceLinks脚本的设置按钮进行部分设置。</p>
+        <p style="font-size: 16px">可通过点击Tampermonkey的扩展程序图标，找到VoiceLinks脚本的设置按钮进行部分设置。</p>
         <p style="font-size: 14px; font-style: italic">Users now can find a setting button for the "VoiceLinks" script by clicking on the Tampermonkey extension icon.</p>
         <p> </p>
         <p style="font-size: 14px; line-height: 20px">主要更新：
-        <br/>- 使用单一弹框，避免单页面生成过多弹框对象等问题。
-        <br/>- 添加设置页面。
-        <br/>- 添加URL解析，悬停至作品URL上也可显示信息（可在设置中开关）。
-        <br/>- DLSite作品信息界面，作品名称将会显示为对应语言的标题（可在设置中开关）。
-        <br/>- 原版作品弹框标题本地化。
-        <br/>- 部分CSP限制页面也可进行解析。
+        <br/>- 现在，当链接文本绝大部分都是RJ号时，为了保证原链接不被覆盖，添加了URL导向文本插入功能，可在设置中进行选择。
+        <br/>- - 选择<strong>不插入</strong>，所有内容将保持不变。
+        <br/>- - 选择<strong>前缀插入</strong>，就会在RJ号覆盖率较高时（>71%)，<strong>在链接文本前面插入导向文本</strong>（默认为🔗，以后可通过设置修改）
+        <br/>- - 选择<strong>插入替代RJ号链接</strong>，就会在覆盖率较高时，<strong>将RJ号原有的功能</strong>（悬停弹出信息，点击进入DL作品页面）<strong>放在导向文本上</strong>，导向文本将会放在RJ号的前面。此时点击RJ号也会跳转到原有的链接，而不是DL页面。
         </p>
         <br/>
         <input style="font-size: 16px; text-align: center; width: 100%; padding: 5px 10px" type="button" value="OK">
         `
         popup.querySelector("input[type=button][value=OK]").addEventListener("click", function(){
-            popup.style.display = "none";
+            popup.remove();
             GM_setValue("first_token", firstTimeToken);
         })
 
