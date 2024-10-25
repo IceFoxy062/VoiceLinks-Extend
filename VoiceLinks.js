@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.5.1
+// @version     2.5.2
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -68,7 +68,7 @@
           font-style: italic;
           opacity: 0.3;
           
-          margin-bottom: 10px;
+          margin-bottom: 20px;
       }
  
       .error {
@@ -408,6 +408,12 @@
             rjCodeElement.classList.add("rjcode");
             rjCodeElement.innerText = `[${rjCode}]`;
             infoContainer.appendChild(rjCodeElement);
+
+            const circleElement = document.createElement("div");
+            circleElement.innerHTML = "Circle: Loading...";
+            WorkPromise.getCircle(rjCode).then(circle => circleElement.innerHTML = `Circle: <a>${circle}</a>`)
+                .catch(_ => circleElement.innerHTML = "");
+            infoContainer.appendChild(circleElement);
 
             /*if (workInfo.date)
                 html += `Release: <a>${workInfo.date}</a> <br />`;*/
