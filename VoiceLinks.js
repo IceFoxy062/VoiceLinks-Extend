@@ -653,8 +653,8 @@
         },
 
         language_korean: {
-            zh_CN: "韩文",
-            zh_TW: "韓文",
+            zh_CN: "韩语",
+            zh_TW: "韓語",
             en_US: "Korean"
         },
 
@@ -671,20 +671,26 @@
         },
 
         language_german: {
-            zh_CN: "德文",
-            zh_TW: "德文",
+            zh_CN: "德语",
+            zh_TW: "德語",
             en_US: "German"
         },
 
         language_french: {
-            zh_CN: "法文",
-            zh_TW: "法文",
+            zh_CN: "法语",
+            zh_TW: "法語",
             en_US: "French"
         },
 
+        language_russian: {
+            zh_CN: "俄语",
+            zh_TW: "俄語",
+            en_US: "Russian"
+        },
+
         language_spanish: {
-            zh_CN: "西班牙文",
-            zh_TW: "西班牙文",
+            zh_CN: "西班牙语",
+            zh_TW: "西班牙語",
             en_US: "Spanish"
         },
 
@@ -695,15 +701,33 @@
         },
 
         language_italian: {
-            zh_CN: "意大利文",
-            zh_TW: "意大利文",
+            zh_CN: "意大利语",
+            zh_TW: "義大利語",
             en_US: "Italian"
         },
 
+        language_arabic: {
+            zh_CN: "阿拉伯语",
+            zh_TW: "阿拉伯語",
+            en_US: "Arabic"
+        },
+
         language_portuguese: {
-            zh_CN: "葡萄牙文",
-            zh_TW: "葡萄牙文",
+            zh_CN: "葡萄牙语",
+            zh_TW: "葡萄牙語",
             en_US: "Portuguese"
+        },
+
+        language_finnish: {
+            zh_CN: "芬兰语",
+            zh_TW: "芬蘭語",
+            en_US: "Finnish"
+        },
+
+        language_polish: {
+            zh_CN: "波兰语",
+            zh_TW: "波蘭語",
+            en_US: "Polish"
         },
 
         language_swedish: {
@@ -713,14 +737,14 @@
         },
 
         language_thai: {
-            zh_CN: "泰文",
-            zh_TW: "泰文",
+            zh_CN: "泰语",
+            zh_TW: "泰語",
             en_US: "Thai"
         },
 
         language_vietnamese: {
-            zh_CN: "越南文",
-            zh_TW: "越南文",
+            zh_CN: "越南语",
+            zh_TW: "越南語",
             en_US: "Vietnamese"
         },
 
@@ -874,6 +898,18 @@
             en_US: "AI & Partial AI"
         },
 
+        tag_aig: {
+            zh_CN: "AI生成",
+            zh_TW: "AI生成",
+            en_US: "AI Gen",
+        },
+
+        tag_aip: {
+            zh_CN: "AI部分使用",
+            zh_TW: "AI部分使用",
+            en_US: "AI Partial",
+        },
+
         tag_ai_tooltip: {
             zh_CN: "全部或部分使用AI的作品",
             zh_TW: "全部或部分使用AI的作品",
@@ -987,6 +1023,10 @@
     #${VOICELINK_CLASS}_info-container > div {
         margin-bottom: 3px;
         font-size: 15.4px;
+    }
+    #${VOICELINK_CLASS}_info-container .${VOICELINK_CLASS}_tags {
+        margin-top: 12px;
+        margin-bottom: 0;
     }
     
     .${VOICELINK_CLASS}_loader {
@@ -1162,6 +1202,7 @@
             font-size: 32px;
             margin: 21.44px 0;
             font-weight: bold;
+            line-height: normal;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_section-container {
             margin: 20px 0;
@@ -1172,6 +1213,7 @@
             font-size: 24px;
             margin: 22px 0 14px 0;
             font-weight: bold;
+            line-height: normal;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting {
             /*display: flex;*/
@@ -1355,74 +1397,82 @@
             padding: 8px 20px;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tags{
+        .${VOICELINK_CLASS}_tags{
             display: flex;
             flex-wrap: wrap;
-            align-items: center;
             justify-content: left;
+            align-items: stretch;
         }
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tags > label,
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tags > span{
+        .${VOICELINK_CLASS}_tags > label,
+        .${VOICELINK_CLASS}_tags > span{
             border-radius: 5px;
             font-size: 14px;
             margin-right: 8px;
             margin-bottom: 8px;
             padding: 5px 8px;
+            
+            display: flex;
+            justify-content: center;
+            align-items: center;
 
             transition: color 0.3s, background-color 0.3s;
         }
+        .${VOICELINK_CLASS}_tags > label.${VOICELINK_CLASS}_tag_tight,
+        .${VOICELINK_CLASS}_tags > span.${VOICELINK_CLASS}_tag_tight{
+            padding: 3px 7.5px;
+        }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-off{
+        .${VOICELINK_CLASS}_tag-off{
             background-color: #ffffff !important;
             color: #aaaaaa !important;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-purple{
+        .${VOICELINK_CLASS}_tag-purple{
             background-color: #EED9F2;
             color: #7B1FA2;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-blue{
+        .${VOICELINK_CLASS}_tag-blue{
             background-color: #d9eefc;
             color: #4285F4;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-red{
+        .${VOICELINK_CLASS}_tag-red{
             background-color: #ffd6da;
             color: #EA4335;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-yellow{
+        .${VOICELINK_CLASS}_tag-yellow{
             background-color: #FFF8E1;
             color: #F57F17;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-green{
+        .${VOICELINK_CLASS}_tag-green{
             background-color: #dcf5e4;
             color: #34A853;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-teal{
+        .${VOICELINK_CLASS}_tag-teal{
             background-color: #d8eced;
             color: #0097A7;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-gray{
+        .${VOICELINK_CLASS}_tag-gray{
             background-color: #E0E0E0;
             color: #424242;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-pink{
+        .${VOICELINK_CLASS}_tag-pink{
             background-color: #ffd9e7;
             color: #f032a7;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-orange{
+        .${VOICELINK_CLASS}_tag-orange{
             background-color: #ffebcc;
             color: #f04000;
         }
 
-        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-darkblue{
+        .${VOICELINK_CLASS}_tag-darkblue{
             background-color: #d2e7fa;
             color: #0D47A1;
         }
@@ -2310,9 +2360,146 @@
             ele.info_container.appendChild(fileSizeElement);
         },
 
+        get_tag: function (text, tagClass) {
+            if(!tagClass.startsWith(`${VOICELINK_CLASS}_`)){
+                tagClass = `${VOICELINK_CLASS}_${tagClass}`
+            }
+            const tag = document.createElement("span");
+            tag.classList.add(`${VOICELINK_CLASS}_tag_tight`);
+            tag.classList.add(tagClass);
+            tag.innerText = text;
+            return tag;
+        },
+        get_tag_no_longer_available: async function (rjCode) {
+            let sale = await WorkPromise.getSale(rjCode);
+            if(sale) return;
+            return Popup.get_tag(localizePopup(localizationMap.tag_no_longer_available),
+                "tag-gray");
+        },
+        get_tag_work_type: async function (rjCode) {
+            let type = await WorkPromise.getWorkTypeText(rjCode);
+            let tagClass = "tag-gray";
+            switch (type) {
+                case localizePopup(localizationMap.work_type_game):
+                    tagClass = "tag-purple";
+                    break;
+                case localizePopup(localizationMap.work_type_comic):
+                    tagClass = "tag-green";
+                    break;
+                case localizePopup(localizationMap.work_type_illustration):
+                    tagClass = "tag-teal";
+                    break;
+                case localizePopup(localizationMap.work_type_novel):
+                    tagClass = "tag-gray";
+                    break;
+                case localizePopup(localizationMap.work_type_video):
+                    tagClass = "tag-darkblue";
+                    break;
+                case localizePopup(localizationMap.work_type_voice):
+                    tagClass = "tag-orange";
+                    break;
+                case localizePopup(localizationMap.work_type_music):
+                    tagClass = "tag-yellow";
+                    break;
+                case localizePopup(localizationMap.work_type_tool):
+                    tagClass = "tag-gray";
+                    break;
+                case localizePopup(localizationMap.work_type_voice_comic):
+                    tagClass = "tag-blue";
+                    break;
+                case localizePopup(localizationMap.work_type_other):
+                    tagClass = "tag-gray";
+                    break;
+                default:
+                    tagClass = "tag-gray";
+                    break;
+            }
+            return Popup.get_tag(type, tagClass);
+        },
+        get_tag_translatable: async function (rjCode) {
+            let able = await WorkPromise.getTranslatable(rjCode);
+            if(!able) return;
+            return Popup.get_tag(localizePopup(localizationMap.tag_translatable),
+                "tag-green");
+        },
+        get_tag_not_translatable: async function (rjCode) {
+            let able = await WorkPromise.getTranslatable(rjCode);
+            let translated = await WorkPromise.getTranslated(rjCode);
+            if(able || translated) return;
+            return Popup.get_tag(localizePopup(localizationMap.tag_not_translatable),
+                "tag-red");
+        },
+        get_tag_translated: async function (rjCode) {
+            let translated = await WorkPromise.getTranslated(rjCode);
+            if(!translated) return;
+            return Popup.get_tag(localizePopup(localizationMap.tag_translated), "tag-teal");
+        },
+        get_tag_bonus_work: async function (rjCode) {
+            let bonus = await WorkPromise.getBonus(rjCode);
+            if(!bonus) return;
+            return Popup.get_tag(localizePopup(localizationMap.tag_bonus_work),
+                "tag-yellow");
+        },
+        get_tag_has_bonus: async function (rjCode) {
+            let has = await WorkPromise.getHasBonus(rjCode);
+            if(!has) return;
+            return Popup.get_tag(localizePopup(localizationMap.tag_has_bonus),
+                "tag-orange");
+        },
+        get_tag_language_support: async function (rjCode) {
+            const lang = await WorkPromise.getLanguages(rjCode);
+            if(!lang || lang.length <= 0){
+                return;
+            }
+            let txt = "";
+            lang.forEach(l => {
+                txt += ` | ${l}`;
+            });
+            txt = txt.substring(3);
+            return Popup.get_tag(txt, "tag-pink");
+        },
+        get_tag_file_format: async function (rjCode) {
+            const format = await WorkPromise.getFileFormats(rjCode);
+            if(!format || format.length <= 0){
+                return;
+            }
+            let txt = "";
+            format.forEach(f => {
+                txt += ` | ${f}`;
+            });
+            txt = txt.substring(3);
+            return Popup.get_tag(txt, "tag-darkblue");
+        },
+        get_tag_ai: async function (rjCode) {
+            const ai = await WorkPromise.getAIUsedText(rjCode);
+            if(!ai) return;
+            return Popup.get_tag(ai, "tag-purple");
+        },
+
+        get_tag_container: function (rjCode, tag_list) {
+            const container = document.createElement("div");
+            container.classList.add(`${VOICELINK_CLASS}_tags`);
+            const elements = [];
+            for (const tag_id of tag_list) {
+                let shadowTag = document.createElement("span");
+                shadowTag.style.display = "none";
+                shadowTag.setAttribute("data-id", tag_id);
+                container.appendChild(shadowTag);
+
+                let tag_get = this[`get_${tag_id}`];
+                tag_get(rjCode).then(tag => {
+                    if(tag){
+                        container.insertBefore(tag, shadowTag);
+                        shadowTag.remove();
+                    }
+                });
+            }
+            return container;
+        },
+
         //整合顺序
         set_info_container: function (rjCode, category) {
-            const order = settings[`_s_${category}__info_display_order`];
+            //清除上次的信息
             for(let child of [...this.popupElement.info_container.children]){
                 if(child === this.popupElement.loader) {
                     child.style.display = "none";
@@ -2320,6 +2507,15 @@
                 }
                 child.remove();
             }
+
+            //TAG部分
+            const infoContainer = this.popupElement.info_container;
+            const container = this.get_tag_container(rjCode,
+                settings[`_s_tag_display_order`]);
+            infoContainer.appendChild(container);
+
+            //信息部分
+            const order = settings[`_s_${category}__info_display_order`];
             order.forEach(id => {
                 try{
                     id = id.substring(id.indexOf("__") + 2);
@@ -2327,6 +2523,12 @@
                 }catch (e) {
                     console.error(e);
                 }
+            });
+
+            const debugElement = document.createElement("div");
+            this.popupElement.info_container.appendChild(debugElement);
+            WorkPromise.getDebug(rjCode).then(t => {
+                debugElement.innerHTML = t;
             });
         },
 
@@ -2453,18 +2655,114 @@
             return data.is_girls;
         },
 
+        getSale: async function(rjCode){
+            const p = this.getWorkPromise(rjCode);
+            let data = await p.api;
+            return data.is_sale;
+        },
+
+        getBonus: async function(rjCode) {
+            const p = this.getWorkPromise(rjCode);
+            let data = await p.api;
+            return !data.is_sale && data.is_free && data.is_oly && data.wishlist_count === false;
+            // return data.is_bonus;
+        },
+
+        getHasBonus: async function(rjCode) {
+            const p = this.getWorkPromise(rjCode);
+            let data = await p.api;
+            return data.bonuses && data.bonuses.length > 0;
+        },
+
+        getTranslatable: async function(rjCode) {
+            const trans = await this.getTranslationInfo(rjCode);
+            return trans.is_translation_agree === true;
+        },
+
+        getTranslated: async function(rjCode) {
+            const trans = await this.getTranslationInfo(rjCode);
+            return trans.is_parent === true || trans.is_child === true;
+        },
+
+        getLanguages: async function(rjCode){
+            //返回字符串数组，根据popup设置的语言返回支持的语言列表
+            const map = {
+                JPN: localizePopup(localizationMap.language_japanese),
+                ENG: localizePopup(localizationMap.language_english),
+                CHI_HANS: localizePopup(localizationMap.language_simplified_chinese),
+                CHI_HANT: localizePopup(localizationMap.language_traditional_chinese),
+                KO_KR: localizePopup(localizationMap.language_korean),
+                SPA: localizePopup(localizationMap.language_spanish),
+                FRE: localizePopup(localizationMap.language_french),
+                RUS: localizePopup(localizationMap.language_russian),
+                THA: localizePopup(localizationMap.language_thai),
+                GER: localizePopup(localizationMap.language_german),
+                FIN: localizePopup(localizationMap.language_finnish),
+                POR: localizePopup(localizationMap.language_portuguese),
+                VIE: localizePopup(localizationMap.language_vietnamese),
+                ITA: localizePopup(localizationMap.language_italian),
+                ARA: localizePopup(localizationMap.language_arabic),
+                POL: localizePopup(localizationMap.language_polish),
+            }
+            const p = WorkPromise.getWorkPromise(rjCode);
+            let api = await p.api2;
+            api = api.options ? api : await p.api;
+            const options = api.options?.split("#");
+            const result = [];
+            for (const key in map) {
+                const lang = map[key];
+                if(options?.includes(key)) result.push(lang);
+            }
+            return result;
+        },
+
+        getFileFormats: async function(rjCode){
+            //返回字符串数组，返回文件格式列表
+            const result = [];
+            const p = this.getWorkPromise(rjCode);
+            let api = await p.api2;
+            if(api.file_type === "EXE"){
+                result.push("EXE");
+            }else if(api.file_type_string){
+                result.push(api.file_type_string);
+            }
+            if(api.file_type_special) result.push(api.file_type_special);
+
+            if(!api.options) api = await p.api;
+            if(api.options && api.options.includes("WPD")){
+                result.push("PDF");
+            }
+            if(api.options && api.options.includes("WAP")){
+                result.push("APK");
+            }
+
+            return result;
+        },
+
+        getAIUsedText: async function(rjCode) {
+            //返回是否使用或部分使用AI，根据popup语言返回字符串。
+            const p = this.getWorkPromise(rjCode);
+            let api = await p.api2;
+            api = api.options ? api : await p.api;
+            const options = api.options ? api.options : "";
+            if(options.includes("AIG")){
+                return localizePopup(localizationMap.tag_aig);
+            }else if(options.includes("AIP")){
+                return localizePopup(localizationMap.tag_aip);
+            }
+            return null;
+        },
+
         getDebug: async function(rjCode){
             return "";
-            /*const work = this.getWorkPromise(rjCode);
+            const work = this.getWorkPromise(rjCode);
+            const api2 = await work.api2;
             const api = await work.api;
             const info = await work.info;
             const circle = work.circle;
 
-            return `is_sale: ${api.is_sale} <br/>
-                    is_free: ${api.is_free} <br/>
-                    is_oly: ${api.is_oly} <br/>
-                    is_led: ${api.is_led} <br/>`;*/
-
+            return `is_ana_api2: ${api2.is_ana}<br/>
+                    is_ana_api: ${api.is_ana}`;
         },
 
         getWorkCategory: async function(rjCode){
@@ -2494,16 +2792,16 @@
 
         getWorkTypeText: async function(rjCode) {
             const mapping = [
-                localize(localizationMap.work_type_voice),
-                localize(localizationMap.work_type_game),
-                localize(localizationMap.work_type_comic),
-                localize(localizationMap.work_type_illustration),
-                localize(localizationMap.work_type_novel),
-                localize(localizationMap.work_type_video),
-                localize(localizationMap.work_type_music),
-                localize(localizationMap.work_type_tool),
-                localize(localizationMap.work_type_voice_comic),
-                localize(localizationMap.work_type_other),
+                localizePopup(localizationMap.work_type_voice),
+                localizePopup(localizationMap.work_type_game),
+                localizePopup(localizationMap.work_type_comic),
+                localizePopup(localizationMap.work_type_illustration),
+                localizePopup(localizationMap.work_type_novel),
+                localizePopup(localizationMap.work_type_video),
+                localizePopup(localizationMap.work_type_music),
+                localizePopup(localizationMap.work_type_tool),
+                localizePopup(localizationMap.work_type_voice_comic),
+                localizePopup(localizationMap.work_type_other),
             ];
             return mapping[await this.getWorkType(rjCode)];
         },
@@ -2515,21 +2813,22 @@
             switch (api2.work_type) {
                 case "SOU":
                     return 0;
-                case ["ACN", "QIZ", "ADV", "RPG", "TBL", "DNV", "SLN", "TYP", "STG", "PZL", "ETC"]
-                    .includes(api2.work_type):
+                case (["ACN", "QIZ", "ADV", "RPG", "TBL", "DNV", "SLN", "TYP", "STG", "PZL", "ETC"]
+                    .includes(api2.work_type) ? api2.work_type : "ERR"):
                     return 1;
-                case ["MNG", "SCM", "WBT"]
-                    .includes(api2.work_type):
+                case (["MNG", "SCM", "WBT"]
+                    .includes(api2.work_type) ? api2.work_type : "ERR"):
                     return 2;
                 case "ICG":
                     return 3;
-                case ["NRE", "KSV"].includes(api2.work_type):
+                case (["NRE", "KSV"].includes(api2.work_type) ? api2.work_type : "ERR"):
                     return 4;
                 case "MOV":
                     return 5;
                 case "MUS":
                     return 6;
-                case ["TOL", "IMT", "AMT"].includes(api2.work_type):
+                case (["TOL", "IMT", "AMT"]
+                    .includes(api2.work_type) ? api2.work_type : "ERR"):
                     return 7;
                 case "VCM":
                     return 8;
@@ -2747,11 +3046,6 @@
 
             throw new Error("无法获取文件大小信息");
         },
-
-        getTranslatable: async function(rjCode){
-            const trans = await this.getTranslationInfo(rjCode);
-            return trans.is_translation_agree === true;
-        }
     }
 
     const DLsite = {

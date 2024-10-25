@@ -24,3 +24,20 @@
 
 //其它（音声漫画是VCM）
 ["ET3", "VCM"]
+
+/** TAG 列表 **/
+get_tag_no_longer_available: function (rjCode) {},
+get_tag_work_type: function (rjCode) {},
+get_tag_translatable: function (rjCode) {},
+get_tag_not_translatable: function (rjCode) {},
+get_tag_translated: function (rjCode) {},
+get_tag_bonus_work: function (rjCode) {},
+get_tag_has_bonus: function (rjCode) {},
+get_tag_language_support: function (rjCode) {},
+get_tag_file_format: function (rjCode) {},
+get_tag_ai: function (rjCode) {},
+
+//AI作品、AI部分使用
+["AIG", "AIP"]
+
+
