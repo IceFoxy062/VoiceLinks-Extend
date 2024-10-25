@@ -6,13 +6,13 @@
     <script src="SettingConfig.js"></script>
     <title>VoiceLinks 设置</title>
     <style>
-        #settings {
+        #settings-container {
             font-family: Arial, sans-serif;
             background-color: #f4f4f9;
             margin: auto;
             padding: 20px;
         }
-        .container {
+        #settings-container .container {
             max-width: 800px;
             margin: auto;
             background: #fff;
@@ -20,33 +20,33 @@
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        #settings h1 {
+        #settings-container h1 {
             text-align: center;
             color: #333;
         }
-        .section-container {
+        #settings-container .section-container {
             margin: 20px 0;
         }
-        .section-container h2 {
+        #settings-container .section-container h2 {
             color: #007bff;
         }
-        .setting {
+        #settings-container .setting {
             /*display: flex;*/
             /*align-items: center;*/
             /*justify-content: space-between;*/
             margin: 10px 0;
         }
-        .setting .row-title {
+        #settings-container .setting .row-title {
             margin-left: 10px;
             color: #555;
             font-size: 18px;
             /*flex-grow: 1;*/
         }
-        .setting input[type="text"],
-        .setting input[type="password"],
-        .setting input[type="number"],
-        .setting input[type="email"],
-        .setting select {
+        #settings-container .setting input[type="text"],
+        #settings-container .setting input[type="password"],
+        #settings-container .setting input[type="number"],
+        #settings-container .setting input[type="email"],
+        #settings-container .setting select {
             width: 100%;
             padding: 10px;
             border: 1px solid #ddd;
@@ -56,10 +56,10 @@
             color: #666666FF;
             /*margin-bottom: 10px;*/
         }
-        .setting input[type="checkbox"] {
+        #settings-container .setting input[type="checkbox"] {
             display: none;
         }
-        .setting .toggle {
+        #settings-container .setting .toggle {
             display: inline-block;
             margin-left: 0;
             top: 3px;
@@ -71,7 +71,7 @@
             cursor: pointer;
             transition: background 0.3s;
         }
-        .toggle:before {
+        #settings-container .toggle:before {
             content: "";
             display: block;
             width: 24px;
@@ -83,10 +83,10 @@
             left: 3px;
             transition: transform 0.3s;
         }
-        .setting input[type="checkbox"]:checked + label {
+        #settings-container .setting input[type="checkbox"]:checked + label {
             background: #007bff;
         }
-        .setting input[type="checkbox"]:checked + label:before {
+        #settings-container .setting input[type="checkbox"]:checked + label:before {
             transform: translateX(30px);
         }
         #button-save,
@@ -119,10 +119,10 @@
             filter: brightness(0.9);
         }
 
-        .tooltip {
+        #settings-container .tooltip {
             position: relative;
         }
-        .tooltip .tooltip-text {
+        #settings-container .tooltip .tooltip-text {
             visibility: hidden;
             min-width: 200px;
             max-width: 100%;
@@ -140,33 +140,36 @@
             filter: brightness(1.0);
             transition: opacity 0.3s;
         }
-        .tooltip:hover .tooltip-text {
+        #settings-container .tooltip:hover .tooltip-text {
             visibility: visible;
             opacity: 1;
         }
-        .sortable {
+        #settings-container .sortable {
             cursor: move;
         }
-        .sortable span{
+        #settings-container .sortable span{
             cursor: default;
         }
-        .dragging{
+        #settings-container .dragging{
             background-color: #1e82ff38;
             user-select: none;
             transition: background-color 0.3s;
         }
-        .sortable .setting {
+        #settings-container .sortable .setting {
             cursor: move;
         }
-        table {
+        #settings-container table {
             width: 100%;
             margin-bottom: 20px;
             border-collapse: collapse;
         }
-        table, th, td {
+        #settings-container table,
+        #settings-container th,
+        #settings-container td {
             border: 0 solid #ddd;
         }
-        th, td {
+        #settings-container th,
+        #settings-container td {
             border-bottom: 1px dashed rgba(221, 221, 221, 0.64);
             /*border-top: 1px solid #ddd;*/
             padding: 5px 10px;
@@ -174,28 +177,28 @@
             vertical-align: middle;
         }
 
-        .hidden{
+        #settings-container .hidden{
             display: none;
         }
-        .input-cell{
+        #settings-container .input-cell{
             text-align: right;
             padding-right: 56px;
         }
-        .indent-1 > td {
+        #settings-container .indent-1 > td {
             padding: 5px 24px;
         }
-        .indent-1 .input-cell {
+        #settings-container .indent-1 .input-cell {
             padding: 5px 56px;
         }
 
-        .tags{
+        #settings-container .tags{
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             justify-content: left;
         }
-        .tags > label,
-        .tags > span{
+        #settings-container .tags > label,
+        #settings-container .tags > span{
             border-radius: 5px;
             font-size: 14px;
             margin-right: 8px;
@@ -205,62 +208,62 @@
             transition: color 0.3s, background-color 0.3s;
         }
 
-        .tag-off{
+        #settings-container .tag-off{
             background-color: #ffffff !important;
             color: #aaaaaa !important;
         }
 
-        .tag-purple{
+        #settings-container .tag-purple{
             background-color: #EED9F2;
             color: #7B1FA2;
         }
 
-        .tag-blue{
+        #settings-container .tag-blue{
             background-color: #d9eefc;
             color: #4285F4;
         }
 
-        .tag-red{
+        #settings-container .tag-red{
             background-color: #ffd6da;
             color: #EA4335;
         }
 
-        .tag-yellow{
+        #settings-container .tag-yellow{
             background-color: #FFF8E1;
             color: #F57F17;
         }
 
-        .tag-green{
+        #settings-container .tag-green{
             background-color: #dcf5e4;
             color: #34A853;
         }
 
-        .tag-teal{
+        #settings-container .tag-teal{
             background-color: #d8eced;
             color: #0097A7;
         }
 
-        .tag-gray{
+        #settings-container .tag-gray{
             background-color: #E0E0E0;
             color: #424242;
         }
 
-        .tag-pink{
+        #settings-container .tag-pink{
             background-color: #ffd9e7;
             color: #f032a7;
         }
 
-        .tag-orange{
+        #settings-container .tag-orange{
             background-color: #ffebcc;
             color: #f04000;
         }
 
-        .tag-darkblue{
+        #settings-container .tag-darkblue{
             background-color: #d2e7fa;
             color: #0D47A1;
         }
 
-        .reset-btn-small {
+        #settings-container .reset-btn-small {
             position: relative;
             display: inline-block;
             width: 16px;
@@ -276,11 +279,11 @@
             border: none;
             opacity: 0.5;
         }
-        button.reset-btn-small:hover {
+        #settings-container button.reset-btn-small:hover {
             opacity: 1;
         }
 
-        .button-flat {
+        #settings-container .button-flat {
             background-color: transparent;
             border: none;
             color: #aaa;
@@ -296,10 +299,10 @@
 
             transition: background-color 0.3s;
         }
-        .button-flat:hover {
+        #settings-container .button-flat:hover {
             background-color: rgba(0, 0, 0, 0.1);
         }
-        .button-flat span{
+        #settings-container .button-flat span{
             display: inline-block;
         }
 
@@ -318,926 +321,7 @@
     <span class="tag-orange sortable">tag-8</span>
     <span class="tag-darkblue sortable">tag-9</span>
 </div>
-<!--<div class="container" id="settings">
-    <h1>VoiceLinks 设置</h1>
-    <div class="section-container" data-lang="language">
-        <h2>语言（Language）</h2>
-        <table>
-            <tr class="setting" data-lang="display_language">
-                <td><label for="displayLanguage">显示语言</label></td>
-                <td class="input-cell">
-                    <select id="displayLanguage" name="displayLanguage">
-                        <option value="zh">简体中文</option>
-                        <option value="zh-TW">繁體中文</option>
-                        <option value="en">English</option>
-                    </select>
-                </td>
-            </tr>
-            <tr class="setting" data-lang="set_language">
-                <td><label for="setLanguage">设置语言</label></td>
-                <td class="input-cell">
-                    <select id="setLanguage" name="setLanguage">
-                        <option value="zh">简体中文</option>
-                        <option value="zh-TW">繁體中文</option>
-                        <option value="en">English</option>
-                    </select>
-                </td>
-            </tr>
-        </table>
-    </div>
-    <div class="section-container" data-lang="general">
-        <h2>常规</h2>
-        <table>
-            <tr class="setting" data-lang="parse_url">
-                <td class="tooltip">
-                    <span class="row-title">解析URL</span>
-                    <span class="tooltip-text">鼠标悬停导指向DLSite作品页面的URL时，同样显示作品信息</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="parseURL" name="parseURL">
-                    <label class="toggle" for="parseURL"><span class="hidden">解析URL</span></label>
-                </td>
-            </tr>
-            <tr class="setting" data-lang="dlsite_url_parsing">
-                <td class="tooltip">
-                    <span class="row-title">┗ 在DLSite上解析URL</span>
-                    <span class="tooltip-text">URL较多可能影响正常阅读</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="enableDlsiteURL" name="enableDlsiteURL">
-                    <label class="toggle" for="enableDlsiteURL"><span class="hidden">在DLSite上解析URL</span></label>
-                </td>
-            </tr>
-            <tr class="setting" data-lang="show_translation_titles">
-                <td class="tooltip">
-                    <span class="row-title">在DLSite显示对应语言的翻译标题</span>
-                    <span class="tooltip-text">作品信息页面的标题将会被修改为与翻译语言对应的标题，避免简中看繁中作品标题为日文的问题<br/><br/><strong>如果出现与其它插件冲突的情况请关闭！</strong></span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="showTranslationTitles" name="showTranslationTitles">
-                    <label class="toggle" for="showTranslationTitles"></label>
-                </td>
-            </tr>
-            <tr class="setting" data-lang="copy_valid_filename">
-                <td class="tooltip">
-                    <span class="row-title">“复制为有效文件名”按钮</span>
-                    <span class="tooltip-text">鼠标悬停至DLSite作品标题部分将会出现该按钮，点击即可将标题复制为有效文件名，有效文件名指的是会将标题中的非法部分用相似的符号代替<br/><br/><strong>如果出现与其它插件冲突的情况请关闭！</strong></span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="copyValidFilename" name="copyValidFilename">
-                    <label class="toggle" for="copyValidFilename"></label>
-                </td>
-            </tr>
-            <tr class="setting" data-lang="show_compatibility_warning">
-                <td class="tooltip">
-                    <span class="row-title"><strong>**显示兼容性警告**</strong></span>
-                    <span class="tooltip-text">如果脚本中，修改DLSite页面元素的功能覆盖了其它脚本的修改，则会触发该弹窗警告<br/><br/>仅检查DLSite页面的标题部分</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="showCompatibilityWarning" name="showCompatibilityWarning">
-                    <label class="toggle" for="showCompatibilityWarning"></label>
-                </td>
-            </tr>
-            <tr class="setting" data-lang="insert_guidance_text">
-                <td class="tooltip">
-                    <label for="rjInsertText">RJ号占据原URL文本过多时插入导向文本</label>
-                    <span class="tooltip-text"><br/><br/>仅检查DLSite页面的标题部分</span>
-                </td>
-                <td class="input-cell">
-                    <select id="rjInsertText" name="rjInsertText">
-                        <option value="noInsert">不插入</option>
-                        <option value="highCoveragePrefixInsert">高覆盖时前缀插入代替原链接</option>
-                        <option value="highCoverageInsert">高覆盖时插入代替RJ号链接</option>
-                    </select>
-                </td>
-            </tr>
-            <tr class="setting" data-lang="prefix_text">
-                <td><label for="prefixText">┗ 前缀文本</label></td>
-                <td class="input-cell"><input type="text" id="prefixText" name="prefixText"></td>
-            </tr>
-        </table>
-    </div>
-    <div class="section-container" data-lang="information_display">
-        <h2>信息显示</h2>
-        <table>
-            <tr class="setting">
-                <th class="tooltip">
-                    <span class="row-title">类别预设</span>
-                    <span class="tooltip-text">使不同类型的作品显示不同的信息</span>
-                </th>
-                <td class="input-cell">
-                    <select id="categoryPreset" name="categoryPreset">
-                        <option value="asmr">音声・ASMR</option>
-                        <option value="game">游戏</option>
-                        <option value="manga">漫画/插画</option>
-                        <option value="video">视频</option>
-                        <option value="novel">小说</option>
-                        <option value="other">其他</option>
-                    </select>
-                </td>
-            </tr>
-        </table>
 
-        <table preset="asmr">
-            <tr class="setting sortable" data-lang="circle_name">
-                <td>
-                    <span class="row-title">社团名</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="asmr-circleName" name="circleName">
-                    <label class="toggle" for="asmr-circleName"><span class="hidden">社团名</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="translator">
-                <td>
-                    <span class="row-title">翻译者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="asmr-translator" name="translator">
-                    <label class="toggle" for="asmr-translator"><span class="hidden">翻译者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="release_date">
-                <td>
-                    <span class="row-title">发售日期</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="asmr-releaseDate" name="releaseDate">
-                    <label class="toggle" for="asmr-releaseDate"><span class="hidden">发售日期</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="age_rating">
-                <td>
-                    <span class="row-title">年龄指定</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="asmr-ageRating" name="ageRating">
-                    <label class="toggle" for="asmr-ageRating"><span class="hidden">年龄指定</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="story_writer">
-                <td>
-                    <span class="row-title">剧情作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="asmr-storyWriter" name="storyWriter">
-                    <label class="toggle" for="asmr-storyWriter"><span class="hidden">剧情作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="illustrator">
-                <td>
-                    <span class="row-title">插画作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="asmr-illustrator" name="illustrator">
-                    <label class="toggle" for="asmr-illustrator"><span class="hidden">插画作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="voice_actor">
-                <td>
-                    <span class="row-title">配音者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="asmr-voiceActor" name="voiceActor">
-                    <label class="toggle" for="asmr-voiceActor"><span class="hidden">配音者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="tags">
-                <td>
-                    <span class="row-title">作品标签/分类</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="asmr-tags" name="tags">
-                    <label class="toggle" for="asmr-tags"><span class="hidden">作品标签/分类</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="file_size">
-                <td>
-                    <span class="row-title">文件大小</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="asmr-fileSize" name="fileSize">
-                    <label class="toggle" for="asmr-fileSize"><span class="hidden">文件大小</span></label>
-                </td>
-            </tr>
-        </table>
-
-        <table preset="game">
-            <tr class="setting sortable" data-lang="circle_name">
-                <td>
-                    <span class="row-title">社团名</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="game-circleName" name="circleName">
-                    <label class="toggle" for="game-circleName"><span class="hidden">社团名</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="translator">
-                <td>
-                    <span class="row-title">翻译者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="game-translator" name="translator">
-                    <label class="toggle" for="game-translator"><span class="hidden">翻译者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="release_date">
-                <td>
-                    <span class="row-title">发售日期</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="game-releaseDate" name="releaseDate">
-                    <label class="toggle" for="game-releaseDate"><span class="hidden">发售日期</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="age_rating">
-                <td>
-                    <span class="row-title">年龄指定</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="game-ageRating" name="ageRating">
-                    <label class="toggle" for="game-ageRating"><span class="hidden">年龄指定</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="story_writer">
-                <td>
-                    <span class="row-title">剧情作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="game-storyWriter" name="storyWriter">
-                    <label class="toggle" for="game-storyWriter"><span class="hidden">剧情作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="illustrator">
-                <td>
-                    <span class="row-title">插画作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="game-illustrator" name="illustrator">
-                    <label class="toggle" for="game-illustrator"><span class="hidden">插画作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="voice_actor">
-                <td>
-                    <span class="row-title">配音者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="game-voiceActor" name="voiceActor">
-                    <label class="toggle" for="game-voiceActor"><span class="hidden">配音者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="tags">
-                <td>
-                    <span class="row-title">作品标签/分类</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="game-tags" name="tags">
-                    <label class="toggle" for="game-tags"><span class="hidden">作品标签/分类</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="file_size">
-                <td>
-                    <span class="row-title">文件大小</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="game-fileSize" name="fileSize">
-                    <label class="toggle" for="game-fileSize"><span class="hidden">文件大小</span></label>
-                </td>
-            </tr>
-        </table>
-
-        <table preset="manga">
-            <tr class="setting sortable" data-lang="circle_name">
-                <td>
-                    <span class="row-title">社团名</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="manga-circleName" name="circleName">
-                    <label class="toggle" for="manga-circleName"><span class="hidden">社团名</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="translator">
-                <td>
-                    <span class="row-title">翻译者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="manga-translator" name="translator">
-                    <label class="toggle" for="manga-translator"><span class="hidden">翻译者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="release_date">
-                <td>
-                    <span class="row-title">发售日期</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="manga-releaseDate" name="releaseDate">
-                    <label class="toggle" for="manga-releaseDate"><span class="hidden">发售日期</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="age_rating">
-                <td>
-                    <span class="row-title">年龄指定</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="manga-ageRating" name="ageRating">
-                    <label class="toggle" for="manga-ageRating"><span class="hidden">年龄指定</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="story_writer">
-                <td>
-                    <span class="row-title">剧情作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="manga-storyWriter" name="storyWriter">
-                    <label class="toggle" for="manga-storyWriter"><span class="hidden">剧情作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="illustrator">
-                <td>
-                    <span class="row-title">插画作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="manga-illustrator" name="illustrator">
-                    <label class="toggle" for="manga-illustrator"><span class="hidden">插画作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="voice_actor">
-                <td>
-                    <span class="row-title">配音者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="manga-voiceActor" name="voiceActor">
-                    <label class="toggle" for="manga-voiceActor"><span class="hidden">配音者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="tags">
-                <td>
-                    <span class="row-title">作品标签/分类</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="manga-tags" name="tags">
-                    <label class="toggle" for="manga-tags"><span class="hidden">作品标签/分类</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="file_size">
-                <td>
-                    <span class="row-title">文件大小</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="manga-fileSize" name="fileSize">
-                    <label class="toggle" for="manga-fileSize"><span class="hidden">文件大小</span></label>
-                </td>
-            </tr>
-        </table>
-
-        <table preset="video">
-            <tr class="setting sortable" data-lang="circle_name">
-                <td>
-                    <span class="row-title">社团名</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="video-circleName" name="circleName">
-                    <label class="toggle" for="video-circleName"><span class="hidden">社团名</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="translator">
-                <td>
-                    <span class="row-title">翻译者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="video-translator" name="translator">
-                    <label class="toggle" for="video-translator"><span class="hidden">翻译者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="release_date">
-                <td>
-                    <span class="row-title">发售日期</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="video-releaseDate" name="releaseDate">
-                    <label class="toggle" for="video-releaseDate"><span class="hidden">发售日期</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="age_rating">
-                <td>
-                    <span class="row-title">年龄指定</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="video-ageRating" name="ageRating">
-                    <label class="toggle" for="video-ageRating"><span class="hidden">年龄指定</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="story_writer">
-                <td>
-                    <span class="row-title">剧情作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="video-storyWriter" name="storyWriter">
-                    <label class="toggle" for="video-storyWriter"><span class="hidden">剧情作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="illustrator">
-                <td>
-                    <span class="row-title">插画作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="video-illustrator" name="illustrator">
-                    <label class="toggle" for="video-illustrator"><span class="hidden">插画作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="voice_actor">
-                <td>
-                    <span class="row-title">配音者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="video-voiceActor" name="voiceActor">
-                    <label class="toggle" for="video-voiceActor"><span class="hidden">配音者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="tags">
-                <td>
-                    <span class="row-title">作品标签/分类</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="video-tags" name="tags">
-                    <label class="toggle" for="video-tags"><span class="hidden">作品标签/分类</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="file_size">
-                <td>
-                    <span class="row-title">文件大小</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="video-fileSize" name="fileSize">
-                    <label class="toggle" for="video-fileSize"><span class="hidden">文件大小</span></label>
-                </td>
-            </tr>
-        </table>
-
-        <table preset="novel">
-            <tr class="setting sortable" data-lang="circle_name">
-                <td>
-                    <span class="row-title">社团名</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="novel-circleName" name="circleName">
-                    <label class="toggle" for="novel-circleName"><span class="hidden">社团名</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="translator">
-                <td>
-                    <span class="row-title">翻译者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="novel-translator" name="translator">
-                    <label class="toggle" for="novel-translator"><span class="hidden">翻译者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="release_date">
-                <td>
-                    <span class="row-title">发售日期</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="novel-releaseDate" name="releaseDate">
-                    <label class="toggle" for="novel-releaseDate"><span class="hidden">发售日期</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="age_rating">
-                <td>
-                    <span class="row-title">年龄指定</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="novel-ageRating" name="ageRating">
-                    <label class="toggle" for="novel-ageRating"><span class="hidden">年龄指定</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="story_writer">
-                <td>
-                    <span class="row-title">剧情作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="novel-storyWriter" name="storyWriter">
-                    <label class="toggle" for="novel-storyWriter"><span class="hidden">剧情作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="illustrator">
-                <td>
-                    <span class="row-title">插画作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="novel-illustrator" name="illustrator">
-                    <label class="toggle" for="novel-illustrator"><span class="hidden">插画作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="voice_actor">
-                <td>
-                    <span class="row-title">配音者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="novel-voiceActor" name="voiceActor">
-                    <label class="toggle" for="novel-voiceActor"><span class="hidden">配音者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="tags">
-                <td>
-                    <span class="row-title">作品标签/分类</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="novel-tags" name="tags">
-                    <label class="toggle" for="novel-tags"><span class="hidden">作品标签/分类</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="file_size">
-                <td>
-                    <span class="row-title">文件大小</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="novel-fileSize" name="fileSize">
-                    <label class="toggle" for="novel-fileSize"><span class="hidden">文件大小</span></label>
-                </td>
-            </tr>
-        </table>
-
-        <table preset="other">
-            <tr class="setting sortable" data-lang="circle_name">
-                <td>
-                    <span class="row-title">社团名</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="other-circleName" name="circleName">
-                    <label class="toggle" for="other-circleName"><span class="hidden">社团名</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="translator">
-                <td>
-                    <span class="row-title">翻译者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="other-translator" name="translator">
-                    <label class="toggle" for="other-translator"><span class="hidden">翻译者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="release_date">
-                <td>
-                    <span class="row-title">发售日期</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="other-releaseDate" name="releaseDate">
-                    <label class="toggle" for="other-releaseDate"><span class="hidden">发售日期</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="age_rating">
-                <td>
-                    <span class="row-title">年龄指定</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="other-ageRating" name="ageRating">
-                    <label class="toggle" for="other-ageRating"><span class="hidden">年龄指定</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="story_writer">
-                <td>
-                    <span class="row-title">剧情作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="other-storyWriter" name="storyWriter">
-                    <label class="toggle" for="other-storyWriter"><span class="hidden">剧情作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="illustrator">
-                <td>
-                    <span class="row-title">插画作者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="other-illustrator" name="illustrator">
-                    <label class="toggle" for="other-illustrator"><span class="hidden">插画作者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="voice_actor">
-                <td>
-                    <span class="row-title">配音者</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="other-voiceActor" name="voiceActor">
-                    <label class="toggle" for="other-voiceActor"><span class="hidden">配音者</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="tags">
-                <td>
-                    <span class="row-title">作品标签/分类</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="other-tags" name="tags">
-                    <label class="toggle" for="other-tags"><span class="hidden">作品标签/分类</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="file_size">
-                <td>
-                    <span class="row-title">文件大小</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="other-fileSize" name="fileSize">
-                    <label class="toggle" for="other-fileSize"><span class="hidden">文件大小</span></label>
-                </td>
-            </tr>
-        </table>
-    </div>
-
-    <div class="section-container" data-lang="tag_display">
-        <h2>标签显示</h2>
-        <table>
-            <tr class="setting" data-lang="main_switch">
-                <th class="tooltip">
-                    <span class="row-title">总开关</span>
-                    <span class="tooltip-text">关闭则所有标签均不显示</span>
-                </th>
-                <td class="input-cell">
-                    <input type="checkbox" id="mainSwitch" name="mainSwitch">
-                    <label class="toggle" for="mainSwitch"><span class="hidden">总开关</span></label>
-                </td>
-            </tr>
-        </table>
-        <table>
-            <tr class="setting sortable" data-lang="work_type">
-                <td class="tooltip">
-                    <span class="row-title ignore-drag">作品类型</span>
-                    <span class="tooltip-text">游戏、漫画、CG・插画、小说、视频、音声・ASMR、音乐、工具/素材、其他、音声漫画</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="workType" name="workType">
-                    <label class="toggle" for="workType"><span class="hidden">作品类型</span></label>
-                </td>
-            </tr>
-            <tr class="setting sortable" data-lang="translatable">
-                <td class="tooltip">
-                    <span class="row-title ignore-drag">可翻译</span>
-                    <span class="tooltip-text">是否已授权大家一起来翻译</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="translatable" name="translatable">
-                    <label class="toggle" for="translatable"><span class="hidden">可翻译</span></label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="non_translatable">
-                <td class="tooltip">
-                    <span class="row-title ignore-drag">不可翻译</span>
-                    <span class="tooltip-text">是否未授权大家一起来翻译</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="nonTranslatable" name="nonTranslatable">
-                    <label class="toggle" for="nonTranslatable"><span class="hidden">不可翻译</span></label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="translated_work">
-                <td class="tooltip">
-                    <span class="row-title ignore-drag">翻译作品</span>
-                    <span class="tooltip-text">当前作品是否为大家一起来翻译作品</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="translatedWork" name="translatedWork">
-                    <label class="toggle" for="translatedWork"><span class="hidden">翻译作品</span></label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="supported_languages">
-                <td class="tooltip">
-                    <span class="row-title ignore-drag">支持语言</span>
-                    <span class="tooltip-text">当前作品支持的语言，不包括其它语言版本</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="supportedLanguages" name="supportedLanguages">
-                    <label class="toggle" for="supportedLanguages"><span class="hidden">支持语言</span></label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable indent-1" data-lang="japanese">
-                <td class="tooltip">
-                    <span class="row-title ignore-drag">日文</span>
-                </td>
-                <td class="input-cell">
-                    <input type="checkbox" id="japanese" name="japanese">
-                    <label class="toggle" for="japanese"><span class="hidden">日文</span></label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="english">
-                <td>
-                    <span class="row-title">英语</span>
-                    <input type="checkbox" id="english" name="english">
-                    <label for="english">英语</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="simplified_chinese">
-                <td>
-                    <span class="row-title">简体中文</span>
-                    <input type="checkbox" id="simplifiedChinese" name="simplifiedChinese">
-                    <label for="simplifiedChinese">简体中文</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="traditional_chinese">
-                <td>
-                    <span class="row-title">繁体中文</span>
-                    <input type="checkbox" id="traditionalChinese" name="traditionalChinese">
-                    <label for="traditionalChinese">繁体中文</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="korean">
-                <td>
-                    <span class="row-title">韩语</span>
-                    <input type="checkbox" id="korean" name="korean">
-                    <label for="korean">韩语</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="other_languages">
-                <td>
-                    <span class="row-title">其它语言</span>
-                    <input type="checkbox" id="otherLanguages" name="otherLanguages">
-                    <label for="otherLanguages">其它语言</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="translation_requests">
-                <td class="tooltip">
-                    <span class="row-title">翻译申请情况</span>
-                    <span class="tooltip-text">大家一起来翻译的申请情况，格式为 "语言 申请中-发售中"</span>
-                </td>
-                <td>
-                    <input type="checkbox" id="translationRequests" name="translationRequests">
-                    <label class="toggle" for="translationRequests"><span class="hidden">翻译申请情况</span></label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="en_1_1">
-                <td>
-                    <span class="row-title">英 1-1</span>
-                    <input type="checkbox" id="en1_1" name="en1_1">
-                    <label for="en1_1">英 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="sc_1_1">
-                <td>
-                    <span class="row-title">简中 1-1</span>
-                    <input type="checkbox" id="sc1_1" name="sc1_1">
-                    <label for="sc1_1">简中 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="tc_1_1">
-                <td>
-                    <span class="row-title">繁中 1-1</span>
-                    <input type="checkbox" id="tc1_1" name="tc1_1">
-                    <label for="tc1_1">繁中 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="kr_1_1">
-                <td>
-                    <span class="row-title">韩 1-1</span>
-                    <input type="checkbox" id="kr1_1" name="kr1_1">
-                    <label for="kr1_1">韩 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="de_1_1">
-                <td>
-                    <span class="row-title">德 1-1</span>
-                    <input type="checkbox" id="de1_1" name="de1_1">
-                    <label for="de1_1">德 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="fr_1_1">
-                <td>
-                    <span class="row-title">法 1-1</span>
-                    <input type="checkbox" id="fr1_1" name="fr1_1">
-                    <label for="fr1_1">法 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="id_1_1">
-                <td>
-                    <span class="row-title">印 1-1</span>
-                    <input type="checkbox" id="id1_1" name="id1_1">
-                    <label for="id1_1">印 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="it_1_1">
-                <td>
-                    <span class="row-title">意 1-1</span>
-                    <input type="checkbox" id="it1_1" name="it1_1">
-                    <label for="it1_1">意 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="pt_1_1">
-                <td>
-                    <span class="row-title">葡 1-1</span>
-                    <input type="checkbox" id="pt1_1" name="pt1_1">
-                    <label for="pt1_1">葡 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="sv_1_1">
-                <td>
-                    <span class="row-title">瑞典 1-1</span>
-                    <input type="checkbox" id="sv1_1" name="sv1_1">
-                    <label for="sv1_1">瑞典 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="th_1_1">
-                <td>
-                    <span class="row-title">泰 1-1</span>
-                    <input type="checkbox" id="th1_1" name="th1_1">
-                    <label for="th1_1">泰 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="vi_1_1">
-                <td>
-                    <span class="row-title">越 1-1</span>
-                    <input type="checkbox" id="vi1_1" name="vi1_1">
-                    <label for="vi1_1">越 1-1</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="bonus_work">
-                <td class="tooltip">
-                    <span class="row-title">特典作品</span>
-                    <span class="tooltip-text">当前作品是某部作品的特典</span>
-                </td>
-                <td>
-                    <input type="checkbox" id="bonusWork" name="bonusWork">
-                    <label class="toggle" for="bonusWork"><span class="hidden">特典作品</span></label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="includes_bonus">
-                <td class="tooltip">
-                    <span class="row-title">含特典</span>
-                    <span class="tooltip-text">当前作品目前有特典附赠，注意特典过期下架之后将不会显示该标签</span>
-                </td>
-                <td>
-                    <input type="checkbox" id="includesBonus" name="includesBonus">
-                    <label class="toggle" for="includesBonus"><span class="hidden">含特典</span></label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="work_format">
-                <td class="tooltip">
-                    <span class="row-title">作品格式</span>
-                    <span class="tooltip-text">WAV、MP3等</span>
-                </td>
-                <td>
-                    <input type="checkbox" id="workFormat" name="workFormat">
-                    <label class="toggle" for="workFormat"><span class="hidden">作品格式</span></label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="taken_down">
-                <td>
-                    <span class="row-title">已下架</span>
-                    <input type="checkbox" id="takenDown" name="takenDown">
-                    <label for="takenDown">已下架</label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="upcoming">
-                <td class="tooltip">
-                    <span class="row-title">预告</span>
-                    <span class="tooltip-text">即将发售的作品</span>
-                </td>
-                <td>
-                    <input type="checkbox" id="upcoming" name="upcoming">
-                    <label class="toggle" for="upcoming"><span class="hidden">预告</span></label>
-                </td>
-            </tr>
-
-            <tr class="setting sortable" data-lang="ai_used">
-                <td class="tooltip">
-                    <span class="row-title">AI & 部分AI</span>
-                    <span class="tooltip-text">全部或部分使用AI的作品</span>
-                </td>
-                <td>
-                    <input type="checkbox" id="aiUsed" name="aiUsed">
-                    <label class="toggle" for="aiUsed"><span class="hidden">AI & 部分AI</span></label>
-                </td>
-            </tr>
-
-        </table>
-    </div>
-    <div class="setting">
-        <button type="submit">保存设置</button>
-    </div>
-</div>-->
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         let uiBuilder = new SettingPageBuilder(ui, settings);

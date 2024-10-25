@@ -20,6 +20,12 @@ const localizationMap = {
     en_US: "Language"
   },
 
+  popup_language: {
+    zh_CN: "弹窗语言",
+    zh_TW: "彈窗語言",
+    en_US: "Popup Language"
+  },
+
   title_general_settings: {
     zh_CN: "常规",
     zh_TW: "常規",
@@ -639,7 +645,8 @@ const localizationMap = {
 
 let settings = {
   //语言设置
-  _s_lang: "zh_TW",
+  _s_lang: "zh_CN",
+  _s_popup_lang: "en_US",
 
   //常规设置
   _s_parse_url: true,
@@ -648,7 +655,7 @@ let settings = {
   _s_copy_as_filename_btn: true,
   _s_show_compatibility_warning: true,
   _s_url_insert_mode: "before_rj",
-  _s_url_insert_prefix_text: "🔗",
+  _s_url_insert_text: "🔗",
 
   //信息显示设置
   _s_category_preset: "voice",
@@ -949,6 +956,27 @@ const ui = {
                   value: "en_US"
                 }
               ]
+            },
+            {
+              //这一层是设置项
+              type: "dropdown",
+              title: localize(localizationMap.popup_language),
+              id: "popup_lang",
+              ignore_reset: true,
+              options: [
+                {
+                  title: "简体中文",
+                  value: "zh_CN"
+                },
+                {
+                  title: "繁體中文",
+                  value: "zh_TW"
+                },
+                {
+                  title: "English",
+                  value: "en_US"
+                }
+              ]
             }
           ]
         }
@@ -1027,7 +1055,7 @@ const ui = {
             {
               type: "input",
               title: localize(localizationMap.url_insert_text),
-              id: "url_insert_prefix_text",
+              id: "url_insert_text",
               indent: 1
             }
           ]
@@ -1763,7 +1791,11 @@ class SettingPageBuilder {
 
   getClass(name) {
     if(!VOICELINK_CLASS || VOICELINK_CLASS === "") return name;
-    return `${VOICELINK_CLASS}-${name}`;
+    if(name !== "settings-container" || name !== "button-save"
+    || name !== "button-cancel" || name !== "button-reset"){
+      return name;
+    }
+    return `${VOICELINK_CLASS}_${name}`;
   }
 
   build() {
@@ -1775,7 +1807,7 @@ class SettingPageBuilder {
     //创建container
     const container = document.createElement("div");
     container.className = this.getClass("container");
-    container.id = this.getClass("settings");
+    container.id = this.getClass("settings-container");
     this.container = container;
 
     //创建标题
