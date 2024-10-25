@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     3.0.3
+// @version     3.0.4
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -333,6 +333,7 @@
             e.classList.add(VOICELINK_IGNORED_CLASS);
 
             e.setAttribute(RJCODE_ATTRIBUTE, rjCode.toUpperCase());
+            e.setAttribute("voicelink-linkified", "true");
             e.addEventListener("mouseover", Popup.over);
             e.addEventListener("mouseout", Popup.out);
             e.addEventListener("mousemove", Popup.move);
@@ -874,6 +875,16 @@
             if(!target || !target.classList.contains(VOICELINK_CLASS)) return;
 
             const rjCode = target.getAttribute(RJCODE_ATTRIBUTE);
+
+            //修正链接
+            if(target.hasAttribute("voicelink-linkified")){
+                WorkPromise.getWorkPromise(rjCode).info.then(info => {
+                    if(info.is_announce === true){
+                        target.href = `https://www.dlsite.com/maniax/announce/=/product_id/${rjCode}.html`;
+                    }
+                });
+            }
+
             const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if (popup) {
                 popup.style.display = "flex";
