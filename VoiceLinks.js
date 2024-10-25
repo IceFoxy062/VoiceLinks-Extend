@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.6.0
+// @version     2.7.0
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -12,8 +12,9 @@
 
 (function () {
     'use strict';
-    const RJ_REGEX = new RegExp("(R[JE][0-9]{8})|(R[JE][0-9]{6})", "gi");
+    const RJ_REGEX = new RegExp("(R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6})", "gi");
     const RJ_REGEX_NEW = new RegExp("R[JE][0-9]{8}", "gi");
+    const VBJ_REGEX = new RegExp("([VB]J[0-9]{6})|([VB]J[0-9]{8})", "gi");
     const VOICELINK_CLASS = 'voicelink';
     const RJCODE_ATTRIBUTE = 'rjcode';
     const css = `
@@ -208,6 +209,8 @@
                             return NodeFilter.FILTER_ACCEPT;
                         if (node.nodeValue.match(RJ_REGEX))
                             return NodeFilter.FILTER_ACCEPT;
+                        if (node.nodeValue.match(VBJ_REGEX))
+                            return NodeFilter.FILTER_ACCEPT;
                     }
                 },
                 false,
@@ -297,7 +300,7 @@
             }
             else {
                 const voicelinks = elem.querySelectorAll("." + VOICELINK_CLASS);
-                for (var i = 0, ii = voicelinks.length; i < ii; i++) {
+                for (let i = 0, j = voicelinks.length; i < j; i++) {
                     const voicelink = voicelinks[i];
                     voicelink.addEventListener("mouseover", Popup.over);
                     voicelink.addEventListener("mouseout", Popup.out);
@@ -309,67 +312,6 @@
     }
 
     const Popup = {
-        /*makePopup: function (e, rjCode) {
-            const popup = document.createElement("div");
-            popup.className = "voicepopup " + (getAdditionalPopupClasses() || '');
-            popup.id = "voice-" + rjCode;
-            popup.style = "display: flex";
-            document.body.appendChild(popup);
-            DLsite.request(rjCode, function (workInfo) {
-                if (workInfo === null)
-                    popup.innerHTML = "<div class='error'>Work not found.</span>";
-                else {
-                    const imgContainer = document.createElement("div")
-                    const img = document.createElement("img");
-                    img.src = workInfo.img;
-                    imgContainer.appendChild(img);
-
-                    let html = `
-                      <div>
-                          <div class='voice-title'>${workInfo.title}</div>
-                          <div class='rjcode'>[${workInfo.rj}]</div>
-                          <br />
-                          Circle: <a>${workInfo.circle}</a>
-                          <br />
-                  `;
-                    if (workInfo.date)
-                        html += `Release: <a>${workInfo.date}</a> <br />`;
-                    else if (workInfo.dateAnnounce)
-                        html += `Scheduled Release: <a>${workInfo.dateAnnounce}</a> <br />`;
-
-                    if (workInfo.update)
-                        html += `Update: <a>${workInfo.update}</a> <br />`;
-
-                    let ratingClass = "age-all";
-                    if(workInfo.rating.includes("18")){
-                        ratingClass = "age-18";
-                    }
-                    html += `Age rating: <a class="${ratingClass}">${workInfo.rating}</a><br />`
-
-                    if (workInfo.cv)
-                        html += `CV: <a>${workInfo.cv}</a> <br />`;
-
-                    if (workInfo.tags){
-                        html += `Tags: <a>`
-                        workInfo.tags.forEach(tag => {
-                            html += tag + "\u3000";
-                        });
-                        html += "</a><br />";
-                    }
-
-                    if (workInfo.filesize)
-                        html += `File size: ${workInfo.filesize}<br />`;
-
-                    html += "</div>"
-                    popup.innerHTML = html;
-
-                    popup.insertBefore(imgContainer, popup.childNodes[0]);
-                }
-
-                Popup.move(e);
-            });
-        },*/
-
         makePopup: function (e, rjCode) {
             const popup = document.createElement("div");
             popup.className = "voicepopup voicepopup-maniax " + (getAdditionalPopupClasses() || '');
