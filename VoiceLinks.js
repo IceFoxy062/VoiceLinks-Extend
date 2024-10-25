@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.5
+// @version     2.1.6
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -223,11 +223,13 @@
                     if (workInfo.cv)
                         html += `CV: <a>${workInfo.cv}</a> <br />`;
 
-                    html += `Tags: <a>`
-                    workInfo.tags.forEach(tag => {
-                        html += tag + "\u3000";
-                    });
-                    html += "</a><br />";
+                    if (workInfo.tags){
+                        html += `Tags: <a>`
+                        workInfo.tags.forEach(tag => {
+                            html += tag + "\u3000";
+                        });
+                        html += "</a><br />";
+                    }
 
                     if (workInfo.filesize)
                         html += `File size: ${workInfo.filesize}<br />`;
