@@ -4,6 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
+// @exclude     *://copilot.microsoft.com/*
 // @version     3.3.0
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
@@ -641,8 +642,8 @@
 
             const translatableElement = document.createElement("div");
             ele.translatable = translatableElement;
-            translatableElement.style.backgroundColor = "lightgreen";
-            translatableElement.style.color = "green"
+            translatableElement.style.backgroundColor = "#dcf5e4";
+            translatableElement.style.color = "#34A853";
             translatableElement.style.borderRadius = "5px";
             translatableElement.style.display = "inline-block";
             translatableElement.style.padding = "0px 8px";
@@ -1707,15 +1708,29 @@
     }
 
     let isInit = false;
+    let observing = false;
     function init () {
-        if(isInit) return;
+        if(!isInit) {
+            const style = document.createElement("style");
+            style.innerHTML = Csp.createHTML(css + SettingsPopup.css);
+            document.head.appendChild(style);
+            // SettingsPopup.getPopup()
+            GM_registerMenuCommand("Settings", SettingsPopup.getPopup)
+            GM_registerMenuCommand("Notice", () => showUpdateNotice(true))
 
-        const style = document.createElement("style");
-        style.innerHTML = Csp.createHTML(css + SettingsPopup.css);
-        document.head.appendChild(style);
-        // SettingsPopup.getPopup()
-        GM_registerMenuCommand("Settings", SettingsPopup.getPopup)
-        GM_registerMenuCommand("Notice", () => showUpdateNotice(true))
+            document.addEventListener("securitypolicyviolation", function (e) {
+                if (e.blockedURI.includes("img.dlsite.jp")) {
+                    const img = document.querySelector(`img[src="${e.blockedURI}"]`);
+                    img.remove();
+                }
+            });
+
+            isInit = true;
+        }
+
+        if(!document.body || observing){
+            return;
+        }
 
         Parser.walkNodes(document.body);
 
@@ -1729,20 +1744,13 @@
             }
         });
 
-        document.addEventListener("securitypolicyviolation", function (e) {
-            if (e.blockedURI.includes("img.dlsite.jp")) {
-                const img = document.querySelector(`img[src="${e.blockedURI}"]`);
-                img.remove();
-            }
-        });
-
         observer.observe(document.body, { childList: true, subtree: true })
         setUserSelectTitle();
 
         //显示重要通知
         showUpdateNotice();
 
-        isInit = true;
+        observing = true;
     }
 
     document.addEventListener("DOMContentLoaded", init);
