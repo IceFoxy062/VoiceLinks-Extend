@@ -1,0 +1,26 @@
+//游戏
+["ACN", "QIZ", "ADV", "RPG", "TBL", "DNV", "SLN", "TYP", "STG", "PZL", "ETC"]
+
+//漫画
+["MNG", "SCM", "WBT"]
+
+//CG 插画
+"ICG"
+
+//小说
+["NRE", "KSV"]
+
+//视频
+"MOV"
+
+//音声
+"SOU"
+
+//音乐
+"MUS"
+
+//工具 素材
+["TOL", "IMT", "AMT"]
+
+//其它（音声漫画是VCM）
+["ET3", "VCM"]

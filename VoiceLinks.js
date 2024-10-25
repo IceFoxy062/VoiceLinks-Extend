@@ -249,7 +249,7 @@
             for(let key in this){
                 if(!key.startsWith("_s_")) continue;
                 const val = GM_getValue(key.substring(3), this[key]);
-                this[key] = val ? val : this[key];
+                this[key] = val !== undefined ? val : this[key];
             }
         },
 
@@ -326,6 +326,12 @@
             zh_CN: "弹窗语言",
             zh_TW: "彈窗語言",
             en_US: "Popup Language"
+        },
+
+        popup_language_tooltip: {
+            zh_CN: "仅修改标题和标签显示语言，信息本身的语言以DLSite网页设置的语言为准。",
+            zh_TW: "只修改標題和標籤顯示語言，資訊本身的語言以DLSite網頁設定的語言為準。",
+            en_US: "Only modify the title and tag display language, the language of the information itself is determined by the language of the DLSite page settings."
         },
 
         title_general_settings: {
@@ -940,118 +946,168 @@
             en_US: "Reset element order and their settings",
         },
 
-        get: function (key) {
-            return typeof key === "string" ? localizationMap[key][settings._s_lang] : key[settings._s_lang];
+        get: function (key, langKey = "_s_lang") {
+            return typeof key === "string" ? localizationMap[key][settings[langKey]] : key[settings[langKey]];
         }
     }
 
     function localize(key) {
         return localizationMap.get(key);
     }
+
+    function localizePopup(key) {
+        return localizationMap.get(key, "_s_popup_lang");
+    }
     //----------------------
 
 
     const RJ_REGEX = new RegExp("(R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6})", "gi");
     const URL_REGEX = new RegExp("dlsite.com/.*/product_id/((R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6}))", "g");
-    const VOICELINK_CLASS = 'voicelink';
+    const VOICELINK_CLASS = 'voicelink-' + Math.random().toString(36).slice(2);
     const VOICELINK_IGNORED_CLASS = `${VOICELINK_CLASS}_ignored`;
     const RJCODE_ATTRIBUTE = 'rjcode';
     const POPUP_CSS = `
-      .${VOICELINK_CLASS}_voicepopup {
-          min-width: 600px !important;
-          z-index: 2147483646 !important;
-          max-width: 80% !important;
-          position: fixed !important;
-          line-height: 1.4em;
-          font-size:1.1em!important;
-          margin-bottom: 10px;
-          box-shadow: 0 0 .125em 0 rgba(0,0,0,.5);
-          border-radius: 0.5em;
-          background-color:#8080C0;
-          color:#F6F6F6;
-          text-align: left;
-          padding: 10px;
-          pointer-events: none;
+    .${VOICELINK_CLASS}_voicepopup {
+        min-width: 600px !important;
+        z-index: 2147483646 !important;
+        max-width: 80% !important;
+        position: fixed !important;
+        line-height: normal;  /*原1.4em;*/
+        font-size:1.1em!important;
+        margin-bottom: 10px;
+        box-shadow: 0 0 .125em 0 rgba(0,0,0,.5);
+        border-radius: 0.5em;
+        background-color:#8080C0;
+        color:#F6F6F6;
+        text-align: left;
+        padding: 10px;
+        pointer-events: none;
+    }
+    
+    #${VOICELINK_CLASS}_info-container > div {
+        margin-bottom: 3px;
+        font-size: 15.4px;
+    }
+    
+    .${VOICELINK_CLASS}_loader {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        height: 100%;
+        min-width: 300px;
+        min-height: 30px;
+        z-index: -1;
+    }
+    .${VOICELINK_CLASS}_dot {
+        width: 20px;
+        height: 20px;
+        margin: 0 8px;
+        background-color: #fbfbfb;
+        border-radius: 50%;
+        animation: ${VOICELINK_CLASS}_scale 1s infinite;
+    }
+    .${VOICELINK_CLASS}_dot:nth-child(1) {
+        animation-delay: 0s;
+    }
+    .${VOICELINK_CLASS}_dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    .${VOICELINK_CLASS}_dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    @keyframes ${VOICELINK_CLASS}_scale {
+      0%, 100% {
+          transform: scale(1);
       }
-      
-      .${VOICELINK_CLASS}_voicepopup-maniax{
-          background-color:#8080C0;
+      50% {
+          transform: scale(1.5);
       }
-      
-      .${VOICELINK_CLASS}_voicepopup-girls{
-          background-color:#B33761;
-      }
+    }
+    
+    .${VOICELINK_CLASS}_voicepopup-maniax{
+        background-color:#8080C0;
+    }
+    
+    .${VOICELINK_CLASS}_voicepopup-girls{
+        background-color:#B33761;
+    }
 
-      .${VOICELINK_CLASS}_voicepopup img {
-          width: 270px;
-          height: auto;
-          margin: 3px 15px 3px 3px;
-          max-width: fit-content;
-      }
-      
-      .${VOICELINK_CLASS}_voicepopup a {
-          text-decoration: none !important;
-          color: pink !important;
-      }
-      
-      .${VOICELINK_CLASS}_voicepopup .age-18{
-          color: hsl(300deg 76% 77%) !important;
-      }
-      
-      .${VOICELINK_CLASS}_voicepopup .age-all{
-          color: hsl(157deg 82% 52%) !important;
-      }
+    .${VOICELINK_CLASS}_voicepopup img {
+        width: 270px;
+        height: auto;
+        margin: 3px 15px 3px 3px;
+        max-width: fit-content;
+    }
+    
+    .${VOICELINK_CLASS}_voicepopup a {
+        text-decoration: none !important;
+        color: pink !important;
+    }
+    
+    .${VOICELINK_CLASS}_voicepopup .${VOICELINK_CLASS}_age-18{
+        color: hsl(300deg 76% 77%) !important;
+    }
+    
+    .${VOICELINK_CLASS}_voicepopup .${VOICELINK_CLASS}_age-all{
+        color: hsl(157deg 82% 52%) !important;
+    }
 
-      .${VOICELINK_CLASS}_voice-title {
-          font-size: 1.4em;
-          font-weight: bold;
-          text-align: center;
-          margin: 5px 10px 0 0;
-          display: block;
-      }
+    .${VOICELINK_CLASS}_voice-title {
+        font-size: 21px;   /*原1.4em*/
+        font-weight: bold;
+        text-align: center;
+        margin: 5px 10px 0 0;
+        display: block;
+    }
 
-      .${VOICELINK_CLASS}_rjcode {
-          text-align: center;
-          font-size: 1.2em;
-          font-style: italic;
-          opacity: 0.3;
-      }
+    .${VOICELINK_CLASS}_rjcode {
+        text-align: center;
+        margin: 5px 0;
+        font-size: 18.5px;  /*原1.2em;*/
+        font-style: italic;
+        opacity: 0.3;
+    }
 
-      .${VOICELINK_CLASS}_error {
-          height: 210px;
-          line-height: 210px;
-          text-align: center;
-      }
+    .${VOICELINK_CLASS}_error {
+        height: 210px;
+        line-height: 210px;
+        text-align: center;
+    }
 
-      .${VOICELINK_CLASS}_discord-dark {
-          background-color: #36393f;
-          color: #dcddde;
-          font-size: 0.9375rem;
-      }
-      
-      .${VOICELINK_CLASS}_work_title:hover #${VOICELINK_CLASS}_copy_btn {
-          opacity: 1;
-      }
-      
-      #${VOICELINK_CLASS}_copy_btn {
-          background: transparent;
-          border-color: transparent;
-          cursor: pointer;
-          transition: all 0.3s;
-          opacity: 0;
-          font-size: 0.75em;
-          user-select: none;
-          position: absolute;
-      }
-      
-      #${VOICELINK_CLASS}_copy_btn:hover {
-          scale: 1.2;
-      }
-      
-      #${VOICELINK_CLASS}_copy_btn:active {
-          scale: 1.1;
-      }
-      
+    .${VOICELINK_CLASS}_discord-dark {
+        background-color: #36393f;
+        color: #dcddde;
+        font-size: 0.9375rem;
+    }
+    
+    .${VOICELINK_CLASS}_work_title:hover #${VOICELINK_CLASS}_copy_btn {
+        opacity: 1;
+    }
+    
+    #${VOICELINK_CLASS}_copy_btn {
+        background: transparent;
+        border-color: transparent;
+        cursor: pointer;
+        transition: all 0.3s;
+        opacity: 0;
+        font-size: 0.75em;
+        user-select: none;
+        position: absolute;
+    }
+    
+    #${VOICELINK_CLASS}_copy_btn:hover {
+        scale: 1.2;
+    }
+    
+    #${VOICELINK_CLASS}_copy_btn:active {
+        scale: 1.1;
+    }
+    
   `
     const SETTINGS_CSS = `
         #${VOICELINK_CLASS}_settings-container {
@@ -1100,6 +1156,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         #${VOICELINK_CLASS}_settings-container h1 {
+            display: block;
             text-align: center;
             color: #333;
             font-size: 32px;
@@ -1110,9 +1167,10 @@
             margin: 20px 0;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_section-container h2 {
+            display: block;
             color: #007bff;
             font-size: 24px;
-            margin: 19.92px 0;
+            margin: 22px 0 14px 0;
             font-weight: bold;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting {
@@ -1232,6 +1290,7 @@
             max-width: 100%;
             background-color: #555;
             color: #fff;
+            font-size: 14px;
             text-align: center;
             border-radius: 5px;
             padding: 8px 10px;
@@ -1504,7 +1563,15 @@
 
         if(settings._s_show_translated_title_in_dl){
             //将Title替换成大家翻对应的语言翻译版本
-            WorkPromise.getWorkTitle(rj).then(t => {
+            WorkPromise.getTranslationInfo(rj).then(info => {
+                if(info.is_original) {
+                    return null;
+                }
+                else{
+                    return WorkPromise.getWorkTitle(rj);
+                }
+            }).then(t => {
+                if(!t) return;
                 compatibilityCheck(title, titleHtml);
                 titleStr = t
                 title.innerText = t
@@ -1620,6 +1687,7 @@
 
         calculateCoverage: function(text){
             const matches = text.match(RJ_REGEX);
+            if (!matches) return 0;
             //覆盖大小 = 所有匹配项的长度总和
             const coverSize = matches.reduce((total, current) => total + current.length, 0);
             return (coverSize / text.length) * 100;
@@ -1835,34 +1903,39 @@
     const Popup = {
         popupElement: {
             popup: null,
-            notFound: null,
+            not_found: null,
             img: {container: null},
             title: null,
-            rjCode: null,
+            rj_code: null,
+            info_container: null,
+            loader: null,
             flag: null,
-            circle: null,
-            debug: null,
-            translator: null,
-            releaseDate: null,
-            updateDate: null,
-            age: null,
-            cv: null,
             tags: null,
-            fileSize: null,
+            circle_name: null,
+            debug: null,
+            translator_name: null,
+            release_date: null,
+            update_date: null,
+            age_rating: null,
+            scenario: null,
+            illustration: null,
+            voice_actor: null,
+            genre: null,
+            file_size: null,
         },
 
-        makePopup: function () {
+        makePopup: function (display) {
             const popup = document.createElement("div");
             const ele = Popup.popupElement;
             ele.popup = popup;
 
             popup.className = `${VOICELINK_CLASS}_voicepopup ${VOICELINK_CLASS}_voicepopup-maniax ` + (getAdditionalPopupClasses() || '');
             popup.id = `${VOICELINK_CLASS}-voice-popup`;  // + rjCode;
-            popup.style = "display: flex";
+            popup.style.display = display === false ? "none" : "flex";
             document.body.appendChild(popup);
 
             const notFoundElement = document.createElement("div");
-            ele.notFound = notFoundElement;
+            ele.not_found = notFoundElement;
             //占满整个popup
             notFoundElement.style = "display: none; width: 100%; height: 100%";
             notFoundElement.innerText = "Work Not Found.";
@@ -1871,74 +1944,53 @@
             const imgContainer = document.createElement("div")
             ele.img.container = imgContainer;
 
-            const infoContainer = document.createElement("div");
+            const rightPanel = document.createElement("div");
 
             const titleElement = document.createElement("div");
             ele.title = titleElement;
             titleElement.classList.add(`${VOICELINK_CLASS}_voice-title`);
-            infoContainer.appendChild(titleElement);
+            rightPanel.appendChild(titleElement);
 
             const rjCodeElement = document.createElement("div");
-            ele.rjCode = rjCodeElement;
+            ele.rj_code = rjCodeElement;
             rjCodeElement.classList.add(`${VOICELINK_CLASS}_rjcode`);
-            infoContainer.appendChild(rjCodeElement);
+            rightPanel.appendChild(rjCodeElement);
 
-            const flagElement = document.createElement("div");
-            ele.flag = flagElement;
-            flagElement.style.marginTop = "20px";
-            infoContainer.appendChild(flagElement);
+            const infoContainer = document.createElement("div");
+            ele.info_container = infoContainer;
+            infoContainer.id = `${VOICELINK_CLASS}_info-container`;
+            infoContainer.style.position = "relative";
+            infoContainer.style.minHeight = "70px";
+            rightPanel.appendChild(infoContainer);
 
-            const translatableElement = document.createElement("div");
-            ele.translatable = translatableElement;
-            translatableElement.style.backgroundColor = "#dcf5e4";
-            translatableElement.style.color = "#34A853";
-            translatableElement.style.borderRadius = "5px";
-            translatableElement.style.display = "inline-block";
-            translatableElement.style.padding = "0px 8px";
-            translatableElement.style.fontSize = "14px";
-            translatableElement.style.fontWeight = "bold";
-            translatableElement.style.marginBottom = "3px";
-            infoContainer.appendChild(translatableElement);
+            const loader = document.createElement("div");
+            loader.className = `${VOICELINK_CLASS}_loader`;
+            loader.innerHTML = `
+            <div class="${VOICELINK_CLASS}_dot"></div>
+            <div class="${VOICELINK_CLASS}_dot"></div>
+            <div class="${VOICELINK_CLASS}_dot"></div>
+            `;
+            ele.loader = loader;
+            infoContainer.appendChild(loader);
 
-            const circleElement = document.createElement("div");
-            ele.circle = circleElement;
-            infoContainer.appendChild(circleElement);
+            ele.tags = document.createElement("div");
+            infoContainer.appendChild(ele.tags);
 
-            const debugElement = document.createElement("div");
-            ele.debug = debugElement;
-            infoContainer.appendChild(debugElement);
+            ele.circle_name = document.createElement("div");
+            ele.debug = document.createElement("div");
+            ele.translator_name = document.createElement("div");
+            ele.release_date = document.createElement("div");
+            ele.update_date = document.createElement("div");
+            ele.age_rating = document.createElement("div");
+            ele.scenario = document.createElement("div");
+            ele.illustration = document.createElement("div");
+            ele.voice_actor = document.createElement("div");
+            ele.genre = document.createElement("div");
+            ele.file_size = document.createElement("div");
 
-            const translatorElement = document.createElement("div");
-            ele.translator = translatorElement;
-            infoContainer.appendChild(translatorElement);
-
-            const releaseElement = document.createElement("div");
-            ele.releaseDate = releaseElement;
-            infoContainer.appendChild(releaseElement);
-
-            const updateElement = document.createElement("div");
-            ele.updateDate = updateElement;
-            infoContainer.appendChild(updateElement);
-
-            const ageElement = document.createElement("div");
-            ele.age = ageElement;
-            infoContainer.appendChild(ageElement);
-
-            const cvElement = document.createElement("div");
-            ele.cv = cvElement;
-            infoContainer.appendChild(cvElement);
-
-            const tagsElement = document.createElement("div");
-            ele.tags = tagsElement;
-            infoContainer.appendChild(tagsElement);
-
-            const filesizeElement = document.createElement("div");
-            ele.fileSize = filesizeElement;
-            infoContainer.appendChild(filesizeElement);
-
-            infoContainer.style.paddingBottom = "3px";
-            infoContainer.style.flexGrow = "1";
-            popup.appendChild(infoContainer);
+            rightPanel.style.paddingBottom = "3px";
+            rightPanel.style.flexGrow = "1";
+            popup.appendChild(rightPanel);
             popup.insertBefore(imgContainer, popup.childNodes[0]);
         },
 
@@ -1979,7 +2031,7 @@
                     return;
                 }
 
-                ele.notFound.style.display = found ? "none" : "block";
+                ele.not_found.style.display = found ? "none" : "block";
                 Popup.setFoundState(found);
                 workFound = found;
             });
@@ -2016,137 +2068,22 @@
                 titleElement.innerHTML = ""
             });
 
-            const rjCodeElement = ele.rjCode;
+            const rjCodeElement = ele.rj_code;
             rjCodeElement.innerText = `[${isParent ? " ↑ " : ""}${rjCode}]`;
 
-            const flagElement = ele.flag;
-            flagElement.style.marginTop = "20px"
-            flagElement.innerHTML = "";
-            WorkPromise.getWorkPromise(rjCode).api.then(async data => {
+            //清除原有信息并展示加载界面
+            for(let child of [...this.popupElement.info_container.children]){
+                if(child === this.popupElement.loader) continue;
+                child.remove();
+            }
+            ele.loader.style.display = "flex";
+            WorkPromise.getWorkCategory(rjCode).then(category => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-
-                let info = await WorkPromise.getWorkPromise(rjCode).info;
-                if(data.is_bonus){
-                    //特典作品
-                    flagElement.innerHTML = `<span style="color: gold; font-size: 15px; align-self: center; font-weight: bold">[BONUS]</span>`;
-                }
-                else if(!data.is_sale && !info.is_announce) {
-                    flagElement.innerHTML = `<span style="color: darkred; font-size: 15px; align-self: center">(No longer for Sale)</span>`;
-                }
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                flagElement.innerHTML = "";
-            });
-
-            const circleElement = ele.circle;
-            circleElement.innerHTML = "Circle: Loading...";
-            WorkPromise.getCircle(rjCode).then(circle => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                circleElement.innerHTML = `Circle: <a>${circle}</a>`;
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                circleElement.innerHTML = "";
-            });
-
-            const debugElement = ele.debug;
-            debugElement.innerHTML = "";
-            WorkPromise.getDebug(rjCode).then(debug => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                debugElement.innerHTML = debug;
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                debugElement.innerHTML = "";
-            });
-
-            const translatableElement = ele.translatable;
-            translatableElement.innerHTML = "";
-            WorkPromise.getTranslatable(rjCode).then(translatable => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                translatableElement.innerHTML = translatable ? `可翻译` : "";
-                translatableElement.style.display = translatable ? "inline-block" : "none";
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                translatableElement.innerHTML = "";
-                translatableElement.style.display = "none";
-            });
-
-            const translatorElement = ele.translator;
-            translatorElement.innerHTML = "";
-            WorkPromise.getTranslatorName(rjCode).then(name => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                translatorElement.innerHTML = `Translator: <a>${name}</a>`;
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                translatorElement.innerHTML = "";
-            });
-
-            const releaseElement = ele.releaseDate;
-            releaseElement.innerHTML = "Release: Loading...";
-            WorkPromise.getReleaseDate(rjCode).then(date => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                releaseElement.innerHTML = `Release: <a>${date}</a>`;
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                releaseElement.innerHTML = "";
-            });
-
-            const updateElement = ele.updateDate;
-            updateElement.innerHTML = "";
-            WorkPromise.getUpdateDate(rjCode).then(date => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                updateElement.innerHTML = `Update: <a>${date}</a>`;
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                updateElement.innerHTML = "";
-            });
-
-            const ageElement = ele.age;
-            ageElement.innerHTML = "Age rating: Loading...";
-            WorkPromise.getAgeRating(rjCode).then(rating => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                let ratingClass = "age-all";
-                if(rating.includes("18")){
-                    ratingClass = "age-18";
-                }
-                ageElement.innerHTML = `Age rating: <a class="${ratingClass}">${rating}</a>`;
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                ageElement.innerHTML = "";
-            });
-
-            const cvElement = ele.cv;
-            cvElement.innerHTML = "CV: Loading...";
-            WorkPromise.getCV(rjCode).then(cv => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                cvElement.innerHTML = `CV: <a>${cv}</a>`;
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                cvElement.innerHTML = "";
-            });
-
-            const tagsElement = ele.tags;
-            tagsElement.innerHTML = "Tags: Loading...";
-            WorkPromise.getTags(rjCode).then(tags => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                let tagsHtml = "Tags: <a>";
-                tags.forEach(tag => {
-                    tagsHtml += tag + "\u3000";
-                });
-                tagsHtml += "</a>";
-                tagsElement.innerHTML = tagsHtml;
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                tagsElement.innerHTML = "";
-            });
-
-            const filesizeElement = ele.fileSize;
-            filesizeElement.innerHTML = "File size: Loading...";
-            WorkPromise.getFileSize(rjCode).then(filesize => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                filesizeElement.innerHTML = `File size: ${filesize}`;
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                filesizeElement.innerHTML = "";
+                this.set_info_container(rjCode, category);
+            }).catch(e => {
+                if (rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                //TODO: 考虑是默认other还是直接报错
+                this.set_info_container(rjCode, "other");
             });
 
             Popup.move(e);
@@ -2156,28 +2093,250 @@
             const ele = Popup.popupElement;
             const popup = ele.popup;
 
-            ele.notFound.style.display = found ? "none" : "block";
+            ele.not_found.style.display = found ? "none" : "block";
             ele.img.container.style.display = found ? "block" : "none";
             ele.title.style.display = found ? "block" : "none";
-            ele.rjCode.style.display = found ? "block" : "none";
-            ele.flag.style.display = found ? "block" : "none";
-            ele.circle.style.display = found ? "block" : "none";
+            ele.rj_code.style.display = found ? "block" : "none";
+            //ele.flag.style.display = found ? "block" : "none";
+            ele.circle_name.style.display = found ? "block" : "none";
             ele.debug.style.display = found ? "block" : "none";
-            ele.translatable.style.display = found && ele.translatable.innerHTML.trim().length > 0 ? "inline-block" : "none";
-            ele.translator.style.display = found ? "block" : "none";
-            ele.releaseDate.style.display = found ? "block" : "none";
-            ele.updateDate.style.display = found ? "block" : "none";
-            ele.age.style.display = found ? "block" : "none";
-            ele.cv.style.display = found ? "block" : "none";
-            ele.tags.style.display = found ? "block" : "none";
-            ele.fileSize.style.display = found ? "block" : "none";
+            //ele.translatable.style.display = found && ele.translatable.innerHTML.trim().length > 0 ? "inline-block" : "none";
+            ele.translator_name.style.display = found ? "block" : "none";
+            ele.release_date.style.display = found ? "block" : "none";
+            ele.update_date.style.display = found ? "block" : "none";
+            ele.age_rating.style.display = found ? "block" : "none";
+            ele.voice_actor.style.display = found ? "block" : "none";
+            ele.genre.style.display = found ? "block" : "none";
+            ele.file_size.style.display = found ? "block" : "none";
         },
+
+        set_circle_name: function (rjCode, category){
+            const id = `${category}__circle_name`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const circleElement = ele.circle_name;
+            circleElement.innerHTML = `${localizePopup(localizationMap.circle_name)}: Loading...`;
+            WorkPromise.getCircle(rjCode).then(circle => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                circleElement.innerHTML = `${localizePopup(localizationMap.circle_name)}: <a>${circle}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                circleElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(circleElement);
+        },
+        set_translator_name: function (rjCode, category){
+            const id = `${category}__translator_name`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const translatorElement = ele.translator_name;
+            translatorElement.innerHTML = `${localizePopup(localizationMap.translator_name)}: Loading...`;
+            WorkPromise.getTranslatorName(rjCode).then(name => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                translatorElement.innerHTML = `${localizePopup(localizationMap.translator_name)}: <a>${name}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                translatorElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(translatorElement);
+        },
+        set_release_date: function (rjCode, category){
+            const id = `${category}__release_date`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const releaseElement = ele.release_date;
+            releaseElement.innerHTML = `${localizePopup(localizationMap.release_date)}: Loading...`;
+            WorkPromise.getReleaseDate(rjCode).then(date => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                releaseElement.innerHTML = `${localizePopup(localizationMap.release_date)}: <a>${date}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                releaseElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(releaseElement);
+        },
+        set_update_date: function (rjCode, category){
+            const id = `${category}__update_date`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const updateElement = ele.update_date;
+            updateElement.innerHTML = `${localizePopup(localizationMap.update_date)}: Loading...`;
+            WorkPromise.getUpdateDate(rjCode).then(date => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                updateElement.innerHTML = `${localizePopup(localizationMap.update_date)}: <a>${date}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                updateElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(updateElement);
+        },
+        set_age_rating: function (rjCode, category){
+            const id = `${category}__age_rating`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const ageElement = ele.age_rating;
+            ageElement.innerHTML = `${localizePopup(localizationMap.age_rating)}: Loading...`;
+            WorkPromise.getAgeRating(rjCode).then(rating => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                let ratingClass = `${VOICELINK_CLASS}_age-all`;
+                if(rating.includes("18")){
+                    ratingClass = `${VOICELINK_CLASS}_age-18`;
+                }
+                ageElement.innerHTML = `${localizePopup(localizationMap.age_rating)}: <a class="${ratingClass}">${rating}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                ageElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(ageElement);
+        },
+        set_scenario: function (rjCode, category){
+            const id = `${category}__scenario`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const scenarioElement = ele.scenario;
+            scenarioElement.innerHTML = `${localizePopup(localizationMap.scenario)}: Loading...`;
+            WorkPromise.getScenario(rjCode).then(name => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                scenarioElement.innerHTML = `${localizePopup(localizationMap.scenario)}: <a>${name}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                scenarioElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(scenarioElement);
+        },
+        set_illustration: function (rjCode, category){
+            const id = `${category}__illustration`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const illustrationElement = ele.illustration;
+            illustrationElement.innerHTML = `${localizePopup(localizationMap.illustration)}: Loading...`;
+            WorkPromise.getIllustrator(rjCode).then(name => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                illustrationElement.innerHTML = `${localizePopup(localizationMap.illustration)}: <a>${name}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                illustrationElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(illustrationElement);
+        },
+        set_voice_actor: function (rjCode, category){
+            const id = `${category}__voice_actor`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const voiceActorElement = ele.voice_actor;
+            voiceActorElement.innerHTML = `${localizePopup(localizationMap.voice_actor)}: Loading...`;
+            WorkPromise.getCV(rjCode).then(name => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                voiceActorElement.innerHTML = `${localizePopup(localizationMap.voice_actor)}: <a>${name}</a>`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                voiceActorElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(voiceActorElement);
+        },
+        set_genre: function (rjCode, category){
+            const id = `${category}__genre`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const genreElement = ele.genre;
+            genreElement.innerHTML = `${localizePopup(localizationMap.genre)}: Loading...`;
+            WorkPromise.getTags(rjCode).then(tags => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                let tagsHtml = `${localizePopup(localizationMap.genre)}: <a>`;
+                tags.forEach(tag => {
+                    tagsHtml += tag + "\u3000";
+                });
+                tagsHtml += "</a>";
+                genreElement.innerHTML = tagsHtml;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                genreElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(genreElement);
+        },
+        set_file_size: function (rjCode, category){
+            const id = `${category}__file_size`;
+            const settingId = `_s_${id}`;
+            if(!settings[settingId]) return;
+
+            const ele = this.popupElement;
+            const popup = ele.popup;
+            const fileSizeElement = ele.file_size;
+            fileSizeElement.innerHTML = `${localizePopup(localizationMap.file_size)}: Loading...`;
+            WorkPromise.getFileSize(rjCode).then(filesize => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                fileSizeElement.innerHTML = `${localizePopup(localizationMap.file_size)}: ${filesize}`;
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                fileSizeElement.innerHTML = "";
+            });
+
+            ele.info_container.appendChild(fileSizeElement);
+        },
+
+        //整合顺序
+        set_info_container: function (rjCode, category) {
+            const order = settings[`_s_${category}__info_display_order`];
+            for(let child of [...this.popupElement.info_container.children]){
+                if(child === this.popupElement.loader) {
+                    child.style.display = "none";
+                    continue;
+                }
+                child.remove();
+            }
+            order.forEach(id => {
+                try{
+                    id = id.substring(id.indexOf("__") + 2);
+                    this["set_" + id](rjCode, category);
+                }catch (e) {
+                    console.error(e);
+                }
+            });
+        },
+
 
         over: function (e) {
             const target = isInDLSite() ? e.target : getVoiceLinkTarget(e.target);
             if(!target || !target.classList.contains(VOICELINK_CLASS)) return;
 
             const rjCode = target.getAttribute(RJCODE_ATTRIBUTE);
+            if(rjCode === null) return;
 
             //修正链接
             if(target.hasAttribute("voicelink-linkified")){
@@ -2308,6 +2467,79 @@
 
         },
 
+        getWorkCategory: async function(rjCode){
+            const type = await this.getWorkType(rjCode);
+            /* voice: 音声
+             * game: 游戏
+             * manga: 漫画/插画/音声漫画
+             * video: 视频
+             * novel: 小说
+             * other: 其它
+            */
+            switch (type) {
+                case 0:
+                    return "voice";
+                case 1:
+                    return "game";
+                case 2 || 3 || 8:
+                    return "manga";
+                case 5:
+                    return "video";
+                case 4:
+                    return "novel";
+                default:
+                    return "other";
+            }
+        },
+
+        getWorkTypeText: async function(rjCode) {
+            const mapping = [
+                localize(localizationMap.work_type_voice),
+                localize(localizationMap.work_type_game),
+                localize(localizationMap.work_type_comic),
+                localize(localizationMap.work_type_illustration),
+                localize(localizationMap.work_type_novel),
+                localize(localizationMap.work_type_video),
+                localize(localizationMap.work_type_music),
+                localize(localizationMap.work_type_tool),
+                localize(localizationMap.work_type_voice_comic),
+                localize(localizationMap.work_type_other),
+            ];
+            return mapping[await this.getWorkType(rjCode)];
+        },
+
+        getWorkType: async function(rjCode) {
+            const p = this.getWorkPromise(rjCode);
+            const api2 = await p.api2;
+
+            switch (api2.work_type) {
+                case "SOU":
+                    return 0;
+                case ["ACN", "QIZ", "ADV", "RPG", "TBL", "DNV", "SLN", "TYP", "STG", "PZL", "ETC"]
+                    .includes(api2.work_type):
+                    return 1;
+                case ["MNG", "SCM", "WBT"]
+                    .includes(api2.work_type):
+                    return 2;
+                case "ICG":
+                    return 3;
+                case ["NRE", "KSV"].includes(api2.work_type):
+                    return 4;
+                case "MOV":
+                    return 5;
+                case "MUS":
+                    return 6;
+                case ["TOL", "IMT", "AMT"].includes(api2.work_type):
+                    return 7;
+                case "VCM":
+                    return 8;
+                case "ET3":
+                    return 9;
+                default:
+                    throw new Error("无法获取作品类型/未知作品类型：" + api2.work_type);
+            }
+        },
+
         getImgLink: async function(rjCode){
             let link = undefined;
             const p = this.getWorkPromise(rjCode);
@@ -2412,6 +2644,44 @@
             if(info["update"]) return info["update"];
 
             throw new Error();
+        },
+
+        getScenario: async function(rjCode) {
+            const p = this.getWorkPromise(rjCode);
+            const api2 = await p.api2;
+            if(api2.creaters && api2.creaters.scenario_by && api2.creaters.scenario_by.length > 0){
+                let list = api2.creaters.scenario_by;
+                let text = "";
+                for (let s of list) {
+                    text += " / " + s.name;
+                }
+                text = text.substring(3);
+                return text;
+            }
+
+            //无法获取api2则直接通过html获取
+            const info = await this.getWorkPromise(rjCode).info;
+            this.checkNotNull(info.scenario);
+            return info.scenario;
+        },
+
+        getIllustrator: async function(rjCode) {
+            const p = this.getWorkPromise(rjCode);
+            const api2 = await p.api2;
+            if(api2.creaters && api2.creaters.illust_by && api2.creaters.illust_by.length > 0){
+                let list = api2.creaters.illust_by;
+                let text = "";
+                for (let s of list) {
+                    text += " / " + s.name;
+                }
+                text = text.substring(3);
+                return text;
+            }
+
+            //无法获取api2则直接通过html获取
+            const info = await this.getWorkPromise(rjCode).info;
+            this.checkNotNull(info.illustration);
+            return info.illustration;
         },
 
         getCV: async function(rjCode){
@@ -2542,6 +2812,14 @@
                         const tag_nodes = row_data.querySelectorAll("a");
                         workInfo.tags = [...tag_nodes].map(a => { return a.innerText });
                         break;
+                    case (["シナリオ", "Scenario", "剧情", "劇本", "시나리오", "Guión", "Szenario", "Scénario", "Skenario",
+                        "Scenario", "Cenário", "Scenario", "บทละคร", "Kịch bản"].some(lambda)):
+                        workInfo.scenario = row_data.innerText;
+                        break;
+                    case (["イラスト", "Illustration", "插画", "插畫", "일러스트", "Ilustración", "AbbilDung", "Illustration",
+                        "Ilustrasi", "Illustrazione", "Ilustração", "Illustration", "ภาพประกอบ", "Tranh minh họa"].some(lambda)):
+                        workInfo.illustration = row_data.innerText;
+                        break;
                     case (["声優", "声优", "聲優", "Voice Actor", "성우", "Doblador", "Synchronsprecher", "Doubleur",
                         "Pengisi suara", "Doppiatore/Doppiatrice", "Ator de voz", "Röstskådespelare", "นักพากย์",
                         "Diễn viên lồng tiếng"].some(lambda)):
@@ -2612,7 +2890,8 @@
                     url,
                     headers: {
                         "Accept": "text/xml",
-                        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)"
+                        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)",
+                        "Cache-Control": "no-cache"
                     },
                     onload: resolve,
                     onerror: reject
@@ -2797,649 +3076,651 @@
         }
     }
 
-    const SettingsUi = {
-        //这一层是设置界面最顶层，编辑大标题信息
-        title: localize(localizationMap.title_settings),
-        items: [
-            {
-                //这一层是设置界面的大分类
-                title: localize(localizationMap.title_language_settings),
-                items: [
-                    {
-                        //这一层是设置项列表集合（使用表格呈现设置项）"
-                        items: [
-                            {
-                                //这一层是设置项
-                                type: "dropdown",
-                                title: localize(localizationMap.display_language),
-                                id: "lang",
-                                ignore_reset: true,
-                                options: [
-                                    {
-                                        title: "简体中文",
-                                        value: "zh_CN"
-                                    },
-                                    {
-                                        title: "繁體中文",
-                                        value: "zh_TW"
-                                    },
-                                    {
-                                        title: "English",
-                                        value: "en_US"
-                                    }
-                                ]
-                            },
-                            {
-                                //这一层是设置项
-                                type: "dropdown",
-                                title: localize(localizationMap.popup_language),
-                                id: "popup_lang",
-                                ignore_reset: true,
-                                options: [
-                                    {
-                                        title: "简体中文",
-                                        value: "zh_CN"
-                                    },
-                                    {
-                                        title: "繁體中文",
-                                        value: "zh_TW"
-                                    },
-                                    {
-                                        title: "English",
-                                        value: "en_US"
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            },
-
-            {
-                //这一层是设置界面的大分类
-                title: localize(localizationMap.title_general_settings),
-                items: [
-                    {
-                        //这一层是设置项列表集合（使用表格呈现设置项）
-                        items: [
-                            {
-                                //解析URL
-                                type: "checkbox",
-                                title: localize(localizationMap.parse_url),
-                                id: "parse_url",
-                                tooltip: localize(localizationMap.parse_url_tooltip)
-                            },
-                            {
-                                //DL上解析URL
-                                binding: {
-                                    target: "parse_url",
-                                    value: true
+    function getSettingsUi() {
+        return {
+            //这一层是设置界面最顶层，编辑大标题信息
+            title: localize(localizationMap.title_settings),
+            items: [
+                {
+                    //这一层是设置界面的大分类
+                    title: localize(localizationMap.title_language_settings),
+                    items: [
+                        {
+                            //这一层是设置项列表集合（使用表格呈现设置项）"
+                            items: [
+                                {
+                                    //这一层是设置项
+                                    type: "dropdown",
+                                    title: localize(localizationMap.display_language),
+                                    id: "lang",
+                                    ignore_reset: true,
+                                    options: [
+                                        {
+                                            title: "简体中文",
+                                            value: "zh_CN"
+                                        },
+                                        {
+                                            title: "繁體中文",
+                                            value: "zh_TW"
+                                        },
+                                        {
+                                            title: "English",
+                                            value: "en_US"
+                                        }
+                                    ]
                                 },
+                                {
+                                    //这一层是设置项
+                                    type: "dropdown",
+                                    title: localize(localizationMap.popup_language),
+                                    id: "popup_lang",
+                                    ignore_reset: true,
+                                    tooltip: localize(localizationMap.popup_language_tooltip),
+                                    options: [
+                                        {
+                                            title: "简体中文",
+                                            value: "zh_CN"
+                                        },
+                                        {
+                                            title: "繁體中文",
+                                            value: "zh_TW"
+                                        },
+                                        {
+                                            title: "English",
+                                            value: "en_US"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
 
-                                type: "checkbox",
-                                title: localize(localizationMap.parse_url_in_dl),
-                                id: "parse_url_in_dl",
-                                indent: 1,  //设置项缩进
-                                tooltip: localize(localizationMap.parse_url_in_dl_tooltip)
-                            },
-                            {
-                                //DL显示翻译标题
-                                type: "checkbox",
-                                title: localize(localizationMap.show_translated_title_in_dl),
-                                id: "show_translated_title_in_dl",
-                                tooltip: localize(localizationMap.show_translated_title_in_dl_tooltip)
-                            },
-                            {
-                                //“复制为有效文件名”按钮
-                                type: "checkbox",
-                                title: localize(localizationMap.copy_as_filename_btn),
-                                id: "copy_as_filename_btn",
-                                tooltip: localize(localizationMap.copy_as_filename_btn_tooltip)
-                            },
-                            {
-                                //**显示兼容性警告**
-                                type: "checkbox",
-                                title: `<strong>**${localize(localizationMap.show_compatibility_warning)}**</strong>`,
-                                id: "show_compatibility_warning",
-                                tooltip: localize(localizationMap.show_compatibility_warning_tooltip)
-                            },
-                            {
-                                //导向文本插入方式
-                                type: "dropdown",
-                                title: localize(localizationMap.url_insert_mode),
-                                id: "url_insert_mode",
-                                tooltip: localize(localizationMap.url_insert_mode_tooltip),
-                                options: [
-                                    {
-                                        title: localize(localizationMap.url_insert_mode_none),
-                                        value: "none"
+                {
+                    //这一层是设置界面的大分类
+                    title: localize(localizationMap.title_general_settings),
+                    items: [
+                        {
+                            //这一层是设置项列表集合（使用表格呈现设置项）
+                            items: [
+                                {
+                                    //解析URL
+                                    type: "checkbox",
+                                    title: localize(localizationMap.parse_url),
+                                    id: "parse_url",
+                                    tooltip: localize(localizationMap.parse_url_tooltip)
+                                },
+                                {
+                                    //DL上解析URL
+                                    binding: {
+                                        target: "parse_url",
+                                        value: true
                                     },
-                                    {
-                                        title: localize(localizationMap.url_insert_mode_prefix),
-                                        value: "prefix"
-                                    },
-                                    {
-                                        title: localize(localizationMap.url_insert_mode_before_rj),
-                                        value: "before_rj"
-                                    }
-                                ]
-                            },
-                            {
-                                type: "input",
-                                title: localize(localizationMap.url_insert_text),
-                                id: "url_insert_text",
-                                indent: 1
-                            }
-                        ]
-                    }
-                ]
-            },
-            {
-                //分类：信息显示
-                title: localize(localizationMap.title_info_settings),
-                items: [
-                    {
-                        //预设表格
-                        items: [
-                            {
-                                type: "dropdown",
-                                title: localize(localizationMap.category_preset),
-                                id: "category_preset",
-                                tooltip: localize(localizationMap.category_preset_tooltip),
-                                ignore_reset: true,  //不显示重置按钮
-                                options: [
-                                    {
-                                        title: localize(localizationMap.work_type_voice),
-                                        value: "voice"
-                                    },
-                                    {
-                                        title: localize(localizationMap.work_type_game),
-                                        value: "game"
-                                    },
-                                    {
-                                        title: `${localize(localizationMap.work_type_comic)} / ${localize(localizationMap.work_type_illustration)} / ${localize(localizationMap.work_type_voice_comic)}`,
-                                        value: "manga"
-                                    },
-                                    {
-                                        title: localize(localizationMap.work_type_video),
-                                        value: "video"
-                                    },
-                                    {
-                                        title: localize(localizationMap.work_type_novel),
-                                        value: "novel"
-                                    },
-                                    {
-                                        title: localize(localizationMap.work_type_other),
-                                        value: "other"
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        //音声Preset对应的表格，注意使用Binding来决定表格是否显示
-                        binding: {
-                            target: "category_preset",
-                            value: "voice"
+
+                                    type: "checkbox",
+                                    title: localize(localizationMap.parse_url_in_dl),
+                                    id: "parse_url_in_dl",
+                                    indent: 1,  //设置项缩进
+                                    tooltip: localize(localizationMap.parse_url_in_dl_tooltip)
+                                },
+                                {
+                                    //DL显示翻译标题
+                                    type: "checkbox",
+                                    title: localize(localizationMap.show_translated_title_in_dl),
+                                    id: "show_translated_title_in_dl",
+                                    tooltip: localize(localizationMap.show_translated_title_in_dl_tooltip)
+                                },
+                                {
+                                    //“复制为有效文件名”按钮
+                                    type: "checkbox",
+                                    title: localize(localizationMap.copy_as_filename_btn),
+                                    id: "copy_as_filename_btn",
+                                    tooltip: localize(localizationMap.copy_as_filename_btn_tooltip)
+                                },
+                                {
+                                    //**显示兼容性警告**
+                                    type: "checkbox",
+                                    title: `<strong>**${localize(localizationMap.show_compatibility_warning)}**</strong>`,
+                                    id: "show_compatibility_warning",
+                                    tooltip: localize(localizationMap.show_compatibility_warning_tooltip)
+                                },
+                                {
+                                    //导向文本插入方式
+                                    type: "dropdown",
+                                    title: localize(localizationMap.url_insert_mode),
+                                    id: "url_insert_mode",
+                                    tooltip: localize(localizationMap.url_insert_mode_tooltip),
+                                    options: [
+                                        {
+                                            title: localize(localizationMap.url_insert_mode_none),
+                                            value: "none"
+                                        },
+                                        {
+                                            title: localize(localizationMap.url_insert_mode_prefix),
+                                            value: "prefix"
+                                        },
+                                        {
+                                            title: localize(localizationMap.url_insert_mode_before_rj),
+                                            value: "before_rj"
+                                        }
+                                    ]
+                                },
+                                {
+                                    type: "input",
+                                    title: localize(localizationMap.url_insert_text),
+                                    id: "url_insert_text",
+                                    indent: 1
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    //分类：信息显示
+                    title: localize(localizationMap.title_info_settings),
+                    items: [
+                        {
+                            //预设表格
+                            items: [
+                                {
+                                    type: "dropdown",
+                                    title: localize(localizationMap.category_preset),
+                                    id: "category_preset",
+                                    tooltip: localize(localizationMap.category_preset_tooltip),
+                                    ignore_reset: true,  //不显示重置按钮
+                                    options: [
+                                        {
+                                            title: localize(localizationMap.work_type_voice),
+                                            value: "voice"
+                                        },
+                                        {
+                                            title: localize(localizationMap.work_type_game),
+                                            value: "game"
+                                        },
+                                        {
+                                            title: `${localize(localizationMap.work_type_comic)} / ${localize(localizationMap.work_type_illustration)} / ${localize(localizationMap.work_type_voice_comic)}`,
+                                            value: "manga"
+                                        },
+                                        {
+                                            title: localize(localizationMap.work_type_video),
+                                            value: "video"
+                                        },
+                                        {
+                                            title: localize(localizationMap.work_type_novel),
+                                            value: "novel"
+                                        },
+                                        {
+                                            title: localize(localizationMap.work_type_other),
+                                            value: "other"
+                                        }
+                                    ]
+                                }
+                            ]
                         },
-                        sortable: true,  //为true则代表该表格内的行可以排序
-                        sort_id: "voice__info_display_order",  //若排序则一定要指定id，该id将会存储在设置项中，作为列表记录每个元素的顺序
-                        items: [
-                            {
-                                //社团名
-                                type: "checkbox",
-                                title: localize(localizationMap.circle_name),
-                                id: "voice__circle_name",  //注意这里不同的preset要改成不同的值
+                        {
+                            //音声Preset对应的表格，注意使用Binding来决定表格是否显示
+                            binding: {
+                                target: "category_preset",
+                                value: "voice"
                             },
-                            {
-                                //翻译者
-                                type: "checkbox",
-                                title: localize(localizationMap.translator_name),
-                                id: "voice__translator_name",
-                            },
-                            {
-                                //发售日
-                                type: "checkbox",
-                                title: localize(localizationMap.release_date),
-                                id: "voice__release_date",
-                            },
-                            {
-                                //更新日
-                                type: "checkbox",
-                                title: localize(localizationMap.update_date),
-                                id: "voice__update_date",
-                            },
-                            {
-                                //年龄指定
-                                type: "checkbox",
-                                title: localize(localizationMap.age_rating),
-                                id: "voice__age_rating",
-                            },
-                            {
-                                //剧情作者
-                                type: "checkbox",
-                                title: localize(localizationMap.scenario),
-                                id: "voice__scenario",
-                            },
-                            {
-                                //插画作者
-                                type: "checkbox",
-                                title: localize(localizationMap.illustration),
-                                id: "voice__illustration",
-                            },
-                            {
-                                //配音者
-                                type: "checkbox",
-                                title: localize(localizationMap.voice_actor),
-                                id: "voice__voice_actor",
-                            },
-                            {
-                                //作品标签/分类
-                                type: "checkbox",
-                                title: localize(localizationMap.genre),
-                                id: "voice__genre",
-                            },
-                            {
-                                //文件大小
-                                type: "checkbox",
-                                title: localize(localizationMap.file_size),
-                                id: "voice__file_size",
-                            }
-                        ]
-                    },
-                    {
-                        //游戏Preset对应的表格
-                        binding: {
-                            target: "category_preset",
-                            value: "game"
+                            sortable: true,  //为true则代表该表格内的行可以排序
+                            sort_id: "voice__info_display_order",  //若排序则一定要指定id，该id将会存储在设置项中，作为列表记录每个元素的顺序
+                            items: [
+                                {
+                                    //社团名
+                                    type: "checkbox",
+                                    title: localize(localizationMap.circle_name),
+                                    id: "voice__circle_name",  //注意这里不同的preset要改成不同的值
+                                },
+                                {
+                                    //翻译者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.translator_name),
+                                    id: "voice__translator_name",
+                                },
+                                {
+                                    //发售日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.release_date),
+                                    id: "voice__release_date",
+                                },
+                                {
+                                    //更新日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.update_date),
+                                    id: "voice__update_date",
+                                },
+                                {
+                                    //年龄指定
+                                    type: "checkbox",
+                                    title: localize(localizationMap.age_rating),
+                                    id: "voice__age_rating",
+                                },
+                                {
+                                    //剧情作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.scenario),
+                                    id: "voice__scenario",
+                                },
+                                {
+                                    //插画作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.illustration),
+                                    id: "voice__illustration",
+                                },
+                                {
+                                    //配音者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.voice_actor),
+                                    id: "voice__voice_actor",
+                                },
+                                {
+                                    //作品标签/分类
+                                    type: "checkbox",
+                                    title: localize(localizationMap.genre),
+                                    id: "voice__genre",
+                                },
+                                {
+                                    //文件大小
+                                    type: "checkbox",
+                                    title: localize(localizationMap.file_size),
+                                    id: "voice__file_size",
+                                }
+                            ]
                         },
-                        sortable: true,  //为true则代表该表格内的行可以排序
-                        sort_id: "game__info_display_order",
-                        items: [
-                            {
-                                //社团名
-                                type: "checkbox",
-                                title: localize(localizationMap.circle_name),
-                                id: "game__circle_name",
+                        {
+                            //游戏Preset对应的表格
+                            binding: {
+                                target: "category_preset",
+                                value: "game"
                             },
-                            {
-                                //翻译者
-                                type: "checkbox",
-                                title: localize(localizationMap.translator_name),
-                                id: "game__translator_name",
-                            },
-                            {
-                                //发售日
-                                type: "checkbox",
-                                title: localize(localizationMap.release_date),
-                                id: "game__release_date",
-                            },
-                            {
-                                //更新日
-                                type: "checkbox",
-                                title: localize(localizationMap.update_date),
-                                id: "game__update_date",
-                            },
-                            {
-                                //年龄指定
-                                type: "checkbox",
-                                title: localize(localizationMap.age_rating),
-                                id: "game__age_rating",
-                            },
-                            {
-                                //剧情作者
-                                type: "checkbox",
-                                title: localize(localizationMap.scenario),
-                                id: "game__scenario",
-                            },
-                            {
-                                //插画作者
-                                type: "checkbox",
-                                title: localize(localizationMap.illustration),
-                                id: "game__illustration",
-                            },
-                            {
-                                //配音者
-                                type: "checkbox",
-                                title: localize(localizationMap.voice_actor),
-                                id: "game__voice_actor",
-                            },
-                            {
-                                //作品标签/分类
-                                type: "checkbox",
-                                title: localize(localizationMap.genre),
-                                id: "game__genre",
-                            },
-                            {
-                                //文件大小
-                                type: "checkbox",
-                                title: localize(localizationMap.file_size),
-                                id: "game__file_size",
-                            }
-                        ]
-                    },
-                    {
-                        //漫画对应preset
-                        binding: {
-                            target: "category_preset",
-                            value: "manga"
+                            sortable: true,  //为true则代表该表格内的行可以排序
+                            sort_id: "game__info_display_order",
+                            items: [
+                                {
+                                    //社团名
+                                    type: "checkbox",
+                                    title: localize(localizationMap.circle_name),
+                                    id: "game__circle_name",
+                                },
+                                {
+                                    //翻译者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.translator_name),
+                                    id: "game__translator_name",
+                                },
+                                {
+                                    //发售日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.release_date),
+                                    id: "game__release_date",
+                                },
+                                {
+                                    //更新日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.update_date),
+                                    id: "game__update_date",
+                                },
+                                {
+                                    //年龄指定
+                                    type: "checkbox",
+                                    title: localize(localizationMap.age_rating),
+                                    id: "game__age_rating",
+                                },
+                                {
+                                    //剧情作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.scenario),
+                                    id: "game__scenario",
+                                },
+                                {
+                                    //插画作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.illustration),
+                                    id: "game__illustration",
+                                },
+                                {
+                                    //配音者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.voice_actor),
+                                    id: "game__voice_actor",
+                                },
+                                {
+                                    //作品标签/分类
+                                    type: "checkbox",
+                                    title: localize(localizationMap.genre),
+                                    id: "game__genre",
+                                },
+                                {
+                                    //文件大小
+                                    type: "checkbox",
+                                    title: localize(localizationMap.file_size),
+                                    id: "game__file_size",
+                                }
+                            ]
                         },
-                        sortable: true,  //为true则代表该表格内的行可以排序
-                        sort_id: "manga__info_display_order",
-                        items: [
-                            {
-                                //社团名
-                                type: "checkbox",
-                                title: localize(localizationMap.circle_name),
-                                id: "manga__circle_name",
+                        {
+                            //漫画对应preset
+                            binding: {
+                                target: "category_preset",
+                                value: "manga"
                             },
-                            {
-                                //翻译者
-                                type: "checkbox",
-                                title: localize(localizationMap.translator_name),
-                                id: "manga__translator_name",
-                            },
-                            {
-                                //发售日
-                                type: "checkbox",
-                                title: localize(localizationMap.release_date),
-                                id: "manga__release_date",
-                            },
-                            {
-                                //更新日
-                                type: "checkbox",
-                                title: localize(localizationMap.update_date),
-                                id: "manga__update_date",
-                            },
-                            {
-                                //年龄指定
-                                type: "checkbox",
-                                title: localize(localizationMap.age_rating),
-                                id: "manga__age_rating",
-                            },
-                            {
-                                //剧情作者
-                                type: "checkbox",
-                                title: localize(localizationMap.scenario),
-                                id: "manga__scenario",
-                            },
-                            {
-                                //插画作者
-                                type: "checkbox",
-                                title: localize(localizationMap.illustration),
-                                id: "manga__illustration",
-                            },
-                            {
-                                //配音者
-                                type: "checkbox",
-                                title: localize(localizationMap.voice_actor),
-                                id: "manga__voice_actor",
-                                tooltip: localize(localizationMap.work_type_voice_comic)
-                            },
-                            {
-                                //作品标签/分类
-                                type: "checkbox",
-                                title: localize(localizationMap.genre),
-                                id: "manga__genre",
-                            },
-                            {
-                                //文件大小
-                                type: "checkbox",
-                                title: localize(localizationMap.file_size),
-                                id: "manga__file_size",
-                            }
-                        ]
-                    },
-                    {
-                        //视频对应preset
-                        binding: {
-                            target: "category_preset",
-                            value: "video"
+                            sortable: true,  //为true则代表该表格内的行可以排序
+                            sort_id: "manga__info_display_order",
+                            items: [
+                                {
+                                    //社团名
+                                    type: "checkbox",
+                                    title: localize(localizationMap.circle_name),
+                                    id: "manga__circle_name",
+                                },
+                                {
+                                    //翻译者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.translator_name),
+                                    id: "manga__translator_name",
+                                },
+                                {
+                                    //发售日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.release_date),
+                                    id: "manga__release_date",
+                                },
+                                {
+                                    //更新日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.update_date),
+                                    id: "manga__update_date",
+                                },
+                                {
+                                    //年龄指定
+                                    type: "checkbox",
+                                    title: localize(localizationMap.age_rating),
+                                    id: "manga__age_rating",
+                                },
+                                {
+                                    //剧情作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.scenario),
+                                    id: "manga__scenario",
+                                },
+                                {
+                                    //插画作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.illustration),
+                                    id: "manga__illustration",
+                                },
+                                {
+                                    //配音者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.voice_actor),
+                                    id: "manga__voice_actor",
+                                    tooltip: localize(localizationMap.work_type_voice_comic)
+                                },
+                                {
+                                    //作品标签/分类
+                                    type: "checkbox",
+                                    title: localize(localizationMap.genre),
+                                    id: "manga__genre",
+                                },
+                                {
+                                    //文件大小
+                                    type: "checkbox",
+                                    title: localize(localizationMap.file_size),
+                                    id: "manga__file_size",
+                                }
+                            ]
                         },
-                        sortable: true,  //为true则代表该表格内的行可以排序
-                        sort_id: "video__info_display_order",
-                        items: [
-                            {
-                                //社团名
-                                type: "checkbox",
-                                title: localize(localizationMap.circle_name),
-                                id: "video__circle_name",
+                        {
+                            //视频对应preset
+                            binding: {
+                                target: "category_preset",
+                                value: "video"
                             },
-                            {
-                                //翻译者
-                                type: "checkbox",
-                                title: localize(localizationMap.translator_name),
-                                id: "video__translator_name",
-                            },
-                            {
-                                //发售日
-                                type: "checkbox",
-                                title: localize(localizationMap.release_date),
-                                id: "video__release_date",
-                            },
-                            {
-                                //更新日
-                                type: "checkbox",
-                                title: localize(localizationMap.update_date),
-                                id: "video__update_date",
-                            },
-                            {
-                                //年龄指定
-                                type: "checkbox",
-                                title: localize(localizationMap.age_rating),
-                                id: "video__age_rating",
-                            },
-                            {
-                                //剧情作者
-                                type: "checkbox",
-                                title: localize(localizationMap.scenario),
-                                id: "video__scenario",
-                            },
-                            {
-                                //插画作者
-                                type: "checkbox",
-                                title: localize(localizationMap.illustration),
-                                id: "video__illustration",
-                            },
-                            {
-                                //配音者
-                                type: "checkbox",
-                                title: localize(localizationMap.voice_actor),
-                                id: "video__voice_actor",
-                            },
-                            {
-                                //作品标签/分类
-                                type: "checkbox",
-                                title: localize(localizationMap.genre),
-                                id: "video__genre",
-                            },
-                            {
-                                //文件大小
-                                type: "checkbox",
-                                title: localize(localizationMap.file_size),
-                                id: "video__file_size",
-                            }
-                        ]
-                    },
-                    {
-                        //小说对应Preset
-                        binding: {
-                            target: "category_preset",
-                            value: "novel"
+                            sortable: true,  //为true则代表该表格内的行可以排序
+                            sort_id: "video__info_display_order",
+                            items: [
+                                {
+                                    //社团名
+                                    type: "checkbox",
+                                    title: localize(localizationMap.circle_name),
+                                    id: "video__circle_name",
+                                },
+                                {
+                                    //翻译者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.translator_name),
+                                    id: "video__translator_name",
+                                },
+                                {
+                                    //发售日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.release_date),
+                                    id: "video__release_date",
+                                },
+                                {
+                                    //更新日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.update_date),
+                                    id: "video__update_date",
+                                },
+                                {
+                                    //年龄指定
+                                    type: "checkbox",
+                                    title: localize(localizationMap.age_rating),
+                                    id: "video__age_rating",
+                                },
+                                {
+                                    //剧情作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.scenario),
+                                    id: "video__scenario",
+                                },
+                                {
+                                    //插画作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.illustration),
+                                    id: "video__illustration",
+                                },
+                                {
+                                    //配音者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.voice_actor),
+                                    id: "video__voice_actor",
+                                },
+                                {
+                                    //作品标签/分类
+                                    type: "checkbox",
+                                    title: localize(localizationMap.genre),
+                                    id: "video__genre",
+                                },
+                                {
+                                    //文件大小
+                                    type: "checkbox",
+                                    title: localize(localizationMap.file_size),
+                                    id: "video__file_size",
+                                }
+                            ]
                         },
-                        sortable: true,  //为true则代表该表格内的行可以排序
-                        sort_id: "novel__info_display_order",
-                        items: [
-                            {
-                                //社团名
-                                type: "checkbox",
-                                title: localize(localizationMap.circle_name),
-                                id: "novel__circle_name",
+                        {
+                            //小说对应Preset
+                            binding: {
+                                target: "category_preset",
+                                value: "novel"
                             },
-                            {
-                                //翻译者
-                                type: "checkbox",
-                                title: localize(localizationMap.translator_name),
-                                id: "novel__translator_name",
-                            },
-                            {
-                                //发售日
-                                type: "checkbox",
-                                title: localize(localizationMap.release_date),
-                                id: "novel__release_date",
-                            },
-                            {
-                                //更新日
-                                type: "checkbox",
-                                title: localize(localizationMap.update_date),
-                                id: "novel__update_date",
-                            },
-                            {
-                                //年龄指定
-                                type: "checkbox",
-                                title: localize(localizationMap.age_rating),
-                                id: "novel__age_rating",
-                            },
-                            {
-                                //剧情作者
-                                type: "checkbox",
-                                title: localize(localizationMap.scenario),
-                                id: "novel__scenario",
-                            },
-                            {
-                                //插画作者
-                                type: "checkbox",
-                                title: localize(localizationMap.illustration),
-                                id: "novel__illustration",
-                            },
-                            {
-                                //配音者
-                                type: "checkbox",
-                                title: localize(localizationMap.voice_actor),
-                                id: "novel__voice_actor",
-                            },
-                            {
-                                //作品标签/分类
-                                type: "checkbox",
-                                title: localize(localizationMap.genre),
-                                id: "novel__genre",
-                            },
-                            {
-                                //文件大小
-                                type: "checkbox",
-                                title: localize(localizationMap.file_size),
-                                id: "novel__file_size",
-                            }
-                        ]
-                    },
-                    {
-                        //其他对应Preset
-                        binding: {
-                            target: "category_preset",
-                            value: "other"
+                            sortable: true,  //为true则代表该表格内的行可以排序
+                            sort_id: "novel__info_display_order",
+                            items: [
+                                {
+                                    //社团名
+                                    type: "checkbox",
+                                    title: localize(localizationMap.circle_name),
+                                    id: "novel__circle_name",
+                                },
+                                {
+                                    //翻译者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.translator_name),
+                                    id: "novel__translator_name",
+                                },
+                                {
+                                    //发售日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.release_date),
+                                    id: "novel__release_date",
+                                },
+                                {
+                                    //更新日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.update_date),
+                                    id: "novel__update_date",
+                                },
+                                {
+                                    //年龄指定
+                                    type: "checkbox",
+                                    title: localize(localizationMap.age_rating),
+                                    id: "novel__age_rating",
+                                },
+                                {
+                                    //剧情作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.scenario),
+                                    id: "novel__scenario",
+                                },
+                                {
+                                    //插画作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.illustration),
+                                    id: "novel__illustration",
+                                },
+                                {
+                                    //配音者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.voice_actor),
+                                    id: "novel__voice_actor",
+                                },
+                                {
+                                    //作品标签/分类
+                                    type: "checkbox",
+                                    title: localize(localizationMap.genre),
+                                    id: "novel__genre",
+                                },
+                                {
+                                    //文件大小
+                                    type: "checkbox",
+                                    title: localize(localizationMap.file_size),
+                                    id: "novel__file_size",
+                                }
+                            ]
                         },
-                        sortable: true,  //为true则代表该表格内的行可以排序
-                        sort_id: "other__info_display_order",
-                        items: [
-                            {
-                                //社团名
-                                type: "checkbox",
-                                title: localize(localizationMap.circle_name),
-                                id: "other__circle_name",
+                        {
+                            //其他对应Preset
+                            binding: {
+                                target: "category_preset",
+                                value: "other"
                             },
-                            {
-                                //翻译者
-                                type: "checkbox",
-                                title: localize(localizationMap.translator_name),
-                                id: "other__translator_name",
-                            },
-                            {
-                                //发售日
-                                type: "checkbox",
-                                title: localize(localizationMap.release_date),
-                                id: "other__release_date",
-                            },
-                            {
-                                //更新日
-                                type: "checkbox",
-                                title: localize(localizationMap.update_date),
-                                id: "other__update_date",
-                            },
-                            {
-                                //年龄指定
-                                type: "checkbox",
-                                title: localize(localizationMap.age_rating),
-                                id: "other__age_rating",
-                            },
-                            {
-                                //剧情作者
-                                type: "checkbox",
-                                title: localize(localizationMap.scenario),
-                                id: "other__scenario",
-                            },
-                            {
-                                //插画作者
-                                type: "checkbox",
-                                title: localize(localizationMap.illustration),
-                                id: "other__illustration",
-                            },
-                            {
-                                //配音者
-                                type: "checkbox",
-                                title: localize(localizationMap.voice_actor),
-                                id: "other__voice_actor",
-                            },
-                            {
-                                //作品标签/分类
-                                type: "checkbox",
-                                title: localize(localizationMap.genre),
-                                id: "other__genre",
-                            },
-                            {
-                                //文件大小
-                                type: "checkbox",
-                                title: localize(localizationMap.file_size),
-                                id: "other__file_size",
-                            }
-                        ]
-                    }
-                ]
-            },
-            {
-                //分类：标签显示
-                title: localize(localizationMap.title_tag_settings),
-                items: [
-                    {
-                        //总开关表格
-                        items: [
-                            {
-                                type: "checkbox",
-                                title: localize(localizationMap.tag_main_switch),
-                                tooltip: localize(localizationMap.tag_main_switch_tooltip),
-                                id: "tag_main_switch"
-                            }
-                        ]
-                    },
-                    {
-                        //标签开关表格
-                        binding: {
-                            target: "tag_main_switch",
-                            value: true
+                            sortable: true,  //为true则代表该表格内的行可以排序
+                            sort_id: "other__info_display_order",
+                            items: [
+                                {
+                                    //社团名
+                                    type: "checkbox",
+                                    title: localize(localizationMap.circle_name),
+                                    id: "other__circle_name",
+                                },
+                                {
+                                    //翻译者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.translator_name),
+                                    id: "other__translator_name",
+                                },
+                                {
+                                    //发售日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.release_date),
+                                    id: "other__release_date",
+                                },
+                                {
+                                    //更新日
+                                    type: "checkbox",
+                                    title: localize(localizationMap.update_date),
+                                    id: "other__update_date",
+                                },
+                                {
+                                    //年龄指定
+                                    type: "checkbox",
+                                    title: localize(localizationMap.age_rating),
+                                    id: "other__age_rating",
+                                },
+                                {
+                                    //剧情作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.scenario),
+                                    id: "other__scenario",
+                                },
+                                {
+                                    //插画作者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.illustration),
+                                    id: "other__illustration",
+                                },
+                                {
+                                    //配音者
+                                    type: "checkbox",
+                                    title: localize(localizationMap.voice_actor),
+                                    id: "other__voice_actor",
+                                },
+                                {
+                                    //作品标签/分类
+                                    type: "checkbox",
+                                    title: localize(localizationMap.genre),
+                                    id: "other__genre",
+                                },
+                                {
+                                    //文件大小
+                                    type: "checkbox",
+                                    title: localize(localizationMap.file_size),
+                                    id: "other__file_size",
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    //分类：标签显示
+                    title: localize(localizationMap.title_tag_settings),
+                    items: [
+                        {
+                            //总开关表格
+                            items: [
+                                {
+                                    type: "checkbox",
+                                    title: localize(localizationMap.tag_main_switch),
+                                    tooltip: localize(localizationMap.tag_main_switch_tooltip),
+                                    id: "tag_main_switch"
+                                }
+                            ]
                         },
-                        items: [
-                            {
-                                //所有的标签开关集合
-                                type: "tag_switch",
-                                //标签之间可以排序
-                                sortable: true,
-                                sort_id: "tag_display_order",
-                                items: [
-                                    {
-                                        //作品类型
-                                        title: localize(localizationMap.tag_work_type),
-                                        id: "tag_work_type",
-                                        class: "tag-darkblue",
-                                        tooltip: `
+                        {
+                            //标签开关表格
+                            binding: {
+                                target: "tag_main_switch",
+                                value: true
+                            },
+                            items: [
+                                {
+                                    //所有的标签开关集合
+                                    type: "tag_switch",
+                                    //标签之间可以排序
+                                    sortable: true,
+                                    sort_id: "tag_display_order",
+                                    items: [
+                                        {
+                                            //作品类型
+                                            title: localize(localizationMap.tag_work_type),
+                                            id: "tag_work_type",
+                                            class: "tag-darkblue",
+                                            tooltip: `
 <div class="${VOICELINK_CLASS}_tags">
     <span class="${VOICELINK_CLASS}_tag-purple">${localize(localizationMap.work_type_game)}</span>
     <span class="${VOICELINK_CLASS}_tag-green">${localize(localizationMap.work_type_comic)}</span>
@@ -3452,34 +3733,34 @@
     <span class="${VOICELINK_CLASS}_tag-blue">${localize(localizationMap.work_type_voice_comic)}</span>
     <span class="${VOICELINK_CLASS}_tag-gray">${localize(localizationMap.work_type_other)}</span>
 </div>`,
-                                    },
-                                    {
-                                        //可翻译
-                                        title: localize(localizationMap.tag_translatable),
-                                        id: "tag_translatable",
-                                        class: "tag-green",
-                                        tooltip: localize(localizationMap.tag_translatable_tooltip)
-                                    },
-                                    {
-                                        //不可翻译
-                                        title: localize(localizationMap.tag_not_translatable),
-                                        id: "tag_not_translatable",
-                                        class: "tag-red",
-                                        tooltip: localize(localizationMap.tag_not_translatable_tooltip)
-                                    },
-                                    {
-                                        //翻译作品
-                                        title: localize(localizationMap.tag_translated),
-                                        id: "tag_translated",
-                                        class: "tag-teal",
-                                        tooltip: localize(localizationMap.tag_translated_tooltip)
-                                    },
-                                    {
-                                        //支持语言
-                                        title: localize(localizationMap.tag_language_support),
-                                        id: "tag_language_support",
-                                        class: "tag-pink",
-                                        tooltip: `
+                                        },
+                                        {
+                                            //可翻译
+                                            title: localize(localizationMap.tag_translatable),
+                                            id: "tag_translatable",
+                                            class: "tag-green",
+                                            tooltip: localize(localizationMap.tag_translatable_tooltip)
+                                        },
+                                        {
+                                            //不可翻译
+                                            title: localize(localizationMap.tag_not_translatable),
+                                            id: "tag_not_translatable",
+                                            class: "tag-red",
+                                            tooltip: localize(localizationMap.tag_not_translatable_tooltip)
+                                        },
+                                        {
+                                            //翻译作品
+                                            title: localize(localizationMap.tag_translated),
+                                            id: "tag_translated",
+                                            class: "tag-teal",
+                                            tooltip: localize(localizationMap.tag_translated_tooltip)
+                                        },
+                                        {
+                                            //支持语言
+                                            title: localize(localizationMap.tag_language_support),
+                                            id: "tag_language_support",
+                                            class: "tag-pink",
+                                            tooltip: `
 <div class="${VOICELINK_CLASS}_tags">
 <span class="${VOICELINK_CLASS}_tag-pink">${localize(localizationMap.language_japanese)}</span>
 <span class="${VOICELINK_CLASS}_tag-pink">${localize(localizationMap.language_simplified_chinese)}</span>
@@ -3496,161 +3777,162 @@
 <span class="${VOICELINK_CLASS}_tag-pink">${localize(localizationMap.language_vietnamese)}</span>
 </div>
                   `
-                                    },
-                                    {
-                                        //特典作品
-                                        title: localize(localizationMap.tag_bonus_work),
-                                        id: "tag_bonus_work",
-                                        class: "tag-yellow",
-                                        tooltip: localize(localizationMap.tag_bonus_work_tooltip)
-                                    },
-                                    {
-                                        //含特典
-                                        title: localize(localizationMap.tag_has_bonus),
-                                        id: "tag_has_bonus",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.tag_has_bonus_tooltip)
-                                    },
-                                    {
-                                        //文件格式
-                                        title: localize(localizationMap.tag_file_format),
-                                        id: "tag_file_format",
-                                        class: "tag-darkblue",
-                                        tooltip: localize(localizationMap.tag_file_format_tooltip)
-                                    },
-                                    {
-                                        //已下架
-                                        title: localize(localizationMap.tag_no_longer_available),
-                                        id: "tag_no_longer_available",
-                                        class: "tag-gray",
-                                    },
-                                    {
-                                        //AI & 部分AI
-                                        title: localize(localizationMap.tag_ai),
-                                        id: "tag_ai",
-                                        class: "tag-purple",
-                                        tooltip: localize(localizationMap.tag_ai_tooltip)
-                                    }
-                                ]
-                            },
-                        ]
-                    },
-                    {
-                        //翻译情况显示表格
-                        items:[
-                            {
-                                //翻译情况显示开关
-                                type: "checkbox",
-                                title: localize(localizationMap.tag_translation_request),
-                                id: "tag_translation_request",
-                                tooltip: localize(localizationMap.tag_translation_request_tooltip)
-                            },
-                        ]
-                    },
-                    {
-                        //翻译情况标签显示表格
-                        binding: {
-                            target: "tag_translation_request",
-                            value: true
+                                        },
+                                        {
+                                            //特典作品
+                                            title: localize(localizationMap.tag_bonus_work),
+                                            id: "tag_bonus_work",
+                                            class: "tag-yellow",
+                                            tooltip: localize(localizationMap.tag_bonus_work_tooltip)
+                                        },
+                                        {
+                                            //含特典
+                                            title: localize(localizationMap.tag_has_bonus),
+                                            id: "tag_has_bonus",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.tag_has_bonus_tooltip)
+                                        },
+                                        {
+                                            //文件格式
+                                            title: localize(localizationMap.tag_file_format),
+                                            id: "tag_file_format",
+                                            class: "tag-darkblue",
+                                            tooltip: localize(localizationMap.tag_file_format_tooltip)
+                                        },
+                                        {
+                                            //已下架
+                                            title: localize(localizationMap.tag_no_longer_available),
+                                            id: "tag_no_longer_available",
+                                            class: "tag-gray",
+                                        },
+                                        {
+                                            //AI & 部分AI
+                                            title: localize(localizationMap.tag_ai),
+                                            id: "tag_ai",
+                                            class: "tag-purple",
+                                            tooltip: localize(localizationMap.tag_ai_tooltip)
+                                        }
+                                    ]
+                                },
+                            ]
                         },
-                        items:[
-                            {
-                                //各种翻译情况显示
-                                type: "tag_switch",
-                                sortable: true,
-                                sort_id: "tag_translation_request_display_order",
-                                items: [
-                                    {
-                                        //英语
-                                        title: `${localize(localizationMap.language_english_abbr)} 1-1`,
-                                        id: "tag_translation_request_english",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_english)
-                                    },
-                                    {
-                                        //简体中文
-                                        title: `${localize(localizationMap.language_simplified_chinese_abbr)} 1-1`,
-                                        id: "tag_translation_request_simplified_chinese",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_simplified_chinese)
-                                    },
-                                    {
-                                        //繁体中文
-                                        title: `${localize(localizationMap.language_traditional_chinese_abbr)} 1-1`,
-                                        id: "tag_translation_request_traditional_chinese",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_traditional_chinese)
-                                    },
-                                    {
-                                        //韩语
-                                        title: `${localize(localizationMap.language_korean_abbr)} 1-1`,
-                                        id: "tag_translation_request_korean",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_korean)
-                                    },
-                                    {
-                                        //德语
-                                        title: `${localize(localizationMap.language_german_abbr)} 1-1`,
-                                        id: "tag_translation_request_german",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_german)
-                                    },
-                                    {
-                                        //法语
-                                        title: `${localize(localizationMap.language_french_abbr)} 1-1`,
-                                        id: "tag_translation_request_french",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_french)
-                                    },
-                                    {
-                                        //印尼语
-                                        title: `${localize(localizationMap.language_indonesian_abbr)} 1-1`,
-                                        id: "tag_translation_request_indonesian",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_indonesian)
-                                    },
-                                    {
-                                        //意大利语
-                                        title: `${localize(localizationMap.language_italian_abbr)} 1-1`,
-                                        id: "tag_translation_request_italian",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_italian)
-                                    },
-                                    {
-                                        //葡萄牙语
-                                        title: `${localize(localizationMap.language_portuguese_abbr)} 1-1`,
-                                        id: "tag_translation_request_portuguese",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_portuguese)
-                                    },
-                                    {
-                                        //瑞典语
-                                        title: `${localize(localizationMap.language_swedish_abbr)} 1-1`,
-                                        id: "tag_translation_request_swedish",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_swedish)
-                                    },
-                                    {
-                                        //泰语
-                                        title: `${localize(localizationMap.language_thai_abbr)} 1-1`,
-                                        id: "tag_translation_request_thai",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_thai)
-                                    },
-                                    {
-                                        //越南语
-                                        title: `${localize(localizationMap.language_vietnamese_abbr)} 1-1`,
-                                        id: "tag_translation_request_vietnamese",
-                                        class: "tag-orange",
-                                        tooltip: localize(localizationMap.language_vietnamese)
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            }
-        ]
+                        {
+                            //翻译情况显示表格
+                            items: [
+                                {
+                                    //翻译情况显示开关
+                                    type: "checkbox",
+                                    title: localize(localizationMap.tag_translation_request),
+                                    id: "tag_translation_request",
+                                    tooltip: localize(localizationMap.tag_translation_request_tooltip)
+                                },
+                            ]
+                        },
+                        {
+                            //翻译情况标签显示表格
+                            binding: {
+                                target: "tag_translation_request",
+                                value: true
+                            },
+                            items: [
+                                {
+                                    //各种翻译情况显示
+                                    type: "tag_switch",
+                                    sortable: true,
+                                    sort_id: "tag_translation_request_display_order",
+                                    items: [
+                                        {
+                                            //英语
+                                            title: `${localize(localizationMap.language_english_abbr)} 1-1`,
+                                            id: "tag_translation_request_english",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_english)
+                                        },
+                                        {
+                                            //简体中文
+                                            title: `${localize(localizationMap.language_simplified_chinese_abbr)} 1-1`,
+                                            id: "tag_translation_request_simplified_chinese",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_simplified_chinese)
+                                        },
+                                        {
+                                            //繁体中文
+                                            title: `${localize(localizationMap.language_traditional_chinese_abbr)} 1-1`,
+                                            id: "tag_translation_request_traditional_chinese",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_traditional_chinese)
+                                        },
+                                        {
+                                            //韩语
+                                            title: `${localize(localizationMap.language_korean_abbr)} 1-1`,
+                                            id: "tag_translation_request_korean",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_korean)
+                                        },
+                                        {
+                                            //德语
+                                            title: `${localize(localizationMap.language_german_abbr)} 1-1`,
+                                            id: "tag_translation_request_german",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_german)
+                                        },
+                                        {
+                                            //法语
+                                            title: `${localize(localizationMap.language_french_abbr)} 1-1`,
+                                            id: "tag_translation_request_french",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_french)
+                                        },
+                                        {
+                                            //印尼语
+                                            title: `${localize(localizationMap.language_indonesian_abbr)} 1-1`,
+                                            id: "tag_translation_request_indonesian",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_indonesian)
+                                        },
+                                        {
+                                            //意大利语
+                                            title: `${localize(localizationMap.language_italian_abbr)} 1-1`,
+                                            id: "tag_translation_request_italian",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_italian)
+                                        },
+                                        {
+                                            //葡萄牙语
+                                            title: `${localize(localizationMap.language_portuguese_abbr)} 1-1`,
+                                            id: "tag_translation_request_portuguese",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_portuguese)
+                                        },
+                                        {
+                                            //瑞典语
+                                            title: `${localize(localizationMap.language_swedish_abbr)} 1-1`,
+                                            id: "tag_translation_request_swedish",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_swedish)
+                                        },
+                                        {
+                                            //泰语
+                                            title: `${localize(localizationMap.language_thai_abbr)} 1-1`,
+                                            id: "tag_translation_request_thai",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_thai)
+                                        },
+                                        {
+                                            //越南语
+                                            title: `${localize(localizationMap.language_vietnamese_abbr)} 1-1`,
+                                            id: "tag_translation_request_vietnamese",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_vietnamese)
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
     }
     class SettingPageBuilder {
         constructor(structure, settings) {
@@ -3664,11 +3946,20 @@
             return `${VOICELINK_CLASS}_${name}`;
         }
 
-        build() {
+        build(useTemp = false) {
             const f = this.structure;
+            let tempSettings = this.settings;
 
-            //清空设置暂存
-            this.settings.clearTemp();
+            //若未要求则清空设置暂存
+            if(useTemp){
+                tempSettings = {};
+                for(let key in this.settings.temp_edited){
+                    if(!key.startsWith("_s_")) continue;
+                    tempSettings[key] = this.settings.temp_edited[key];
+                }
+            }else{
+                this.settings.clearTemp();
+            }
 
             //创建container
             const container = document.createElement("div");
@@ -3730,6 +4021,7 @@
             container.appendChild(buttonContainer);
 
             this.initSortableElement();
+            this.refreshSettings(tempSettings);
             return container;
         };
 
@@ -4353,10 +4645,16 @@
         }
     }
     const SettingsPopup = {
-        getPopup() {
-            let uiBuilder = new SettingPageBuilder(SettingsUi, settings);
-            let ui = uiBuilder.build();
-            //TODO: 给UI添加一些外部绑定事件，例如修改语言立即生效
+        showPopup(useTemp = false) {
+            let uiBuilder = new SettingPageBuilder(getSettingsUi(), settings);
+            let ui = uiBuilder.build(useTemp);
+            const displayLangElement = ui.querySelector(`#${VOICELINK_CLASS}_lang`);
+            displayLangElement.addEventListener("change", e => {
+                settings._s_lang = displayLangElement.value;
+                GM_setValue("lang", settings._s_lang);
+                ui.remove();
+                SettingsPopup.showPopup(true);
+            });
             document.body.appendChild(ui);
         }
     };
@@ -4369,7 +4667,7 @@
             style.innerHTML = Csp.createHTML(POPUP_CSS + SETTINGS_CSS);
             document.head.appendChild(style);
             // SettingsPopup.getPopup()
-            GM_registerMenuCommand("Settings", SettingsPopup.getPopup)
+            GM_registerMenuCommand("Settings", () => SettingsPopup.showPopup())
             GM_registerMenuCommand("Notice", () => showUpdateNotice(true))
 
             document.addEventListener("securitypolicyviolation", function (e) {
@@ -4387,10 +4685,16 @@
         }
 
         Parser.walkNodes(document.body);
+        Popup.makePopup(false);
 
         const observer = new MutationObserver(function (m) {
             for (let i = 0; i < m.length; ++i) {
                 let addedNodes = m[i].addedNodes;
+                let removedNodes = m[i].removedNodes;
+
+                for (let j = 0; j < removedNodes.length; ++j){
+                    let node = removedNodes[j];
+                }
 
                 for (let j = 0; j < addedNodes.length; ++j) {
                     Parser.walkNodes(addedNodes[j]);
