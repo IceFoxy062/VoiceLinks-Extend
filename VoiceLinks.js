@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name        VoiceLinks
 // @namespace   Sanya
-// @description Makes RJ codes more useful. (8-bit RJCode supported.)
+// @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.3
+// @version     2.1.4
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -302,10 +302,10 @@
             workInfo.rj = rj;
 
             let rj_group;
-            if (rj.slice((rj.length == 10 ? 7 : 5)) == "000")
+            if (rj.slice((rj.length === 10 ? 7 : 5)) === "000")
                 rj_group = rj;
             else {
-                rj_group = (parseInt(rj.slice(2, (rj.length == 10 ? 7 : 5))) + 1).toString() + "000";
+                rj_group = (parseInt(rj.slice(2, (rj.length === 10 ? 7 : 5))) + 1).toString() + "000";
                 if(rj_group.length < rj.length - 2){
                     let zero = Math.pow(10, rj.length - rj_group.length - 2).toString().slice(1)
                     rj_group = zero + rj_group
@@ -314,6 +314,16 @@
             }
 
             workInfo.img = "https://img.dlsite.jp/modpub/images2/work/doujin/" + rj_group + "/" + rj + "_img_main.jpg";
+
+            let metaList = dom.getElementsByTagName("meta")
+            for (let i = 0; i < metaList.length; i++){
+                let meta = metaList[i];
+                if(meta.getAttribute("property") === 'og:image'){
+                    workInfo.img = meta.content;
+                    break;
+                }
+            }
+
             workInfo.title = dom.getElementById("work_name").innerText;
             workInfo.circle = dom.querySelector("span.maker_name").innerText;
 
