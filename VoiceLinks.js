@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.10
+// @version     2.1.11
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -79,6 +79,29 @@
           color: #dcddde;
           font-size: 0.9375rem;
       }
+      
+      .${VOICELINK_CLASS}_work_title:hover #${VOICELINK_CLASS}_copy_btn {
+          opacity: 1;
+      }
+      
+      #${VOICELINK_CLASS}_copy_btn {
+          background: transparent;
+          border-color: transparent;
+          cursor: pointer;
+          transition: all 0.3s;
+          opacity: 0;
+          font-size: 0.75em;
+          user-select: none;
+          position: absolute;
+      }
+      
+      #${VOICELINK_CLASS}_copy_btn:hover {
+          scale: 1.2;
+      }
+      
+      #${VOICELINK_CLASS}_copy_btn:active {
+          scale: 1.1;
+      }
   `
 
     function getAdditionalPopupClasses() {
@@ -90,6 +113,30 @@
         }
     }
 
+    /**
+     * Convert to valid file name.
+     * @param {String} original
+     */
+    function convertToValidFileName(original){
+        const charMap = {
+            "/": "／",
+            "\\": "＼",
+            ":": "：",
+            "*": "＊",
+            "?": "？",
+            "\"": "＂",
+            "<": "＜",
+            ">": "＞",
+            "|": "｜"
+        }
+
+        let fileName = original;
+        for (let key in charMap){
+            fileName = fileName.replaceAll(key, charMap[key]);
+        }
+        return fileName;
+    }
+
     function setUserSelectTitle(){
         // Make title selectable
         const hostname = document.location.hostname;
@@ -98,9 +145,35 @@
         }
 
         const title = document.getElementById("work_name");
-        if(title){
-            title.style.userSelect = "text";
+        if(!title){
+            return;
         }
+
+        const button = document.createElement("button");
+        const titleStr = title.innerText;
+        button.id = `${VOICELINK_CLASS}_copy_btn`;
+        button.innerHTML = "📃";
+        button.addEventListener("mouseenter", function(){
+            button.innerHTML = "📃 复制为有效文件名";
+        });
+        button.addEventListener("mouseleave", function(){
+            button.innerHTML = "📃";
+        });
+        button.addEventListener("click", function(){
+            const fileName = convertToValidFileName(titleStr);
+            const promise = navigator.clipboard.writeText(fileName);
+            promise.then(() => {
+                button.innerHTML = "✔ 复制成功";
+            });
+            promise.catch(e => {
+                window.prompt("复制失败，请手动复制", fileName);
+                button.innerHTML = "📃";
+            });
+        });
+
+        title.style.userSelect = "text";
+        title.classList.add(`${VOICELINK_CLASS}_work_title`);
+        title.appendChild(button);
     }
 
     function getXmlHttpRequest() {
