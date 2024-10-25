@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.6
+// @version     2.1.7
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -36,6 +36,20 @@
           width: 270px;
           height: auto;
           margin: 3px 15px 3px 3px;
+          max-width: fit-content;
+      }
+      
+      .voicepopup a {
+          text-decoration: none;
+          color: pink;
+      }
+      
+      .voicepopup .age-18{
+          color: hsl(300deg 76% 77%);
+      }
+      
+      .voicepopup .age-all{
+          color: hsl(157deg 82% 52%);
       }
  
       .voice-title {
@@ -218,7 +232,11 @@
                     if (workInfo.update)
                         html += `Update: <a>${workInfo.update}</a> <br />`;
 
-                    html += `Age rating: <a>${workInfo.rating}</a><br />`
+                    let ratingClass = "age-all";
+                    if(workInfo.rating.includes("18")){
+                        ratingClass = "age-18";
+                    }
+                    html += `Age rating: <a class="${ratingClass}">${workInfo.rating}</a><br />`
 
                     if (workInfo.cv)
                         html += `CV: <a>${workInfo.cv}</a> <br />`;
