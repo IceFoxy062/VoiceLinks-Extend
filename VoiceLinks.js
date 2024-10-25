@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.11
+// @version     2.1.12
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -19,7 +19,7 @@
     const css = `
       .voicepopup {
           min-width: 600px !important;
-          z-index: 50000 !important;
+          z-index: 2147483646 !important;
           max-width: 80% !important;
           position: fixed !important;
           line-height: 1.4em;
@@ -31,6 +31,7 @@
           color:#F6F6F6;
           text-align: left;
           padding: 10px;
+          pointer-events: none;
       }
  
       .voicepopup img {
