@@ -3,10 +3,11 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.7
+// @version     2.1.8
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
+// @homepage    https://greasyfork.org/zh-CN/scripts/456775
 // ==/UserScript==
 
 (function () {
