@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.9.2
+// @version     2.9.3
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -64,11 +64,11 @@
           padding: 10px;
           pointer-events: none;
       }
-      
+ 
       .voicepopup-maniax{
           background-color:#8080C0;
       }
-      
+ 
       .voicepopup-girls{
           background-color:#B33761;
       }
@@ -79,16 +79,16 @@
           margin: 3px 15px 3px 3px;
           max-width: fit-content;
       }
-      
+ 
       .voicepopup a {
           text-decoration: none;
           color: pink;
       }
-      
+ 
       .voicepopup .age-18{
           color: hsl(300deg 76% 77%);
       }
-      
+ 
       .voicepopup .age-all{
           color: hsl(157deg 82% 52%);
       }
@@ -119,11 +119,11 @@
           color: #dcddde;
           font-size: 0.9375rem;
       }
-      
+ 
       .${VOICELINK_CLASS}_work_title:hover #${VOICELINK_CLASS}_copy_btn {
           opacity: 1;
       }
-      
+ 
       #${VOICELINK_CLASS}_copy_btn {
           background: transparent;
           border-color: transparent;
@@ -134,15 +134,15 @@
           user-select: none;
           position: absolute;
       }
-      
+ 
       #${VOICELINK_CLASS}_copy_btn:hover {
           scale: 1.2;
       }
-      
+ 
       #${VOICELINK_CLASS}_copy_btn:active {
           scale: 1.1;
       }
-      
+ 
   `
 
     /**
@@ -1068,7 +1068,7 @@
                 is_oly: data.is_oly,
                 is_led: data.is_led,
                 is_special: !data.is_sale && data.is_free && data.is_oly && data.wishlist_count === false,
-                is_girls: data.options && data.options.indexOf("OTM") >= 0
+                is_girls: (data.options && data.options.indexOf("OTM") >= 0) || (data.site_id === "girls")
             }
 
             if(data.regist_date){
@@ -1263,14 +1263,14 @@
             margin: auto;
             background-color: white;
             z-index: 999;
-            
+ 
             padding: 20px 20px;
             border-radius: 10px;
             border-style: solid;
             border-width: 1px;
             border-color: black;
         }
-        
+ 
         .${VOICELINK_CLASS}_settings table{
             box-sizing: border-box;
             width: 100%;
@@ -1278,24 +1278,24 @@
             margin-bottom: 10px;
             border-collapse: collapse;
         }
-        
+ 
         .${VOICELINK_CLASS}_settings table td{
             font-size: 16px;
             border: 1px solid lightgrey;
             padding: 5px;
             text-align: center;
         }
-        
+ 
         .${VOICELINK_CLASS}_settings table td abbr{
             cursor: help;
         }
-        
+ 
         .${VOICELINK_CLASS}_settings table td input[type=checkbox]{
             margin: 0;
             width: 20px;
             height: 20px;
         }
-        
+ 
         .${VOICELINK_CLASS}_settings .${VOICELINK_CLASS}_label{
             text-align: left;
         }`,
@@ -1403,17 +1403,17 @@
 
         let popup = document.createElement("div");
         popup.style = `
-        position: fixed; 
-        width: 500px; 
+        position: fixed;
+        width: 500px;
         height: auto;
-        margin: 20px auto; 
+        margin: 20px auto;
         padding: 10px;
-        left: 0; 
-        right: 0; 
-        top: 0;  
-        background: rgba(255, 255, 255, 0.9); 
+        left: 0;
+        right: 0;
+        top: 0;
+        background: rgba(255, 255, 255, 0.9);
         z-index: 999;
-        
+ 
         border-radius: 10px;
         border: 2px solid gray`;
         popup.innerHTML = `
