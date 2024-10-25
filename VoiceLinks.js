@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     3.0.4
+// @version     3.2.0
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -158,7 +158,7 @@
 
     /**
      * Work promise cache
-     * @type {{info:{}, api:{}}}
+     * @type {{info:{}, api:{}, api2: {}, circle: {}}}
      */
     const work_promise = {};
 
@@ -736,7 +736,7 @@
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
 
                 let info = await WorkPromise.getWorkPromise(rjCode).info;
-                if(data.is_special){
+                if(data.is_bonus){
                     //特典作品
                     flagElement.innerHTML = `<span style="color: gold; font-size: 15px; align-self: center; font-weight: bold">[BONUS]</span>`;
                 }
@@ -943,8 +943,12 @@
 
         getFound: async function(rjCode){
             try{
-                const data = await this.getWorkPromise(rjCode).api;
-                return data !== null && data.is_sale !== undefined;
+                const data = await this.getWorkPromise(rjCode).api2;
+                if(data && data.product_id !== undefined) return true;
+
+                //否则再次检查api1
+                const api = await this.getWorkPromise(rjCode).api;
+                return api && api.is_sale !== undefined;
             }catch (e){
                 //说明是网络问题，删除缓存并返回true
                 delete work_promise[rjCode];
@@ -952,9 +956,23 @@
             }
         },
 
+        getTranslationInfo: async function(rjCode){
+            const p = this.getWorkPromise(rjCode);
+            let data = await p.api2;
+            if(data.translation_info) return data.translation_info;
+
+            data = await p.api;
+            return data.translation_info ? data.translation_info : {};
+        },
+
         getParentRJ: async function(rjCode){
             try{
-                const data = await this.getWorkPromise(rjCode).info;
+                const p = this.getWorkPromise(rjCode);
+                let trans = await this.getTranslationInfo(rjCode);
+                if(trans.is_original || trans.is_parent) return rjCode;
+                if(trans.parent_workno) return trans.parent_workno;
+
+                let data = await p.info;
                 return data.parentWork;
             }catch (e){
                 return null;
@@ -962,7 +980,13 @@
         },
 
         getGirls: async function(rjCode){
-            const data = await this.getWorkPromise(rjCode).api;
+            const p = this.getWorkPromise(rjCode);
+            let data = await p.api2;
+            if(data.options && data.options.indexOf("OTM") >= 0) return true;
+            if(data.site_id === "girls") return true;
+
+            //否则再次检查api1
+            data = await this.getWorkPromise(rjCode).api;
             this.checkNotNull(data.is_girls)
             return data.is_girls;
         },
@@ -983,7 +1007,11 @@
 
         getImgLink: async function(rjCode){
             try{
-                const info = await this.getWorkPromise(rjCode).info;
+                const p = this.getWorkPromise(rjCode);
+                let data = await p.api2;
+                if(data.image_main && data.image_main.url) return "https://" + data.image_main.url;
+
+                const info = await p.info;
                 this.checkNotNull(info.img);
                 return info.img;
             }catch (e) {
@@ -994,95 +1022,145 @@
         },
 
         getWorkTitle: async function(rjCode){
-            const apiData = await this.getWorkPromise(rjCode).api;
-            this.checkNotNull(apiData.title);
-            return apiData.title;
+            return await this.getWorkPromise(rjCode).translated_title;
         },
 
         getAgeRating: async function(rjCode){
-            const info = await this.getWorkPromise(rjCode).info;
+            let p = this.getWorkPromise(rjCode);
+            let api = await p.api2;
+            if(!api.age_category) api = await p.api;
+            switch (api.age_category){
+                case 1:
+                    return "All";
+                case 2:
+                    return "R15";
+                case 3:
+                    return "R18";
+            }
+
+            const info = await p.info;
             this.checkNotNull(info.rating);
             return info.rating;
         },
 
-        getCircle: async function(rjCode){
+        getCircle: async function(rjCode, findOriginal = true){
+            let trans = await this.getTranslationInfo(rjCode);
+            if(!trans.is_original && findOriginal){
+                //使用原作RJ号开始寻找，如果找不到翻译信息就没办法了
+                rjCode = trans.original_workno ? trans.original_workno : rjCode;
+            }
+
             let work = this.getWorkPromise(rjCode);
-            const api = await work.api;
+            let api2 = await work.api2;
+            if(api2.maker_name) return api2.maker_name;
+
+            /**
+             * 接下来有两种搜索方式：
+             * 1. api1 + circle接口
+             * 2. info搜索
+             * 前者成功率更高（下架后还能获取到api1，社团没解散就能获得社团信息），两个加载速度不确定谁快谁慢，所以把1放在前面
+             */
+
+            const circleInfo = await work.circle;
+            if(circleInfo && circleInfo.name) return circleInfo.name;
+
             let info = await work.info;
-
-            if(info.circleId && info.circle && info.circleId !== "RG60289"){
-                //RG魔法值为大家翻的RG号
-                return info.circle;
-            }
-
-            if(api.maker_id !== "RG60289"){
-                //如果社团不是大家翻，但作品已经下架导致html无法解析，则通过circle接口获取社团名
-                const circleInfo = await work.circle;
-                this.checkNotNull(circleInfo);
-                this.checkNotNull(circleInfo.name);
-                return circleInfo.name;
-            }
-
-            //匹配原版社团名，而不是大家翻
-            this.checkNotNull(api.original_rj);
-            work = this.getWorkPromise(api.original_rj)
-
-            //优先匹配html的（因为circle接口不一定能获取到社团信息）
-            info = await work.info;
             if(info.circle) return info.circle;
 
-            //若作品已下架导致html无法解析，则通过circle接口获取社团名
-            let circle = await work.circle;
-            this.checkNotNull(circle.name);
-            return circle.name;
+            throw new Error("无法获取社团信息");
         },
 
         getTranslatorName: async function(rjCode){
-            const api = await this.getWorkPromise(rjCode).api;
-            this.checkNotNull(api.maker_name);
-            return api.maker_name;
+            let trans = await this.getTranslationInfo(rjCode);
+            if(!trans.is_child) throw new Error("非翻译作品RJ号");
+            return await this.getCircle(rjCode, false);
         },
 
         getReleaseDate: async function(rjCode){
-            const info = await this.getWorkPromise(rjCode).info;
+            const p = this.getWorkPromise(rjCode);
+            const info = await p.info;
             if(info && !info.is_announce && info.date) return info.date;
             if(info && info.is_announce && info.dateAnnounce) {
                 return `<span style="color: gold">${info.dateAnnounce}</span>${DateParser.getCountDownDateText(DateParser.parseDateStr(info.dateAnnounce, info.lang))}`
             }
 
             //从api中查找发售时间
-            const api = await this.getWorkPromise(rjCode).api;
+            let api = await p.api2;
+            api = api.regist_date ? api : await p.api;
             this.checkNotNull(api.regist_date)
             return api.regist_date;
         },
 
         getUpdateDate: async function(rjCode) {
-            const info = await this.getWorkPromise(rjCode).info;
-            this.checkNotNull(info["update"]);
-            return info["update"];
+            const p = this.getWorkPromise(rjCode);
+            const info = await p.info;
+            if(info["update"]) return info["update"];
+
+            throw new Error();
         },
 
         getCV: async function(rjCode){
+            const p = this.getWorkPromise(rjCode);
+            const api2 = await p.api2;
+            if(api2.creaters && api2.creaters.voice_by && api2.creaters.voice_by.length > 0){
+                let cvs = api2.creaters.voice_by;
+                let text = "";
+                for (let cv of cvs){
+                    text += " / " + cv.name;
+                }
+                text = text.substring(3);
+                return text;
+            }
+
+            //无法获取api2则直接通过html获取
             const info = await this.getWorkPromise(rjCode).info;
             this.checkNotNull(info.cv);
             return info.cv;
         },
 
         getTags: async function(rjCode) {
-            const info = await this.getWorkPromise(rjCode).info;
+            //注意该方法返回字符串数组而不是纯字符串
+            const p = this.getWorkPromise(rjCode);
+            const api2 = await p.api2;
+            if(api2.genres && api2.genres.length > 0){
+                return api2.genres.map(genre => genre.name);
+            }
+
+            //无法获取api2时通过html获取
+            const info = await p.info;
             this.checkNotNull(info.tags);
             return info.tags;
         },
 
+        getFileSizeStr: function(byteCount = 0){
+            const units = ["B", "KB", "MB", "GB", "TB"];
+            let unit = "B";
+            for (let i = 1; byteCount >= 1024; i++){
+                byteCount /= 1024;
+                unit = units[i];
+            }
+            return `${Math.round(byteCount * 100) / 100}${unit}`;
+        },
+
         getFileSize: async function(rjCode) {
-            let info = await this.getWorkPromise(rjCode).info;
+            const trans = await this.getTranslationInfo(rjCode);
+            if(trans.is_parent){
+                //翻译版本的父级没有内容信息，自然无法显示文件大小，所以需要获得原作品的大小信息
+                //Child和Original都有各自的大小信息，正常获取计算即可
+                rjCode = trans.original_workno ? trans.original_workno : rjCode;
+            }
+
+            const p = this.getWorkPromise(rjCode);
+            let api2 = await p.api2;
+            if(api2.contents_file_size && api2.contents_file_size > 0){
+                return this.getFileSizeStr(api2.contents_file_size);
+            }
+
+            //通过html获取
+            let info = trans.is_child && trans.original_workno ? await this.getWorkPromise(trans.original_workno).info : await p.info;
             if(info.filesize) return info.filesize;
 
-            let api = await this.getWorkPromise(rjCode).api;
-            const original_rj = api.original_rj;
-            info = await this.getWorkPromise(original_rj).info;
-            this.checkNotNull(info.filesize);
-            return info.filesize;
+            throw new Error("无法获取文件大小信息");
         }
     }
 
@@ -1191,21 +1269,9 @@
 
         parseApiData: function (rjCode, data){
             if(!data) data = {};
-            const translation_info = data.translation_info ? data.translation_info : {};
-            let apiData = {
-                title: data.work_name,
-                img_url: data.work_image ? data.work_image.substring(2) : null,
-                original_rj: translation_info.original_workno ? translation_info.original_workno : rjCode,
-                maker_name: data.maker_name,
-                maker_id: data.maker_id,
-                regist_date: data.regist_date,
-                is_sale: data.is_sale,
-                is_free: data.is_free,
-                is_oly: data.is_oly,
-                is_led: data.is_led,
-                is_special: !data.is_sale && data.is_free && data.is_oly && data.wishlist_count === false,
-                is_girls: (data.options && data.options.indexOf("OTM") >= 0) || (data.site_id === "girls")
-            }
+            let apiData = data;
+            apiData.is_bonus = !data.is_sale && data.is_free && data.is_oly && data.wishlist_count === false;
+            apiData.is_girls = (data.options && data.options.indexOf("OTM") >= 0) || (data.site_id === "girls");
 
             if(data.regist_date){
                 let reg_date = data.regist_date.replace(/-/g, '/');
@@ -1269,44 +1335,37 @@
             }
         },
 
-        getApiPromise: async function (rjCode){
-            let url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${rjCode}&cdn_cache_min=1`
-            let p = this.getHttpAsync(url);
-            let resp = await p;
-            let data = undefined;
+        getApi2Promise: async function (rjCode, locale = undefined) {
+            let url = `https://www.dlsite.com/maniax/api/=/product.json?workno=${rjCode}` + (locale ? `&locale=${locale}` : "");
+            let resp = await this.getHttpAsync(url);
+            let data;
             if (resp.readyState === 4 && resp.status === 200) {
                 data = JSON.parse(resp.responseText);
-                data = data ? data[rjCode] : {};
+                data = data ? data[0] : {};
                 data = data ? data : {}
             }
             else if (resp.readyState === 4 && resp.status === 404) {
                 return {};
             }
             else {
-                throw new Error(`无法通过API获取${rjCode}的信息：${resp.status} ${resp.statusText}`);
+                throw new Error(`无法通过API2获取${rjCode}的信息：${resp.status} ${resp.statusText}`);
             }
 
             const translation_info = data.translation_info ? data.translation_info : {};
-            const lang = this.getLangCode(translation_info.lang);
-            let next_rj = rjCode;
-            let translator_name = undefined;
-            if(translation_info.is_child) {
-                //找到父级RJ信息，因为子级信息不全面
-                next_rj = translation_info.parent_workno;
+            data.lang = this.getLangCode(translation_info.lang);
 
-                //子级可以先获取翻译者的信息
-                translator_name = data.maker_name;
-            }
+            return data;
+        },
 
-            //第二次请求，获取对应语言下的实际信息
-            url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${next_rj}&cdn_cache_min=1` + (translation_info.is_original ? "" : `&locale=${lang}`);
-            p = this.getHttpAsync(url);
-            resp = await p;
+        getApiPromise: async function (rjCode, locale = undefined) {
+            //获取对应语言下的实际信息
+            let url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${rjCode}&cdn_cache_min=1` + (locale ? `&locale=${locale}` : "");
+            let resp = await this.getHttpAsync(url);
+            let data;
             if (resp.readyState === 4 && resp.status === 200) {
                 data = JSON.parse(resp.responseText);
-                data = data ? data[next_rj] : {};
+                data = data ? data[rjCode] : {};
                 data = data ? data : {};
-                data.maker_name = translator_name;
             }
             else if(resp.readyState === 4 && resp.status === 404){
                 return {};
@@ -1314,6 +1373,9 @@
             else {
                 throw new Error(`无法通过API获取${rjCode}的信息：${resp.status} ${resp.statusText}`);
             }
+
+            const translation_info = data.translation_info ? data.translation_info : {};
+            data.lang = this.getLangCode(translation_info.lang);
 
             return this.parseApiData(rjCode, data);
         },
@@ -1323,9 +1385,9 @@
             if(!apiData.maker_id) return null;
             const maker_id = apiData.maker_id;
 
-            let url = undefined;
-            let resp = undefined;
-            let data = undefined;
+            let url;
+            let resp;
+            let data;
             try {
                 url = `https://media.ci-en.jp/dlsite/lookup/${maker_id}.json`;
                 resp = await this.getHttpAsync(url);
@@ -1351,22 +1413,61 @@
                 }
             }
 
-            return {
-                maker_id: data.maker_id,
-                id: data.id,
-                name: data.name,
-                rating: data.rating,
-            }
+            return data;
         },
 
         getWorkRequestPromise: function (rjCode) {
-            let infoPromise = this.getHtmlPromise(rjCode);
-            let apiPromise = this.getApiPromise(rjCode);
-            let circlePromise = this.getCirclePromise(rjCode, apiPromise);
             return {
-                info: infoPromise,
-                api: apiPromise,
-                circle: circlePromise
+                _info: undefined,
+                _api: undefined,
+                _api2: undefined,
+                _circle: undefined,
+                _translated_title: undefined,
+                get info(){
+                    return this._info ? this._info : this._info = DLsite.getHtmlPromise(rjCode);
+                },
+                get api() {
+                    return this._api ? this._api : this._api = DLsite.getApiPromise(rjCode);
+                },
+                get api2() {
+                    return this._api2 ? this._api2 : this._api2 = DLsite.getApi2Promise(rjCode);
+                },
+                get circle(){
+                    return this._circle ? this._circle : this._circle = DLsite.getCirclePromise(rjCode, this.api);
+                },
+                get translated_title(){
+                    async function getter(t){
+                        if(t._translated_title) return t._translated_title;
+
+                        let api = await t.api2;
+                        if(api.translation_info){
+                            //api2有效
+                            if(!api.translation_info.is_original) {
+                                //通过再次查询获得翻译标题
+                                api = await DLsite.getApi2Promise(rjCode, api.lang);
+                            }
+                            t._translated_title = api.work_name;
+                            return t._translated_title;
+                        }
+
+                        //api2无效，通过api查询
+                        api = await t.api;
+                        if(!api.translation_info){
+                            //api无效则无法获取标题（网页获取希望渺茫）
+                            t._translated_title = null;
+                            return null;
+                        }
+
+                        if(!api.translation_info.is_original) {
+                            //非原作则再次查询
+                            api = await DLsite.getApiPromise(rjCode, api.lang);
+                        }
+                        t._translated_title = api.work_name;
+                        return t._translated_title;
+                    }
+
+                    return getter(this);
+                }
             }
         },
 
@@ -1454,20 +1555,20 @@
     <tbody>
         <tr>
             <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_parse_url">解析URL (<abbr title="鼠标悬停到指向DLSite作品页面的URL时，同样显示作品信息">?</abbr>)</td>
-            <td><input type="checkbox" id="${VOICELINK_CLASS}_parse_url_" name="parse_url" ${settings._s_parse_url ? "checked" : ""}/></td>
+            <td><input class="field" type="checkbox" id="${VOICELINK_CLASS}_parse_url_" name="parse_url" ${settings._s_parse_url ? "checked" : ""}/></td>
         </tr>
         <tr>
             <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_use_in_dl">&nbsp┕在DLSite上启用URL解析 (<abbr title="URL较多可能影响正常阅读">?</abbr>)</td>
-            <td><input type="checkbox" id="${VOICELINK_CLASS}_use_in_dl_" name="use_in_dl" ${settings._s_use_in_dl ? "checked" : ""}/></td>
+            <td><input class="field" type="checkbox" id="${VOICELINK_CLASS}_use_in_dl_" name="use_in_dl" ${settings._s_use_in_dl ? "checked" : ""}/></td>
         </tr>
         <tr>
             <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_use_translated_title">在DLSite显示对应语言的翻译标题 (<abbr title="作品信息页面标题修改，会出现加载延迟">?</abbr>)</td>
-            <td><input type="checkbox" id="${VOICELINK_CLASS}_use_translated_title_" name="use_translated_title" ${settings._s_use_translated_title ? "checked" : ""}/></td>
+            <td><input class="field" type="checkbox" id="${VOICELINK_CLASS}_use_translated_title_" name="use_translated_title" ${settings._s_use_translated_title ? "checked" : ""}/></td>
         </tr>
         <tr>
-            <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_use_translated_title">URL插入原链接导向文本 (<abbr title="如果链接被解析成功，为保证原链接不被完全覆盖，会在URL中的文本前/后插入特定导向文本">?</abbr>)</td>
+            <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_url_insert">URL插入原链接导向文本 (<abbr title="如果链接被解析成功，为保证原链接不被完全覆盖，会在URL中的文本前/后插入特定导向文本">?</abbr>)</td>
             <td>
-                <select id="${VOICELINK_CLASS}_url_insert_">
+                <select class="field" id="${VOICELINK_CLASS}_url_insert_" name="url_insert">
                     <option value="none" ${settings._s_url_insert === "none" ? "selected" : ""}>不插入</option>
                     <option value="prefix_with_coverage" ${settings._s_url_insert === "prefix_with_coverage" ? "selected" : ""}>高覆盖时前缀插入</option>
                     <option value="before_rj_with_coverage" ${settings._s_url_insert === "before_rj_with_coverage" ? "selected" : ""}>高覆盖时插入代替RJ号链接</option>
@@ -1488,10 +1589,18 @@
                 SettingsPopup.popup.style.display = "none"
             })
             pp.querySelector("input[type=button][value=Save]").addEventListener("click", function(){
-                settings._s_parse_url = pp.querySelector(`#${VOICELINK_CLASS}_parse_url_`).checked;
-                settings._s_use_translated_title = pp.querySelector(`#${VOICELINK_CLASS}_use_translated_title_`).checked;
-                settings._s_use_in_dl = pp.querySelector(`#${VOICELINK_CLASS}_use_in_dl_`).checked;
-                settings._s_url_insert = pp.querySelector(`#${VOICELINK_CLASS}_url_insert_`).value;
+                let fields = pp.querySelectorAll(".field");
+                for(let f of fields){
+                    let v = undefined;
+                    switch (f.tagName){
+                        case "INPUT":
+                            if(f.type === "checkbox") v = f.checked;
+                            break;
+                        case "SELECT":
+                            v = f.value;
+                    }
+                    settings[`_s_${f.name}`] = v;
+                }
                 settings.save()
                 SettingsPopup.popup.style.display = "none"
             })
