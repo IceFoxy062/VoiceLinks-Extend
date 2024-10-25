@@ -5,7 +5,7 @@
 // @match       *://*/*
 // @match       file:///*
 // @exclude     *://copilot.microsoft.com/*
-// @version     4.0.2
+// @version     4.0.3
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -1737,6 +1737,7 @@
             e.target = "_blank";
             e.rel = "noreferrer";
             e.classList.add(VOICELINK_IGNORED_CLASS);
+            e.style.display = "inline";
 
             e.setAttribute(RJCODE_ATTRIBUTE, rjCode.toUpperCase());
             e.setAttribute("voicelink-linkified", "true");
@@ -1780,7 +1781,9 @@
 
             let insert = settings._s_url_insert_mode;
             let tagA = textNode.parentElement.closest("a");
-            if(!tagA || insert.trim() !== "none" && this.calculateCoverage(tagA.innerText) < 71){
+            let tagB = textNode.parentElement.closest("button");
+            let tag = tagA ? tagA : tagB;
+            if((!tagA && !tagB) || insert.trim() !== "none" && this.calculateCoverage(tag.innerText) < 71){
                 insert = "none";
             }
 
