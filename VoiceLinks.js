@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.5.2
+// @version     2.6.0
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -32,6 +32,14 @@
           text-align: left;
           padding: 10px;
           pointer-events: none;
+      }
+      
+      .voicepopup-maniax{
+          background-color:#8080C0;
+      }
+      
+      .voicepopup-girls{
+          background-color:#B33761;
       }
  
       .voicepopup img {
@@ -67,8 +75,6 @@
           font-size: 1.2em;
           font-style: italic;
           opacity: 0.3;
-          
-          margin-bottom: 20px;
       }
  
       .error {
@@ -366,7 +372,7 @@
 
         makePopup: function (e, rjCode) {
             const popup = document.createElement("div");
-            popup.className = "voicepopup " + (getAdditionalPopupClasses() || '');
+            popup.className = "voicepopup voicepopup-maniax " + (getAdditionalPopupClasses() || '');
             popup.id = "voice-" + rjCode;
             popup.style = "display: flex";
             document.body.appendChild(popup);
@@ -378,6 +384,10 @@
                     workFound = false;
                 }
             })
+
+            WorkPromise.getGirls(rjCode).then(isGirls => {
+                if(isGirls) popup.className += (" voicepopup-girls")
+            });
 
             const imgContainer = document.createElement("div")
             const img = document.createElement("img");
@@ -409,11 +419,39 @@
             rjCodeElement.innerText = `[${rjCode}]`;
             infoContainer.appendChild(rjCodeElement);
 
+            const flagElement = document.createElement("div");
+            flagElement.style.marginTop = "20px"
+            flagElement.innerHTML = "";
+            WorkPromise.getWorkPromise(rjCode).api.then(data => {
+                if(data.is_special){
+                    //特典作品
+                    flagElement.innerHTML = `<span style="color: gold; font-size: 15px; align-self: center; font-weight: bold">[BONUS]</span>`;
+                }
+                else if(!data.is_sale && !data.is_coming_soon) {
+                    flagElement.innerHTML = `<span style="color: darkred; font-size: 15px; align-self: center">(No longer for Sale)</span>`;
+                }
+            })
+                .catch(_ => flagElement.innerHTML = "");
+            infoContainer.appendChild(flagElement);
+
+
             const circleElement = document.createElement("div");
             circleElement.innerHTML = "Circle: Loading...";
             WorkPromise.getCircle(rjCode).then(circle => circleElement.innerHTML = `Circle: <a>${circle}</a>`)
                 .catch(_ => circleElement.innerHTML = "");
             infoContainer.appendChild(circleElement);
+
+            const debugElement = document.createElement("div");
+            debugElement.innerHTML = "";
+            WorkPromise.getDebug(rjCode).then(debug => debugElement.innerHTML = debug)
+                .catch(_ => debugElement.innerHTML = "");
+            infoContainer.appendChild(debugElement);
+
+            const translatorElement = document.createElement("div");
+            translatorElement.innerHTML = "";
+            WorkPromise.getTranslatorName(rjCode).then(name => translatorElement.innerHTML = `Translator: <a>${name}</a>`)
+                .catch(_ => translatorElement.innerHTML = "");
+            infoContainer.appendChild(translatorElement);
 
             /*if (workInfo.date)
                 html += `Release: <a>${workInfo.date}</a> <br />`;*/
@@ -428,7 +466,7 @@
                 html += `Update: <a>${workInfo.update}</a> <br />`;*/
 
             const updateElement = document.createElement("div");
-            updateElement.innerHTML = "Update: Loading...";
+            updateElement.innerHTML = "";
             WorkPromise.getUpdateDate(rjCode).then(date => updateElement.innerHTML = `Update: <a>${date}</a>`)
                 .catch(_ => updateElement.innerHTML = "");
             infoContainer.appendChild(updateElement);
@@ -568,11 +606,32 @@
 
         getFound: async function(rjCode){
             try{
-                await this.getWorkPromise(rjCode).api;
-                return true;
+                const data = await this.getWorkPromise(rjCode).api;
+                return data !== null;
             }catch (e){
-                return false;
+                //说明是网络问题，删除缓存并返回true
+                delete work_promise[rjCode];
+                return true;
             }
+        },
+
+        getGirls: async function(rjCode){
+            const data = await this.getWorkPromise(rjCode).api;
+            return data.is_girls
+        },
+
+        getDebug: async function(rjCode){
+            return "";
+            /*const work = this.getWorkPromise(rjCode);
+            const api = await work.api;
+            const info = await work.info;
+            const circle = work.circle;
+
+            return `is_sale: ${api.is_sale} <br/>
+                    is_free: ${api.is_free} <br/>
+                    is_oly: ${api.is_oly} <br/>
+                    is_led: ${api.is_led} <br/>`;*/
+
         },
 
         getImgLink: async function(rjCode){
@@ -600,15 +659,45 @@
         },
 
         getCircle: async function(rjCode){
-            const info = await this.getWorkPromise(rjCode).info;
+            let work = this.getWorkPromise(rjCode);
+            let info = await work.info;
+
+            if(!info){
+                //页面解析失败，可能作品无法显示，此时直接获取RG信息
+                const circleInfo = await work.circle;
+                this.checkNotNull(circleInfo);
+                this.checkNotNull(circleInfo.name);
+                return circleInfo.name;
+            }
+
+            if(info.circleId && info.circleId !== "RG60289"){
+                this.checkNotNull(info.circle);
+                return info.circle;
+            }
+
+            //匹配原版社团名，而不是大家翻
+            const api = await work.api;
+            this.checkNotNull(api.original_rj);
+            work = this.getWorkPromise(api.original_rj)
+            info = await work.info;
             this.checkNotNull(info.circle);
             return info.circle;
         },
 
+        getTranslatorName: async function(rjCode){
+            const api = await this.getWorkPromise(rjCode).api;
+            this.checkNotNull(api.maker_name);
+            return api.maker_name;
+        },
+
         getReleaseDate: async function(rjCode){
             const info = await this.getWorkPromise(rjCode).info;
-            this.checkNotNull(info.date);
-            return info.date;
+            if(info && info.date) return info.date;
+
+            //从api中查找发售时间
+            const api = await this.getWorkPromise(rjCode).api;
+            this.checkNotNull(api.regist_date)
+            return api.regist_date;
         },
 
         getUpdateDate: async function(rjCode) {
@@ -683,8 +772,8 @@
 
             workInfo.title = dom.getElementById("work_name").innerText;
             workInfo.circle = dom.querySelector("span.maker_name").innerText;
-            // workInfo.circleId = dom.querySelector("#work_maker a").href;
-            // workInfo.circleId = workInfo.circleId.substring(workInfo.circleId.lastIndexOf("/") + 1, workInfo.circleId.lastIndexOf("."));
+            workInfo.circleId = dom.querySelector("#work_maker a").href;
+            workInfo.circleId = workInfo.circleId.substring(workInfo.circleId.lastIndexOf("/") + 1, workInfo.circleId.lastIndexOf(".")).trim();
 
             const table_outline = dom.querySelector("table#work_outline");
             for (var i = 0, ii = table_outline.rows.length; i < ii; i++) {
@@ -787,7 +876,45 @@
             }
         },
 
-        getHttp: function (url, onload){
+        parseApiData: function (rjCode, data){
+            if(!data) data = {};
+            const translation_info = data.translation_info ? data.translation_info : {};
+            let apiData = {
+                title: data.work_name,
+                img_url: data.work_image ? data.work_image.substring(2) : null,
+                original_rj: translation_info.original_workno ? translation_info.original_workno : rjCode,
+                maker_name: data.maker_name,
+                maker_id: data.maker_id,
+                regist_date: data.regist_date,
+                is_sale: data.is_sale,
+                is_free: data.is_free,
+                is_oly: data.is_oly,
+                is_led: data.is_led,
+                is_special: !data.is_sale && data.is_free && data.is_oly && data.wishlist_count === false,
+                is_girls: data.site_id === "girls"
+            }
+
+            if(data.regist_date){
+                let reg_date = data.regist_date.replace(/-/g, '/');
+                let releaseDate = new Date(reg_date);
+                apiData.regist_timestamp = releaseDate.getTime();
+                apiData.regist_date = `${releaseDate.getFullYear()} / ${releaseDate.getMonth() + 1} / ${releaseDate.getDate()}`;
+                if(apiData.regist_timestamp > Date.now()){
+                    apiData.is_coming_soon = true;
+
+                    //计算倒计时天数
+                    let date_reg = new Date(releaseDate.getFullYear(), releaseDate.getMonth(), releaseDate.getDate());
+                    let date_today = new Date(Date.now());
+                    date_today = new Date(date_today.getFullYear(), date_today.getMonth(), date_today.getDate());
+                    let days = (date_reg.getTime() - date_today.getTime()) / (1000 * 60 * 60 * 24);
+
+                    apiData.regist_date += `<span style="color:#ffeb3b; font-size: 16px; font-style: italic; margin-left: 16px">(Coming in ${days} day${(days > 1 ? "s" : "")})</span>`;
+                }
+            }
+            return apiData;
+        },
+
+        getHttp: function (url, onload, onerror){
             return getXmlHttpRequest()({
                 method: "GET",
                 url,
@@ -795,8 +922,27 @@
                     "Accept": "text/xml",
                     "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)"
                 },
-                onload: onload
+                onload: onload,
+                onerror: onerror
             });
+        },
+
+        getAnnouncePromise: function (rjCode) {
+            const url = `https://www.dlsite.com/maniax/announce/=/product_id/${rjCode}.html`;
+            return new Promise(
+                (resolve, reject) => {
+                    this.getHttp(url, resp => {
+                        if (resp.readyState === 4 && resp.status === 200) {
+                            const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
+                            const workInfo = DLsite.parseWorkDOM(dom, rjCode);
+                            resolve(workInfo);
+                        }
+                        else if (resp.readyState === 4 && resp.status === 404) {
+                            resolve(null);
+                        }
+                    }, () => reject(null))
+                }
+            )
         },
 
         getHtmlPromise: function (rjCode) {
@@ -810,23 +956,11 @@
                             resolve(workInfo);
                         }
                         else if (resp.readyState === 4 && resp.status === 404) {
-                            reject(null);
+                            resolve(this.getAnnouncePromise(rjCode))
                         }
-                    })
+                    }, () => reject(null))
                 }
             )
-        },
-
-        getPropertySafe: function (obj, ...props){
-            for (let i = 0; i < props.length; i++){
-                if(obj[props[i]]){
-                    obj = obj[props[i]];
-                }
-                else{
-                    return obj[props[i]];
-                }
-            }
-            return obj;
         },
 
         getApiPromise: function (rjCode){
@@ -836,6 +970,9 @@
                     this.getHttp(url, resp => {
                         if (resp.readyState === 4 && resp.status === 200) {
                             const data = JSON.parse(resp.responseText);
+                            if(Array.prototype.isPrototypeOf(data)){
+                                resolve(data)
+                            }
                             resolve(data[rjCode]);
                         }
                         else if (resp.readyState === 4 && resp.status === 404) {
@@ -846,11 +983,20 @@
             )
 
             return p1.then(data => {
+                if(Array.prototype.isPrototypeOf(data)){
+                    return data;
+                }
+
                 const translation_info = data.translation_info ? data.translation_info : {};
                 const lang = this.getLangCode(translation_info.lang);
                 let next_rj = rjCode;
+                let translator_name = undefined;
                 if(translation_info.is_child) {
+                    //找到父级RJ信息，因为子级信息不全面
                     next_rj = translation_info.parent_workno;
+
+                    //子级可以先获取翻译者的信息
+                    translator_name = data.maker_name;
                 }
 
                 const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${next_rj}&cdn_cache_min=1&locale=${lang}`;
@@ -860,6 +1006,7 @@
                             resp => {
                                 if (resp.readyState === 4 && resp.status === 200) {
                                     const data = JSON.parse(resp.responseText);
+                                    data[next_rj].maker_name = translator_name;
                                     resolve(data[next_rj]);
                                 }
                                 else if (resp.readyState === 4 && resp.status === 404) {
@@ -869,19 +1016,52 @@
                     }
                 )
             }).then(data => {
-                const translation_info = data.translation_info ? data.translation_info : {};
+                if(Array.prototype.isPrototypeOf(data)){
+                    return null;
+                }
+                return this.parseApiData(rjCode, data)
+            });
+        },
+
+        getCirclePromise: function (rjCode, apiPromise){
+            return apiPromise.then(data => {
+                if(!data.maker_id) return null;
+                const maker_id = data.maker_id;
+                const url = `https://media.ci-en.jp/dlsite/lookup/${maker_id}.json`;
+                return new Promise(
+                    (resolve, reject) => {
+                        this.getHttp(url, resp => {
+                            if (resp.readyState === 4 && resp.status === 200) {
+                                const data = JSON.parse(resp.responseText);
+                                data[0] = data[0] ? data[0] : {};
+                                data[0].maker_id = maker_id;
+                                resolve(data[0]);
+                            }
+                            else if (resp.readyState === 4 && resp.status === 404) {
+                                reject(null);
+                            }
+                        })
+                    }
+                )
+            }).then(data => {
+                data = data ? data : {}
                 return {
-                    title: data.work_name,
-                    img_url: data.work_image.substring(2),
-                    original_rj: translation_info.original_workno ? translation_info.original_workno : rjCode
+                    maker_id: data.maker_id,
+                    id: data.id,
+                    name: data.name,
+                    rating: data.rating,
                 }
             });
         },
 
         getWorkRequestPromise: function (rjCode) {
+            let infoPromise = this.getHtmlPromise(rjCode);
+            let apiPromise = this.getApiPromise(rjCode);
+            let circlePromise = this.getCirclePromise(rjCode, apiPromise);
             return {
-                info: this.getHtmlPromise(rjCode),
-                api: this.getApiPromise(rjCode)
+                info: infoPromise,
+                api: apiPromise,
+                circle: circlePromise
             }
         }
     }
