@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     3.0.1
+// @version     3.0.2
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -267,22 +267,21 @@
                 NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
                 {
                     acceptNode: function (node) {
-                        if(node.parentElement.classList.contains(VOICELINK_IGNORED_CLASS)){
-                            return NodeFilter.FILTER_SKIP;
-                        }
-
                         if(settings._s_parse_url && node.nodeName === "A"){
                             if(!settings._s_use_in_dl && document.location.hostname.endsWith("dlsite.com")){
                                 return NodeFilter.FILTER_SKIP;
                             }
 
                             let href = node.href;
-                            if(href.match(URL_REGEX)){
+                            if(href.match(URL_REGEX) && !node.classList.contains(VOICELINK_IGNORED_CLASS)){
                                 return NodeFilter.FILTER_ACCEPT;
                             }
                         }
 
                         if (node.nodeName !== "#text") return NodeFilter.FILTER_SKIP;
+                        if(node.parentElement.classList.contains(VOICELINK_IGNORED_CLASS)){
+                            return NodeFilter.FILTER_SKIP;
+                        }
 
                         if (node.parentElement.classList.contains(VOICELINK_CLASS))
                             return NodeFilter.FILTER_ACCEPT;
@@ -314,6 +313,15 @@
             }
         },
 
+        wrapPlaceholder: function (content) {
+            let e;
+            e = document.createElement("span");
+            e.classList = VOICELINK_CLASS;
+            e.innerHTML = content;
+            e.classList.add(VOICELINK_IGNORED_CLASS);
+            return e;
+        },
+
         wrapRJCode: function (rjCode) {
             let e;
             e = document.createElement("a");
@@ -322,6 +330,8 @@
             e.innerHTML = rjCode;
             e.target = "_blank";
             e.rel = "noreferrer";
+            e.classList.add(VOICELINK_IGNORED_CLASS);
+
             e.setAttribute(RJCODE_ATTRIBUTE, rjCode.toUpperCase());
             e.addEventListener("mouseover", Popup.over);
             e.addEventListener("mouseout", Popup.out);
@@ -389,10 +399,17 @@
             for (let i = 0; i < matches.length; ++i) {
                 // Insert linkified RJ code
                 let code = matches[i].value
-                const rjLinkNode = Parser.wrapRJCode(code);
+                let rjLinkNode = Parser.wrapRJCode(code);
+                //保证后续游走时忽略当前节点
                 if(insert.startsWith("before_rj")){
                     //用导向文本替代RJ号链接，RJ号保留到后面的文本里不变
                     rjLinkNode.innerHTML = settings._s_url_insert_text;
+                    textNode.parentNode.insertBefore(
+                        rjLinkNode,
+                        prevNode ? prevNode.nextSibling : textNode.nextSibling,
+                    );
+                    prevNode = rjLinkNode;
+                    rjLinkNode = Parser.wrapPlaceholder(code);
                 }
                 textNode.parentNode.insertBefore(
                     rjLinkNode,
@@ -405,7 +422,7 @@
                 if (i < matches.length - 1) {
                     nextRJ = matches[i + 1].index;
                 }
-                let substring = nodeOriginalText.substring(matches[i].index + (insert.startsWith("before_rj") ? 0 : matches[i].value.length), nextRJ);
+                let substring = nodeOriginalText.substring(matches[i].index + matches[i].value.length, nextRJ);
 
                 if (substring) {
                     const subtextNode = document.createTextNode(substring);
@@ -419,9 +436,6 @@
                     prevNode = rjLinkNode;
                 }
             }
-
-            //保证后续游走时忽略当前节点
-            textNode.parentElement.classList.add(VOICELINK_IGNORED_CLASS);
         },
 
         rebindEvents: function (elem) {
