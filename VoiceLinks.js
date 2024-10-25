@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     3.2.5
+// @version     3.3.0
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -639,6 +639,18 @@
             flagElement.style.marginTop = "20px";
             infoContainer.appendChild(flagElement);
 
+            const translatableElement = document.createElement("div");
+            ele.translatable = translatableElement;
+            translatableElement.style.backgroundColor = "lightgreen";
+            translatableElement.style.color = "green"
+            translatableElement.style.borderRadius = "5px";
+            translatableElement.style.display = "inline-block";
+            translatableElement.style.padding = "0px 8px";
+            translatableElement.style.fontSize = "14px";
+            translatableElement.style.fontWeight = "bold";
+            translatableElement.style.marginBottom = "3px";
+            infoContainer.appendChild(translatableElement);
+
             const circleElement = document.createElement("div");
             ele.circle = circleElement;
             infoContainer.appendChild(circleElement);
@@ -797,6 +809,18 @@
                 debugElement.innerHTML = "";
             });
 
+            const translatableElement = ele.translatable;
+            translatableElement.innerHTML = "";
+            WorkPromise.getTranslatable(rjCode).then(translatable => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                translatableElement.innerHTML = translatable ? `可翻译` : "";
+                translatableElement.style.display = translatable ? "inline-block" : "none";
+            }).catch(_ => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                translatableElement.innerHTML = "";
+                translatableElement.style.display = "none";
+            });
+
             const translatorElement = ele.translator;
             translatorElement.innerHTML = "";
             WorkPromise.getTranslatorName(rjCode).then(name => {
@@ -890,6 +914,7 @@
             ele.flag.style.display = found ? "block" : "none";
             ele.circle.style.display = found ? "block" : "none";
             ele.debug.style.display = found ? "block" : "none";
+            ele.translatable.style.display = found && ele.translatable.innerHTML.trim().length > 0 ? "inline-block" : "none";
             ele.translator.style.display = found ? "block" : "none";
             ele.releaseDate.style.display = found ? "block" : "none";
             ele.updateDate.style.display = found ? "block" : "none";
@@ -1202,6 +1227,11 @@
             if(info.filesize) return info.filesize;
 
             throw new Error("无法获取文件大小信息");
+        },
+
+        getTranslatable: async function(rjCode){
+            const trans = await this.getTranslationInfo(rjCode);
+            return trans.is_translation_agree === true;
         }
     }
 
