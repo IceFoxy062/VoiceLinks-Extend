@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.8.0
+// @version     2.9.0
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -399,6 +399,7 @@
     const Popup = {
         popupElement: {
             popup: null,
+            notFound: null,
             img: {container: null},
             title: null,
             rjCode: null,
@@ -424,10 +425,15 @@
             popup.style = "display: flex";
             document.body.appendChild(popup);
 
+            const notFoundElement = document.createElement("div");
+            ele.notFound = notFoundElement;
+            //占满整个popup
+            notFoundElement.style = "display: none; width: 100%; height: 100%";
+            notFoundElement.innerText = "Work Not Found.";
+            popup.appendChild(notFoundElement);
+
             const imgContainer = document.createElement("div")
-            // const img = document.createElement("img");
             ele.img.container = imgContainer;
-            // imgContainer.appendChild(img);
 
             const infoContainer = document.createElement("div");
 
@@ -487,7 +493,7 @@
             popup.insertBefore(imgContainer, popup.childNodes[0]);
         },
 
-        updatePopup: function(e, rjCode) {
+        updatePopup: function(e, rjCode, isParent=false) {
             const ele = Popup.popupElement;
             const popup = ele.popup;
             popup.className = "voicepopup voicepopup-maniax " + (getAdditionalPopupClasses() || '');
@@ -496,12 +502,37 @@
             popup.setAttribute(RJCODE_ATTRIBUTE, rjCode);
 
             let workFound = true;
+            Popup.setFoundState(true);
             WorkPromise.getFound(rjCode).then(found => {
+                //尝试ParentWork
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                if(!found) {
-                    popup.innerHTML = "Work Not Found.";
-                    workFound = false;
+
+                return new Promise(async (resolve, _) => {
+                    if (found) {
+                        resolve({found: true, parentRJ: rjCode});
+                        return;
+                    }
+                    let parentRJ = await WorkPromise.getParentRJ(rjCode);
+                    if(parentRJ === rjCode) {
+                        resolve({found: false, parentRJ: rjCode});
+                    }
+                    found = await WorkPromise.getFound(parentRJ);
+                    resolve({found: found, parentRJ: parentRJ});
+                });
+            }).then((state) => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+
+                const found = state.found;
+                const rj = state.parentRJ;
+                if(found && rj !== rjCode){
+                    //如果找到了父作品的信息但子作品找不到，就重新update
+                    this.updatePopup(e, rj, true);
+                    return;
                 }
+
+                ele.notFound.style.display = found ? "none" : "block";
+                Popup.setFoundState(found);
+                workFound = found;
             });
 
             WorkPromise.getGirls(rjCode).then(isGirls => {
@@ -537,7 +568,7 @@
             });
 
             const rjCodeElement = ele.rjCode;
-            rjCodeElement.innerText = `[${rjCode}]`;
+            rjCodeElement.innerText = `[${isParent ? " ↑ " : ""}${rjCode}]`;
 
             const flagElement = ele.flag;
             flagElement.style.marginTop = "20px"
@@ -658,6 +689,26 @@
             Popup.move(e);
         },
 
+        setFoundState(found){
+            const ele = Popup.popupElement;
+            const popup = ele.popup;
+
+            ele.notFound.style.display = found ? "none" : "block";
+            ele.img.container.style.display = found ? "block" : "none";
+            ele.title.style.display = found ? "block" : "none";
+            ele.rjCode.style.display = found ? "block" : "none";
+            ele.flag.style.display = found ? "block" : "none";
+            ele.circle.style.display = found ? "block" : "none";
+            ele.debug.style.display = found ? "block" : "none";
+            ele.translator.style.display = found ? "block" : "none";
+            ele.releaseDate.style.display = found ? "block" : "none";
+            ele.updateDate.style.display = found ? "block" : "none";
+            ele.age.style.display = found ? "block" : "none";
+            ele.cv.style.display = found ? "block" : "none";
+            ele.tags.style.display = found ? "block" : "none";
+            ele.fileSize.style.display = found ? "block" : "none";
+        },
+
         over: function (e) {
             const target = isInDLSite() ? e.target : getVoiceLinkTarget(e.target);
             if(!target || !target.classList.contains(VOICELINK_CLASS)) return;
@@ -727,6 +778,15 @@
                 //说明是网络问题，删除缓存并返回true
                 delete work_promise[rjCode];
                 return true;
+            }
+        },
+
+        getParentRJ: async function(rjCode){
+            try{
+                const data = await this.getWorkPromise(rjCode).info;
+                return data.parentWork;
+            }catch (e){
+                return null;
             }
         },
 
@@ -1042,7 +1102,7 @@
             });
         },
 
-        getAnnouncePromise: function (rjCode) {
+        getAnnouncePromise: function (rjCode, parentRJ) {
             const url = `https://www.dlsite.com/maniax/announce/=/product_id/${rjCode}.html`;
             return new Promise(
                 (resolve, reject) => {
@@ -1050,10 +1110,11 @@
                         if (resp.readyState === 4 && resp.status === 200) {
                             const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
                             const workInfo = DLsite.parseWorkDOM(dom, rjCode);
+                            workInfo.parentWork = parentRJ === rjCode ? null : parentRJ;
                             resolve(workInfo);
                         }
                         else if (resp.readyState === 4 && resp.status === 404) {
-                            resolve(null);
+                            resolve({parentWork: parentRJ === rjCode ? null : parentRJ});
                         }
                     }, () => reject(null))
                 }
@@ -1068,10 +1129,12 @@
                         if (resp.readyState === 4 && resp.status === 200) {
                             const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
                             const workInfo = DLsite.parseWorkDOM(dom, rjCode);
+                            workInfo.parentWork = DLsite.getParentWorkRjCode(resp.finalUrl);
+                            workInfo.parentWork = workInfo.parentWork === rjCode ? null : workInfo.parentWork;
                             resolve(workInfo);
                         }
                         else if (resp.readyState === 4 && resp.status === 404) {
-                            resolve(this.getAnnouncePromise(rjCode))
+                            resolve(this.getAnnouncePromise(rjCode, DLsite.getParentWorkRjCode(resp.finalUrl)));
                         }
                     }, () => reject(null))
                 }
@@ -1178,6 +1241,11 @@
                 api: apiPromise,
                 circle: circlePromise
             }
+        },
+
+        getParentWorkRjCode: function (redirectUrl){
+            const reg = new RegExp("(?<=product_id/)((R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6}))")
+            return redirectUrl.match(reg)[0];
         }
     }
 
