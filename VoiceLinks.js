@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.12
+// @version     2.5.1
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -67,6 +67,8 @@
           font-size: 1.2em;
           font-style: italic;
           opacity: 0.3;
+          
+          margin-bottom: 10px;
       }
  
       .error {
@@ -104,6 +106,12 @@
           scale: 1.1;
       }
   `
+
+    /**
+     * Work promise cache
+     * @type {{info:{}, api:{}}}
+     */
+    const work_promise = {};
 
     function getAdditionalPopupClasses() {
         const hostname = document.location.hostname;
@@ -295,7 +303,7 @@
     }
 
     const Popup = {
-        makePopup: function (e, rjCode) {
+        /*makePopup: function (e, rjCode) {
             const popup = document.createElement("div");
             popup.className = "voicepopup " + (getAdditionalPopupClasses() || '');
             popup.id = "voice-" + rjCode;
@@ -354,6 +362,140 @@
 
                 Popup.move(e);
             });
+        },*/
+
+        makePopup: function (e, rjCode) {
+            const popup = document.createElement("div");
+            popup.className = "voicepopup " + (getAdditionalPopupClasses() || '');
+            popup.id = "voice-" + rjCode;
+            popup.style = "display: flex";
+            document.body.appendChild(popup);
+
+            let workFound = true;
+            WorkPromise.getFound(rjCode).then(found => {
+                if(!found) {
+                    popup.innerHTML = "Work Not Found.";
+                    workFound = false;
+                }
+            })
+
+            const imgContainer = document.createElement("div")
+            const img = document.createElement("img");
+            imgContainer.appendChild(img);
+            WorkPromise.getImgLink(rjCode).then(link => {
+                img.src = link;
+            });
+
+            /*let html = `
+                      <div>
+                          <div class='voice-title'>${workInfo.title}</div>
+                          <div class='rjcode'>[${workInfo.rj}]</div>
+                          <br />
+                          Circle: <a>${workInfo.circle}</a>
+                          <br />
+                  `;*/
+
+            const infoContainer = document.createElement("div");
+
+            const titleElement = document.createElement("div");
+            titleElement.classList.add("voice-title");
+            titleElement.innerText = "Loading...";
+            WorkPromise.getWorkTitle(rjCode).then(title => titleElement.innerText = title)
+                .catch(_ => titleElement.innerHTML = "");
+            infoContainer.appendChild(titleElement);
+
+            const rjCodeElement = document.createElement("div");
+            rjCodeElement.classList.add("rjcode");
+            rjCodeElement.innerText = `[${rjCode}]`;
+            infoContainer.appendChild(rjCodeElement);
+
+            /*if (workInfo.date)
+                html += `Release: <a>${workInfo.date}</a> <br />`;*/
+
+            const releaseElement = document.createElement("div");
+            releaseElement.innerHTML = "Release: Loading...";
+            WorkPromise.getReleaseDate(rjCode).then(date => releaseElement.innerHTML = `Release: <a>${date}</a>`)
+                .catch(_ => releaseElement.innerHTML = "");
+            infoContainer.appendChild(releaseElement);
+
+            /*if (workInfo.update)
+                html += `Update: <a>${workInfo.update}</a> <br />`;*/
+
+            const updateElement = document.createElement("div");
+            updateElement.innerHTML = "Update: Loading...";
+            WorkPromise.getUpdateDate(rjCode).then(date => updateElement.innerHTML = `Update: <a>${date}</a>`)
+                .catch(_ => updateElement.innerHTML = "");
+            infoContainer.appendChild(updateElement);
+
+            /*let ratingClass = "age-all";
+            if (workInfo.rating.includes("18")) {
+                ratingClass = "age-18";
+            }
+            html += `Age rating: <a class="${ratingClass}">${workInfo.rating}</a><br />`*/
+
+            const ageElement = document.createElement("div");
+            ageElement.innerHTML = "Age rating: Loading...";
+            WorkPromise.getAgeRating(rjCode).then(rating => {
+                let ratingClass = "age-all";
+                if(rating.includes("18")){
+                    ratingClass = "age-18";
+                }
+                ageElement.innerHTML = `Age rating: <a class="${ratingClass}">${rating}</a>`;
+            }).catch(_ => ageElement.innerHTML = "");
+            infoContainer.appendChild(ageElement);
+
+            /*if (workInfo.cv)
+                html += `CV: <a>${workInfo.cv}</a> <br />`;*/
+
+            const cvElement = document.createElement("div");
+            cvElement.innerHTML = "CV: Loading...";
+            WorkPromise.getCV(rjCode).then(cv => cvElement.innerHTML = `CV: <a>${cv}</a>`)
+                .catch(_ => cvElement.innerHTML = "");
+            infoContainer.appendChild(cvElement);
+
+            /*if (workInfo.tags) {
+                html += `Tags: <a>`
+                workInfo.tags.forEach(tag => {
+                    html += tag + "\u3000";
+                });
+                html += "</a><br />";
+            }*/
+
+            const tagsElement = document.createElement("div");
+            tagsElement.innerHTML = "Tags: Loading...";
+            WorkPromise.getTags(rjCode).then(tags => {
+                let tagsHtml = "Tags: <a>";
+                tags.forEach(tag => {
+                    tagsHtml += tag + "\u3000";
+                });
+                tagsHtml += "</a>";
+                tagsElement.innerHTML = tagsHtml;
+            }).catch(_ => tagsElement.innerHTML = "");
+            infoContainer.appendChild(tagsElement);
+
+            /*if (workInfo.filesize)
+                html += `File size: ${workInfo.filesize}<br />`;*/
+
+            const filesizeElement = document.createElement("div");
+            filesizeElement.innerHTML = "File size: Loading...";
+            WorkPromise.getFileSize(rjCode).then(filesize => filesizeElement.innerHTML = `File size: ${filesize}`)
+                .catch(_ => filesizeElement.innerHTML = "");
+            infoContainer.appendChild(filesizeElement);
+
+            /*html += "</div>"
+            popup.innerHTML = html;*/
+
+            infoContainer.style.paddingBottom = "3px";
+            popup.appendChild(infoContainer);
+            popup.insertBefore(imgContainer, popup.childNodes[0]);
+
+            /*if (workInfo === null)
+                popup.innerHTML = "<div class='error'>Work not found.</span>";
+            else {
+
+            }*/
+
+            Popup.move(e);
         },
 
         over: function (e) {
@@ -399,6 +541,100 @@
         },
     }
 
+    const WorkPromise = {
+        /**
+         * 标题、社团、发行日期、更新日期、年龄指定
+         * CV、标签、文件大小、封面地址
+         */
+
+        checkNotNull: function (obj){
+            if(!obj) throw new Error();
+            return obj;
+        },
+
+        getWorkPromise: function (rjCode){
+            if(work_promise[rjCode]){
+                return work_promise[rjCode];
+            }
+            work_promise[rjCode] = DLsite.getWorkRequestPromise(rjCode);
+            return work_promise[rjCode];
+        },
+
+        getFound: async function(rjCode){
+            try{
+                await this.getWorkPromise(rjCode).api;
+                return true;
+            }catch (e){
+                return false;
+            }
+        },
+
+        getImgLink: async function(rjCode){
+            try{
+                const apiData = await this.getWorkPromise(rjCode).api;
+                if(apiData.img_url) return "https://" + apiData.img_url;
+                this.checkNotNull(apiData.img_url);
+            }catch (e) {
+                const info = await this.getWorkPromise(rjCode).info;
+                this.checkNotNull(info.img);
+                return info.img;
+            }
+        },
+
+        getWorkTitle: async function(rjCode){
+            const apiData = await this.getWorkPromise(rjCode).api;
+            this.checkNotNull(apiData.title);
+            return apiData.title;
+        },
+
+        getAgeRating: async function(rjCode){
+            const info = await this.getWorkPromise(rjCode).info;
+            this.checkNotNull(info.rating);
+            return info.rating;
+        },
+
+        getCircle: async function(rjCode){
+            const info = await this.getWorkPromise(rjCode).info;
+            this.checkNotNull(info.circle);
+            return info.circle;
+        },
+
+        getReleaseDate: async function(rjCode){
+            const info = await this.getWorkPromise(rjCode).info;
+            this.checkNotNull(info.date);
+            return info.date;
+        },
+
+        getUpdateDate: async function(rjCode) {
+            const info = await this.getWorkPromise(rjCode).info;
+            this.checkNotNull(info["update"]);
+            return info["update"];
+        },
+
+        getCV: async function(rjCode){
+            const info = await this.getWorkPromise(rjCode).info;
+            this.checkNotNull(info.cv);
+            return info.cv;
+        },
+
+        getTags: async function(rjCode) {
+            const info = await this.getWorkPromise(rjCode).info;
+            this.checkNotNull(info.tags);
+            return info.tags;
+        },
+
+        getFileSize: async function(rjCode) {
+            let info = await this.getWorkPromise(rjCode).info;
+            if(info.filesize) return info.filesize;
+
+            let api = await this.getWorkPromise(rjCode).api;
+            const original_rj = api.original_rj;
+            info = await this.getWorkPromise(original_rj).info;
+            this.checkNotNull(info.filesize);
+            return info.filesize;
+        }
+    }
+
     const DLsite = {
         parseWorkDOM: function (dom, rj) {
             // workInfo: {
@@ -441,6 +677,8 @@
 
             workInfo.title = dom.getElementById("work_name").innerText;
             workInfo.circle = dom.querySelector("span.maker_name").innerText;
+            // workInfo.circleId = dom.querySelector("#work_maker a").href;
+            // workInfo.circleId = workInfo.circleId.substring(workInfo.circleId.lastIndexOf("/") + 1, workInfo.circleId.lastIndexOf("."));
 
             const table_outline = dom.querySelector("table#work_outline");
             for (var i = 0, ii = table_outline.rows.length; i < ii; i++) {
@@ -465,7 +703,7 @@
                         workInfo.cv = row_data.innerText;
                         break;
                     case (row_header.includes("ファイル容量")||row_header.includes("文件容量")||row_header.includes("File size")||row_header.includes("檔案容量")||row_header.includes("파일 용량")):
-                        workInfo.filesize = row_data.innerText.replace("総計", "").trim();
+                        workInfo.filesize = row_data.innerText.trim();
                         break;
                     default:
                         break;
@@ -522,6 +760,124 @@
                 },
             });
         },
+
+        // Get language code for DLSite API
+        getLangCode: function (lang) {
+            if(!lang) return "ja-JP";
+
+            switch (lang.toUpperCase()) {
+                case "JPN":
+                    return "ja-JP";
+                case "ENG":
+                    return "en-US";
+                case "KO_KR":
+                    return "ko-KR";
+                case "CHI_HANS":
+                    return "zh-CN";
+                case "CHI_HANT":
+                    return "zh-TW";
+                default:
+                    return "ja-JP"
+            }
+        },
+
+        getHttp: function (url, onload){
+            return getXmlHttpRequest()({
+                method: "GET",
+                url,
+                headers: {
+                    "Accept": "text/xml",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)"
+                },
+                onload: onload
+            });
+        },
+
+        getHtmlPromise: function (rjCode) {
+            const url = `https://www.dlsite.com/maniax/work/=/product_id/${rjCode}.html`;
+            return new Promise(
+                (resolve, reject) => {
+                    this.getHttp(url, resp => {
+                        if (resp.readyState === 4 && resp.status === 200) {
+                            const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
+                            const workInfo = DLsite.parseWorkDOM(dom, rjCode);
+                            resolve(workInfo);
+                        }
+                        else if (resp.readyState === 4 && resp.status === 404) {
+                            reject(null);
+                        }
+                    })
+                }
+            )
+        },
+
+        getPropertySafe: function (obj, ...props){
+            for (let i = 0; i < props.length; i++){
+                if(obj[props[i]]){
+                    obj = obj[props[i]];
+                }
+                else{
+                    return obj[props[i]];
+                }
+            }
+            return obj;
+        },
+
+        getApiPromise: function (rjCode){
+            const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${rjCode}&cdn_cache_min=1`
+            const p1 = new Promise(
+                (resolve, reject) => {
+                    this.getHttp(url, resp => {
+                        if (resp.readyState === 4 && resp.status === 200) {
+                            const data = JSON.parse(resp.responseText);
+                            resolve(data[rjCode]);
+                        }
+                        else if (resp.readyState === 4 && resp.status === 404) {
+                            reject(null);
+                        }
+                    })
+                }
+            )
+
+            return p1.then(data => {
+                const translation_info = data.translation_info ? data.translation_info : {};
+                const lang = this.getLangCode(translation_info.lang);
+                let next_rj = rjCode;
+                if(translation_info.is_child) {
+                    next_rj = translation_info.parent_workno;
+                }
+
+                const url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${next_rj}&cdn_cache_min=1&locale=${lang}`;
+                return new Promise(
+                    (resolve, reject) => {
+                        this.getHttp(url,
+                            resp => {
+                                if (resp.readyState === 4 && resp.status === 200) {
+                                    const data = JSON.parse(resp.responseText);
+                                    resolve(data[next_rj]);
+                                }
+                                else if (resp.readyState === 4 && resp.status === 404) {
+                                    reject(null);
+                                }
+                            })
+                    }
+                )
+            }).then(data => {
+                const translation_info = data.translation_info ? data.translation_info : {};
+                return {
+                    title: data.work_name,
+                    img_url: data.work_image.substring(2),
+                    original_rj: translation_info.original_workno ? translation_info.original_workno : rjCode
+                }
+            });
+        },
+
+        getWorkRequestPromise: function (rjCode) {
+            return {
+                info: this.getHtmlPromise(rjCode),
+                api: this.getApiPromise(rjCode)
+            }
+        }
     }
 
 
