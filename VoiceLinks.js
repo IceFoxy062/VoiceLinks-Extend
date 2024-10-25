@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.9.0
+// @version     2.9.1
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -538,7 +538,7 @@
             WorkPromise.getGirls(rjCode).then(isGirls => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 if(isGirls) popup.className += (" voicepopup-girls")
-            });
+            }).catch(e => {});
 
             const imgContainer = ele.img.container;
             let img = ele.img[rjCode];
@@ -555,7 +555,7 @@
             WorkPromise.getImgLink(rjCode).then(link => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 img.src = link;
-            });
+            }).catch(e => {});
 
             const titleElement = ele.title;
             titleElement.innerText = "Loading...";
@@ -792,7 +792,8 @@
 
         getGirls: async function(rjCode){
             const data = await this.getWorkPromise(rjCode).api;
-            return data.is_girls
+            this.checkNotNull(data.is_girls)
+            return data.is_girls;
         },
 
         getDebug: async function(rjCode){
@@ -837,7 +838,7 @@
             let work = this.getWorkPromise(rjCode);
             let info = await work.info;
 
-            if(!info){
+            if(!info.circleId){
                 //页面解析失败，可能作品无法显示，此时直接获取RG信息
                 const circleInfo = await work.circle;
                 this.checkNotNull(circleInfo);
@@ -846,6 +847,7 @@
             }
 
             if(info.circleId && info.circleId !== "RG60289"){
+                //RG魔法值为大家翻的RG号
                 this.checkNotNull(info.circle);
                 return info.circle;
             }
