@@ -5,7 +5,7 @@
 // @match       *://*/*
 // @match       file:///*
 // @exclude     *://copilot.microsoft.com/*
-// @version     4.0.4
+// @version     4.0.5
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -1656,11 +1656,14 @@
                     return WorkPromise.getWorkTitle(rj);
                 }
             }).then(t => {
-                if(!t) return;
+                if(!t){
+                    if(settings._s_copy_as_filename_btn) title.appendChild(button);
+                    return;
+                }
                 compatibilityCheck(title, titleHtml);
                 titleStr = t
                 title.innerText = t
-                if(settings._s_copy_as_filename_btn) title.appendChild(button)
+                if(settings._s_copy_as_filename_btn) title.appendChild(button);
             })
         }else{
             if(settings._s_copy_as_filename_btn) title.appendChild(button);
