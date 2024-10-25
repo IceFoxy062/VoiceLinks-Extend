@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     3.2.0
+// @version     3.2.3
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -30,6 +30,12 @@
 
         /***DLSite网页是否显示大家翻对应语言的翻译版标题（默认是）***/
         _s_use_translated_title: GM_getValue("use_translated_title", true),
+
+        /***显示“复制为有效文件名”按钮***/
+        _s_copy_as_filename_btn: GM_getValue("copy_as_filename_btn", true),
+
+        /***显示兼容性警告***/
+        _s_show_compatibility_error: GM_getValue("show_compatibility_error", true),
 
         /***为了防止URL被整个解析覆盖，会在链接开头（1）或末尾（2）添加额外文本***/
         _s_url_insert: GM_getValue("url_insert", "before_rj_with_coverage"),
@@ -220,6 +226,7 @@
             return;
         }
         let titleStr = title.innerText;
+        let titleHtml = title.innerHTML;
 
         const button = document.createElement("button");
         button.id = `${VOICELINK_CLASS}_copy_btn`;
@@ -244,16 +251,33 @@
 
         title.style.userSelect = "text";
         title.classList.add(`${VOICELINK_CLASS}_work_title`);
-        title.appendChild(button);
 
         if(settings._s_use_translated_title){
             //将Title替换成大家翻对应的语言翻译版本
             WorkPromise.getWorkTitle(rj).then(t => {
+                compatibilityCheck(title, titleHtml);
                 titleStr = t
                 title.innerText = t
-                title.appendChild(button)
+                if(settings._s_copy_as_filename_btn) title.appendChild(button)
             })
+        }else{
+            if(settings._s_copy_as_filename_btn) title.appendChild(button);
         }
+    }
+
+    function compatibilityCheck(titleElement, titleHtml){
+        if(!settings._s_show_compatibility_error) return;
+
+        if(titleElement.innerHTML.trim() === titleHtml.trim()){
+            return;
+        }
+
+        //其它脚本修改了标题内部，进行警告
+        window.alert("警告：\n" +
+            "VoiceLinks检测到DL作品标题元素发生变化，该变化可能是脚本与其它插件冲突导致的。\n" +
+            "可以关闭本脚本中的 “在DLSite显示对应语言的翻译标题” 设置项，以尝试解决冲突。（也可根据情况酌情关闭 “在DL作品标题旁添加复制为文件名按钮” 选项）\n\n" +
+            "本脚本的设置方法：点击Tampermonkey等扩展程序的按钮，在弹出的脚本列表中找到当前脚本，点击下方的Settings按钮即可打开设置页面。\n\n" +
+            "注意：如果不想看到该警告，可以同时关闭“显示兼容性警告”设置项。")
     }
 
     function getXmlHttpRequest() {
@@ -1562,8 +1586,16 @@
             <td><input class="field" type="checkbox" id="${VOICELINK_CLASS}_use_in_dl_" name="use_in_dl" ${settings._s_use_in_dl ? "checked" : ""}/></td>
         </tr>
         <tr>
-            <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_use_translated_title">在DLSite显示对应语言的翻译标题 (<abbr title="作品信息页面标题修改，会出现加载延迟">?</abbr>)</td>
+            <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_use_translated_title">在DLSite显示对应语言的翻译标题 (<abbr title="作品信息页面标题修改，会出现加载延迟。&#10;&#10;如果出现与其它插件冲突的情况请关闭！">?</abbr>)</td>
             <td><input class="field" type="checkbox" id="${VOICELINK_CLASS}_use_translated_title_" name="use_translated_title" ${settings._s_use_translated_title ? "checked" : ""}/></td>
+        </tr>
+        <tr>
+            <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_copy_as_filename_btn">在DL作品标题旁添加复制为文件名按钮 (<abbr title="标题文本中的无效字符将会被替换为外观相似的字符，可直接作为文件名粘贴。&#10;&#10;如果出现与其它插件冲突的情况请关闭！">?</abbr>)</td>
+            <td><input class="field" type="checkbox" id="${VOICELINK_CLASS}_copy_as_filename_btn_" name="copy_as_filename_btn" ${settings._s_copy_as_filename_btn ? "checked" : ""}/></td>
+        </tr>
+        <tr>
+            <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_show_compatibility_error"><strong>显示兼容性警告 (<abbr title="如果脚本中修改DLSite页面元素的功能覆盖了其它脚本的修改，会触发弹窗警告&#10;&#10;目前仅检查作品标题部分，因为这不是脚本的核心功能，可能与其它脚本冲突。">?</abbr>)</strong></td>
+            <td><input class="field" type="checkbox" id="${VOICELINK_CLASS}_show_compatibility_error_" name="show_compatibility_error" ${settings._s_show_compatibility_error ? "checked" : ""}/></td>
         </tr>
         <tr>
             <td class="${VOICELINK_CLASS}_label" id="${VOICELINK_CLASS}_url_insert">URL插入原链接导向文本 (<abbr title="如果链接被解析成功，为保证原链接不被完全覆盖，会在URL中的文本前/后插入特定导向文本">?</abbr>)</td>
