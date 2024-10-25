@@ -188,14 +188,14 @@
         ],
         _s_tag_work_type: true,
         _s_tag_translatable: true,
-        _s_tag_not_translatable: false,
-        _s_tag_translated: false,
+        _s_tag_not_translatable: true,
+        _s_tag_translated: true,
         _s_tag_language_support: true,
         _s_tag_bonus_work: true,
         _s_tag_has_bonus: true,
         _s_tag_file_format: false,
         _s_tag_no_longer_available: true,
-        _s_tag_ai: false,
+        _s_tag_ai: true,
 
         _s_tag_translation_request: true,
         _s_tag_translation_request_display_order: [
@@ -203,6 +203,7 @@
             "tag_translation_request_traditional_chinese",
             "tag_translation_request_english",
             "tag_translation_request_korean",
+            "tag_translation_request_spanish",
             "tag_translation_request_german",
             "tag_translation_request_french",
             "tag_translation_request_indonesian",
@@ -216,6 +217,7 @@
         _s_tag_translation_request_simplified_chinese: true,
         _s_tag_translation_request_traditional_chinese: true,
         _s_tag_translation_request_korean: false,
+        _s_tag_translation_request_spanish: false,
         _s_tag_translation_request_german: false,
         _s_tag_translation_request_french: false,
         _s_tag_translation_request_indonesian: false,
@@ -1421,6 +1423,11 @@
         .${VOICELINK_CLASS}_tags > span.${VOICELINK_CLASS}_tag_tight{
             padding: 3px 7.5px;
         }
+        .${VOICELINK_CLASS}_tags > label.${VOICELINK_CLASS}_tag_small,
+        .${VOICELINK_CLASS}_tags > span.${VOICELINK_CLASS}_tag_small{
+            padding: 3px 7.5px;
+            font-size: 12px;
+        }
 
         .${VOICELINK_CLASS}_tag-off{
             background-color: #ffffff !important;
@@ -2475,12 +2482,29 @@
             if(!ai) return;
             return Popup.get_tag(ai, "tag-purple");
         },
+        get_translatable_tag: async function (rjCode, tag_id) {
+            if(settings[`_s_${tag_id}`] !== true) return;
+
+            if(tag_id.startsWith("tag_")) tag_id = tag_id.substring(4);
+            const t = await WorkPromise.getWorkPromise(rjCode).translatable;
+            const stat = t[tag_id];
+            if(!stat.agree) return;
+
+            const hasRequest = stat.request > 0;
+            const hasSale = stat.sale > 0;
+            const lang = tag_id.substring("translation_request_".length);
+            const tag = Popup.get_tag(`${localizePopup(localizationMap[`language_${lang}_abbr`])} ${stat.request}-${stat.sale}`,
+                hasSale ? "tag-green" : (hasRequest ? "tag-orange" : "tag-gray"));
+            tag.classList.add(`${VOICELINK_CLASS}_tag_small`);
+            return tag;
+        },
 
         get_tag_container: function (rjCode, tag_list) {
             const container = document.createElement("div");
             container.classList.add(`${VOICELINK_CLASS}_tags`);
-            const elements = [];
             for (const tag_id of tag_list) {
+                if(settings[`_s_${tag_id}`] !== true) continue;
+
                 let shadowTag = document.createElement("span");
                 shadowTag.style.display = "none";
                 shadowTag.setAttribute("data-id", tag_id);
@@ -2493,6 +2517,25 @@
                         shadowTag.remove();
                     }
                 });
+            }
+            return container;
+        },
+        get_translatable_tag_container: function (rjCode, tag_list) {
+            const container = document.createElement("div");
+            container.classList.add(`${VOICELINK_CLASS}_tags`);
+            container.style.marginTop = "0";
+            for (const tag_id of tag_list) {
+                let shadowTag = document.createElement("span");
+                shadowTag.style.display = "none";
+                shadowTag.setAttribute("data-id", tag_id);
+                container.appendChild(shadowTag);
+
+                this.get_translatable_tag(rjCode, tag_id).then(tag => {
+                    if(tag){
+                        container.insertBefore(tag, shadowTag);
+                        shadowTag.remove();
+                    }
+                }).catch(e => {});
             }
             return container;
         },
@@ -2510,9 +2553,27 @@
 
             //TAG部分
             const infoContainer = this.popupElement.info_container;
-            const container = this.get_tag_container(rjCode,
-                settings[`_s_tag_display_order`]);
-            infoContainer.appendChild(container);
+            let tagContainer = null;
+            if(settings._s_tag_main_switch === true){
+                const container = this.get_tag_container(rjCode,
+                    settings[`_s_tag_display_order`]);
+                tagContainer = container;
+                infoContainer.appendChild(container);
+            }
+
+            //翻译申请情况
+            const shadowContainer = document.createElement("div");
+            shadowContainer.style.display = "none";
+            infoContainer.appendChild(shadowContainer);
+            WorkPromise.getTranslatable(rjCode).then(able => {
+                if(rjCode !== Popup.popupElement.popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(able && settings._s_tag_translation_request === true){
+                    const translatableContainer = this.get_translatable_tag_container(rjCode,
+                        settings._s_tag_translation_request_display_order);
+                    infoContainer.insertBefore(translatableContainer, shadowContainer);
+                    shadowContainer.remove();
+                }
+            }).catch(e => {});
 
             //信息部分
             const order = settings[`_s_${category}__info_display_order`];
@@ -3309,12 +3370,120 @@
             return data;
         },
 
+        getTranslatablePromise: async function (rjCode) {
+            rjCode = rjCode.toUpperCase();
+            const url = `https://www.dlsite.com/maniax/works/translatable?keyword=${rjCode}`;
+            const result = {
+                translation_request_english: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_simplified_chinese:{
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_traditional_chinese:{
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_korean: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_spanish: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_german: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_french: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_indonesian: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_italian: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_portuguese: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_swedish: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_thai: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+                translation_request_vietnamese: {
+                    agree: false,
+                    request: undefined,
+                    sale: undefined
+                },
+            };
+
+            const resp = await this.getHttpAsync(url);
+            if (resp.readyState !== 4 || resp.status !== 200) {
+                return result;
+            }
+
+            const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
+            const table = dom.querySelector(
+                `input#_${rjCode} ~ dd[onclick*=toggleTranslationStatus] table.translation_table tbody`);
+            if (table == null) return result;
+            const t = table.children;
+
+            const order = [
+                "translation_request_english",
+                "translation_request_simplified_chinese",
+                "translation_request_traditional_chinese",
+                "translation_request_korean",
+                "translation_request_spanish",
+                "translation_request_german",
+                "translation_request_french",
+                "translation_request_indonesian",
+                "translation_request_italian",
+                "translation_request_portuguese",
+                "translation_request_swedish",
+                "translation_request_thai",
+                "translation_request_vietnamese",
+            ];
+            for (let i = 1; i <= 13; ++i) {
+                let key = order[i - 1];
+                result[key].agree = t[i].querySelector("td strong") != null;
+                result[key].request = t[i].children[2].innerText;
+                result[key].sale = t[i].children[3].innerText;
+            }
+
+            return result;
+        },
+
         getWorkRequestPromise: function (rjCode) {
             return {
                 _info: undefined,
                 _api: undefined,
                 _api2: undefined,
                 _circle: undefined,
+                _translatable: undefined,
                 _translated_title: undefined,
                 get info(){
                     return this._info ? this._info : this._info = DLsite.getHtmlPromise(rjCode);
@@ -3327,6 +3496,9 @@
                 },
                 get circle(){
                     return this._circle ? this._circle : this._circle = DLsite.getCirclePromise(rjCode, this.api);
+                },
+                get translatable() {
+                    return this._translatable ? this._translatable : this._translatable = DLsite.getTranslatablePromise(rjCode);
                 },
                 get translated_title(){
                     async function getter(t){
@@ -4164,6 +4336,13 @@
                                             tooltip: localize(localizationMap.language_korean)
                                         },
                                         {
+                                            //西班牙语
+                                            title: `${localize(localizationMap.language_spanish_abbr)} 1-1`,
+                                            id: "tag_translation_request_spanish",
+                                            class: "tag-orange",
+                                            tooltip: localize(localizationMap.language_spanish)
+                                        },
+                                        {
                                             //德语
                                             title: `${localize(localizationMap.language_german_abbr)} 1-1`,
                                             id: "tag_translation_request_german",
@@ -4845,6 +5024,8 @@
                 }else if(target.tagName === "SELECT") {
                     target.value = settings[key];
                 }
+
+                if(key === "_s_lang") continue;
                 target.dispatchEvent(new Event("change"));
             }
         };
@@ -5008,6 +5189,7 @@
     document.addEventListener("DOMContentLoaded", init);
 
     function showUpdateNotice(force = false) {
+        //TODO: 公告待更新
         const firstTimeToken = 103;
         if(GM_getValue("first_token", undefined) === firstTimeToken && !force){
             return;
