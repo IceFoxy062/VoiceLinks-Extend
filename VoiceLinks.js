@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful. (8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.0
+// @version     2.1.3
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -323,23 +323,23 @@
                 const row_header = row.cells[0].innerText;
                 const row_data = row.cells[1];
                 switch (true) {
-                    case (row_header.includes("販売日")||row_header.includes("贩卖日")):
+                    case (row_header.includes("販売日")||row_header.includes("贩卖日")||row_header.includes("Release date")||row_header.includes("販賣日")||row_header.includes("판매일")):
                         workInfo.date = row_data.innerText;
                         break;
-                    case (row_header.includes("最終更新日")||row_header.includes("最终更新日")):
+                    case (row_header.includes("更新情報")||row_header.includes("更新信息")||row_header.includes("Update information")||row_header.includes("更新資訊")||row_header.includes("갱신 정보")):
                         workInfo.update = row_data.firstChild.data;
                         break;
-                    case (row_header.includes("年齢指定")||row_header.includes("年龄指定")):
+                    case (row_header.includes("年齢指定")||row_header.includes("年龄指定")||row_header.includes("Age")||row_header.includes("年齡指定")||row_header.includes("연령 지정")):
                         workInfo.rating = row_data.innerText;
                         break;
-                    case (row_header.includes("ジャンル")||row_header.includes("分类")):
+                    case (row_header.includes("ジャンル")||row_header.includes("分类")||row_header.includes("Genre")||row_header.includes("分類")||row_header.includes("장르")):
                         const tag_nodes = row_data.querySelectorAll("a");
                         workInfo.tags = [...tag_nodes].map(a => { return a.innerText });
                         break;
-                    case (row_header.includes("声優")||row_header.includes("声优")):
+                    case (row_header.includes("声優")||row_header.includes("声优")||row_header.includes("Voice Actor")||row_header.includes("聲優")||row_header.includes("성우")):
                         workInfo.cv = row_data.innerText;
                         break;
-                    case (row_header.includes("ファイル容量")||row_header.includes("文件容量")):
+                    case (row_header.includes("ファイル容量")||row_header.includes("文件容量")||row_header.includes("File size")||row_header.includes("檔案容量")||row_header.includes("파일 용량")):
                         workInfo.filesize = row_data.innerText.replace("総計", "").trim();
                         break;
                     default:
