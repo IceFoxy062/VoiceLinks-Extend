@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     2.1.9
+// @version     2.1.10
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -87,6 +87,19 @@
             case "boards.4chan.org": return "post reply";
             case "discordapp.com": return "discord-dark";
             default: return null;
+        }
+    }
+
+    function setUserSelectTitle(){
+        // Make title selectable
+        const hostname = document.location.hostname;
+        if(!hostname.endsWith("dlsite.com")){
+            return;
+        }
+
+        const title = document.getElementById("work_name");
+        if(title){
+            title.style.userSelect = "text";
         }
     }
 
@@ -463,5 +476,8 @@
         });
 
         observer.observe(document.body, { childList: true, subtree: true })
+
+        // Make title selectable
+        setUserSelectTitle();
     });
 })();
