@@ -3,7 +3,7 @@
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @include     *://*/*
-// @version     3.0.2
+// @version     3.0.3
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -12,9 +12,9 @@
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
-// @homepage    https://greasyfork.org/zh-CN/scripts/456775
-// @downloadURL https://update.greasyfork.org/scripts/456775/VoiceLinks.user.js
-// @updateURL https://update.greasyfork.org/scripts/456775/VoiceLinks.meta.js
+// @homepage    https://sleazyfork.org/zh-CN/scripts/456775-voicelinks
+// @downloadURL https://update.sleazyfork.org/scripts/456775/VoiceLinks.user.js
+// @updateURL https://update.sleazyfork.org/scripts/456775/VoiceLinks.meta.js
 // ==/UserScript==
 
 (function () {
