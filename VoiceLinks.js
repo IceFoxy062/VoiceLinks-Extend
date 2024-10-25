@@ -1035,18 +1035,30 @@
         },
 
         getImgLink: async function(rjCode){
-            try{
-                const p = this.getWorkPromise(rjCode);
-                let data = await p.api2;
-                if(data.image_main && data.image_main.url) return "https://" + data.image_main.url;
+            let link = undefined;
+            const p = this.getWorkPromise(rjCode);
 
+            try {
+                let data = await p.api2;
+                if (data.image_main && data.image_main.url) link = "https:" + data.image_main.url;
+            } catch (e) {}
+
+            if(link && !link.includes("no_img_main.gif")){
+                return link;
+            }
+
+            try{
                 const info = await p.info;
                 this.checkNotNull(info.img);
                 return info.img;
             }catch (e) {
+            }
+
+            try{
                 const apiData = await this.getWorkPromise(rjCode).api;
                 if(apiData.work_image) return "https:" + apiData.work_image;
-            }
+            }catch (e){}
+
             throw new Error("无法获取图片链接");
         },
 
