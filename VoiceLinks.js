@@ -5,7 +5,7 @@
 // @match       *://*/*
 // @match       file:///*
 // @exclude     *://copilot.microsoft.com/*
-// @version     4.0.5
+// @version     4.1.0
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -1030,7 +1030,7 @@
     const RJCODE_ATTRIBUTE = 'rjcode';
     const POPUP_CSS = `
     .${VOICELINK_CLASS}_voicepopup {
-        min-width: 600px !important;
+        min-width: 630px !important;
         z-index: 2147483646 !important;
         max-width: 80% !important;
         position: fixed !important;
@@ -1102,12 +1102,17 @@
     .${VOICELINK_CLASS}_voicepopup-girls{
         background-color:#B33761;
     }
+    
+    .${VOICELINK_CLASS}_voicepopup .${VOICELINK_CLASS}_img_container{
+        width: 300px;
+        margin: 0 12px 0 0;
+        padding: 3px;
+        flex-shrink: 0;
+    }
 
-    .${VOICELINK_CLASS}_voicepopup img {
-        width: 270px;
+    .${VOICELINK_CLASS}_img_container img {
+        width: 100%;
         height: auto;
-        margin: 3px 15px 3px 3px;
-        max-width: fit-content;
     }
     
     .${VOICELINK_CLASS}_voicepopup a {
@@ -1996,6 +2001,7 @@
             popup: null,
             not_found: null,
             img: {container: null},
+            right_panel: null,
             title: null,
             rj_code: null,
             info_container: null,
@@ -2034,9 +2040,11 @@
             popup.appendChild(notFoundElement);
 
             const imgContainer = document.createElement("div")
+            imgContainer.classList.add(`${VOICELINK_CLASS}_img_container`);
             ele.img.container = imgContainer;
 
             const rightPanel = document.createElement("div");
+            ele.right_panel = rightPanel;
 
             const titleElement = document.createElement("div");
             ele.title = titleElement;
@@ -2162,7 +2170,11 @@
             });
 
             const rjCodeElement = ele.rj_code;
-            rjCodeElement.innerText = `[${isParent ? " ↑ " : ""}${rjCode}]`;
+            rjCodeElement.innerHTML = `[${isParent ? " ↑ " : ""}<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold">${rjCode}</span>]`;
+            WorkPromise.getRJChain(rjCode).then(chain => {
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                rjCodeElement.innerHTML = chain;
+            });
 
             //清除原有信息并展示加载界面
             for(let child of [...this.popupElement.info_container.children]){
@@ -2187,7 +2199,8 @@
             const popup = ele.popup;
 
             ele.not_found.style.display = found ? "none" : "block";
-            ele.img.container.style.display = found ? "block" : "none";
+            ele.img.container.style.display = found && !Popup.hideImg ? "block" : "none";
+            ele.right_panel.style.display = found ? "block" : "none";
             ele.title.style.display = found ? "block" : "none";
             ele.rj_code.style.display = found ? "block" : "none";
             //ele.flag.style.display = found ? "block" : "none";
@@ -2544,12 +2557,12 @@
             if(tag_id.startsWith("tag_")) tag_id = tag_id.substring(4);
             const t = await WorkPromise.getWorkPromise(rjCode).translatable;
             const stat = t[tag_id];
-            if(!stat.agree) return;
 
             const hasRequest = stat.request > 0;
             const hasSale = stat.sale > 0;
+            const displayCount = stat.agree || hasRequest || hasSale;
             const lang = tag_id.substring("translation_request_".length);
-            const tag = Popup.get_tag(`${localizePopup(localizationMap[`language_${lang}_abbr`])} ${stat.request}-${stat.sale}`,
+            const tag = Popup.get_tag(`${localizePopup(localizationMap[`language_${lang}_abbr`])}${stat.agree ? "" : " ✘"} ${displayCount ? ` ${stat.request}-${stat.sale}` : ""}`,
                 hasSale ? "tag-green" : (hasRequest ? "tag-orange" : "tag-gray"));
             tag.classList.add(`${VOICELINK_CLASS}_tag_small`);
             return tag;
@@ -2586,7 +2599,7 @@
                 shadowTag.setAttribute("data-id", tag_id);
                 container.appendChild(shadowTag);
 
-                this.get_translatable_tag(rjCode, tag_id).then(tag => {
+                Popup.get_translatable_tag(rjCode, tag_id).then(tag => {
                     if(tag){
                         container.insertBefore(tag, shadowTag);
                         shadowTag.remove();
@@ -2724,11 +2737,11 @@
 
         getFound: async function(rjCode){
             try{
-                const data = await this.getWorkPromise(rjCode).api2;
+                const data = await WorkPromise.getWorkPromise(rjCode).api2;
                 if(data && data.product_id !== undefined) return true;
 
                 //否则再次检查api1
-                const api = await this.getWorkPromise(rjCode).api;
+                const api = await WorkPromise.getWorkPromise(rjCode).api;
                 return api && api.is_sale !== undefined;
             }catch (e){
                 //说明是网络问题，删除缓存并返回true
@@ -2738,7 +2751,7 @@
         },
 
         getTranslationInfo: async function(rjCode){
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             let data = await p.api2;
             if(data.translation_info) return data.translation_info;
 
@@ -2746,10 +2759,23 @@
             return data.translation_info ? data.translation_info : {};
         },
 
+        getRJChain: async function(rjCode) {
+            //RJxxx → RJxxx → RJxxx，这样从子级指向父级
+            const trans = await WorkPromise.getTranslationInfo(rjCode);
+            let chain = `<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold">${rjCode}</span>`;
+            if(trans.is_child){
+                chain += ` → ${trans.parent_workno} → ${trans.original_workno}`;
+            }else if(trans.is_parent){
+                chain += ` → ${trans.original_workno}`;
+            }
+
+            return `[${chain}]`;
+        },
+
         getParentRJ: async function(rjCode){
             try{
-                const p = this.getWorkPromise(rjCode);
-                let trans = await this.getTranslationInfo(rjCode);
+                const p = WorkPromise.getWorkPromise(rjCode);
+                let trans = await WorkPromise.getTranslationInfo(rjCode);
                 if(trans.is_original || trans.is_parent) return rjCode;
                 if(trans.parent_workno) return trans.parent_workno;
 
@@ -2761,25 +2787,25 @@
         },
 
         getGirls: async function(rjCode){
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             let data = await p.api2;
             if(data.options && data.options.indexOf("OTM") >= 0) return true;
             if(data.site_id === "girls") return true;
 
             //否则再次检查api1
-            data = await this.getWorkPromise(rjCode).api;
-            this.checkNotNull(data.is_girls)
+            data = await WorkPromise.getWorkPromise(rjCode).api;
+            WorkPromise.checkNotNull(data.is_girls)
             return data.is_girls;
         },
 
         getAnnounce: async function(rjCode) {
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             const info = await p.info;
             return info.is_announce;
         },
 
         getSale: async function(rjCode, checkAnnounce = true){
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             let data = await p.api;
             if(!checkAnnounce){
                 return data.is_sale;
@@ -2788,25 +2814,25 @@
         },
 
         getBonus: async function(rjCode) {
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             let data = await p.api;
             return !data.is_sale && data.is_free && data.is_oly && data.wishlist_count === false;
             // return data.is_bonus;
         },
 
         getHasBonus: async function(rjCode) {
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             let data = await p.api;
             return data.bonuses && data.bonuses.length > 0;
         },
 
         getTranslatable: async function(rjCode) {
-            const trans = await this.getTranslationInfo(rjCode);
+            const trans = await WorkPromise.getTranslationInfo(rjCode);
             return trans.is_translation_agree === true;
         },
 
         getTranslated: async function(rjCode) {
-            const trans = await this.getTranslationInfo(rjCode);
+            const trans = await WorkPromise.getTranslationInfo(rjCode);
             return trans.is_parent === true || trans.is_child === true;
         },
 
@@ -2845,7 +2871,7 @@
         getFileFormats: async function(rjCode){
             //返回字符串数组，返回文件格式列表
             const result = [];
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             let api = await p.api2;
             if(api.file_type === "EXE"){
                 result.push("EXE");
@@ -2867,7 +2893,7 @@
 
         getAIUsedText: async function(rjCode) {
             //返回是否使用或部分使用AI，根据popup语言返回字符串。
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             let api = await p.api2;
             api = api.options ? api : await p.api;
             const options = api.options ? api.options : "";
@@ -2881,7 +2907,7 @@
 
         getDebug: async function(rjCode){
             return "";
-            const work = this.getWorkPromise(rjCode);
+            const work = WorkPromise.getWorkPromise(rjCode);
             const api2 = await work.api2;
             const api = await work.api;
             const info = await work.info;
@@ -2892,7 +2918,7 @@
         },
 
         getWorkCategory: async function(rjCode){
-            const type = await this.getWorkType(rjCode);
+            const type = await WorkPromise.getWorkType(rjCode);
             /* voice: 音声
              * game: 游戏
              * manga: 漫画/插画/音声漫画
@@ -2929,11 +2955,11 @@
                 localizePopup(localizationMap.work_type_voice_comic),
                 localizePopup(localizationMap.work_type_other),
             ];
-            return mapping[await this.getWorkType(rjCode)];
+            return mapping[await WorkPromise.getWorkType(rjCode)];
         },
 
         getWorkType: async function(rjCode) {
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
 
             switch (api2.work_type) {
@@ -2967,7 +2993,7 @@
 
         getImgLink: async function(rjCode){
             let link = undefined;
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
 
             try {
                 let data = await p.api2;
@@ -2980,13 +3006,13 @@
 
             try{
                 const info = await p.info;
-                this.checkNotNull(info.img);
+                WorkPromise.checkNotNull(info.img);
                 return info.img;
             }catch (e) {
             }
 
             try{
-                const apiData = await this.getWorkPromise(rjCode).api;
+                const apiData = await WorkPromise.getWorkPromise(rjCode).api;
                 if(apiData.work_image) return "https:" + apiData.work_image;
             }catch (e){}
 
@@ -2994,11 +3020,11 @@
         },
 
         getWorkTitle: async function(rjCode){
-            return await this.getWorkPromise(rjCode).translated_title;
+            return await WorkPromise.getWorkPromise(rjCode).translated_title;
         },
 
         getAgeRating: async function(rjCode){
-            let p = this.getWorkPromise(rjCode);
+            let p = WorkPromise.getWorkPromise(rjCode);
             let api = await p.api2;
             if(!api.age_category) api = await p.api;
             switch (api.age_category){
@@ -3011,18 +3037,18 @@
             }
 
             const info = await p.info;
-            this.checkNotNull(info.rating);
+            WorkPromise.checkNotNull(info.rating);
             return info.rating;
         },
 
         getCircle: async function(rjCode, findOriginal = true){
-            let trans = await this.getTranslationInfo(rjCode);
+            let trans = await WorkPromise.getTranslationInfo(rjCode);
             if(!trans.is_original && findOriginal){
                 //使用原作RJ号开始寻找，如果找不到翻译信息就没办法了
                 rjCode = trans.original_workno ? trans.original_workno : rjCode;
             }
 
-            let work = this.getWorkPromise(rjCode);
+            let work = WorkPromise.getWorkPromise(rjCode);
             let api2 = await work.api2;
             if(api2.maker_name) return api2.maker_name;
 
@@ -3043,13 +3069,13 @@
         },
 
         getTranslatorName: async function(rjCode){
-            let trans = await this.getTranslationInfo(rjCode);
+            let trans = await WorkPromise.getTranslationInfo(rjCode);
             if(!trans.is_child) throw new Error("非翻译作品RJ号");
-            return await this.getCircle(rjCode, false);
+            return await WorkPromise.getCircle(rjCode, false);
         },
 
         getReleaseDate: async function(rjCode){
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             const info = await p.info;
             if(info && !info.is_announce && info.date) return info.date;
             if(info && info.is_announce && info.dateAnnounce) {
@@ -3059,12 +3085,12 @@
             //从api中查找发售时间
             let api = await p.api2;
             api = api.regist_date ? api : await p.api;
-            this.checkNotNull(api.regist_date)
+            WorkPromise.checkNotNull(api.regist_date)
             return api.regist_date;
         },
 
         getUpdateDate: async function(rjCode) {
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             const info = await p.info;
             if(info["update"]) return info["update"];
 
@@ -3072,7 +3098,7 @@
         },
 
         getScenario: async function(rjCode) {
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
             if(api2.creaters && api2.creaters.scenario_by && api2.creaters.scenario_by.length > 0){
                 let list = api2.creaters.scenario_by;
@@ -3085,13 +3111,13 @@
             }
 
             //无法获取api2则直接通过html获取
-            const info = await this.getWorkPromise(rjCode).info;
-            this.checkNotNull(info.scenario);
+            const info = await WorkPromise.getWorkPromise(rjCode).info;
+            WorkPromise.checkNotNull(info.scenario);
             return info.scenario;
         },
 
         getIllustrator: async function(rjCode) {
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
             if(api2.creaters && api2.creaters.illust_by && api2.creaters.illust_by.length > 0){
                 let list = api2.creaters.illust_by;
@@ -3104,13 +3130,13 @@
             }
 
             //无法获取api2则直接通过html获取
-            const info = await this.getWorkPromise(rjCode).info;
-            this.checkNotNull(info.illustration);
+            const info = await WorkPromise.getWorkPromise(rjCode).info;
+            WorkPromise.checkNotNull(info.illustration);
             return info.illustration;
         },
 
         getCV: async function(rjCode){
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
             if(api2.creaters && api2.creaters.voice_by && api2.creaters.voice_by.length > 0){
                 let cvs = api2.creaters.voice_by;
@@ -3123,13 +3149,13 @@
             }
 
             //无法获取api2则直接通过html获取
-            const info = await this.getWorkPromise(rjCode).info;
-            this.checkNotNull(info.cv);
+            const info = await WorkPromise.getWorkPromise(rjCode).info;
+            WorkPromise.checkNotNull(info.cv);
             return info.cv;
         },
 
         getMusic: async function(rjCode) {
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
             if(api2.creaters && api2.creaters.music_by && api2.creaters.music_by.length > 0){
                 let ms = api2.creaters.music_by;
@@ -3142,14 +3168,14 @@
             }
 
             //无法获取api2则直接通过html获取
-            const info = await this.getWorkPromise(rjCode).info;
-            this.checkNotNull(info.music);
+            const info = await WorkPromise.getWorkPromise(rjCode).info;
+            WorkPromise.checkNotNull(info.music);
             return info.music;
         },
 
         getTags: async function(rjCode) {
             //注意该方法返回字符串数组而不是纯字符串
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
             if(api2.genres && api2.genres.length > 0){
                 return api2.genres.map(genre => genre.name);
@@ -3157,7 +3183,7 @@
 
             //无法获取api2时通过html获取
             const info = await p.info;
-            this.checkNotNull(info.tags);
+            WorkPromise.checkNotNull(info.tags);
             return info.tags;
         },
 
@@ -3172,21 +3198,21 @@
         },
 
         getFileSize: async function(rjCode) {
-            const trans = await this.getTranslationInfo(rjCode);
+            const trans = await WorkPromise.getTranslationInfo(rjCode);
             if(trans.is_parent){
                 //翻译版本的父级没有内容信息，自然无法显示文件大小，所以需要获得原作品的大小信息
                 //Child和Original都有各自的大小信息，正常获取计算即可
                 rjCode = trans.original_workno ? trans.original_workno : rjCode;
             }
 
-            const p = this.getWorkPromise(rjCode);
+            const p = WorkPromise.getWorkPromise(rjCode);
             let api2 = await p.api2;
             if(api2.contents_file_size && api2.contents_file_size > 0){
-                return this.getFileSizeStr(api2.contents_file_size);
+                return WorkPromise.getFileSizeStr(api2.contents_file_size);
             }
 
             //通过html获取
-            let info = trans.is_child && trans.original_workno ? await this.getWorkPromise(trans.original_workno).info : await p.info;
+            let info = trans.is_child && trans.original_workno ? await WorkPromise.getWorkPromise(trans.original_workno).info : await p.info;
             if(info.filesize) return info.filesize;
 
             throw new Error("无法获取文件大小信息");
@@ -3344,7 +3370,7 @@
 
         getAnnouncePromise: async function (rjCode, parentRJ) {
             const url = `https://www.dlsite.com/maniax/announce/=/product_id/${rjCode}.html`;
-            let resp = await this.getHttpAsync(url);
+            let resp = await DLsite.getHttpAsync(url);
             if (resp.readyState === 4 && resp.status === 200) {
                 const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
                 const workInfo = DLsite.parseWorkDOM(dom, rjCode);
@@ -3363,7 +3389,7 @@
 
         getHtmlPromise: async function (rjCode) {
             const url = `https://www.dlsite.com/maniax/work/=/product_id/${rjCode}.html`;
-            let resp = await this.getHttpAsync(url);
+            let resp = await DLsite.getHttpAsync(url);
             if (resp.readyState === 4 && resp.status === 200) {
                 const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
                 const workInfo = DLsite.parseWorkDOM(dom, rjCode);
@@ -3373,13 +3399,13 @@
                 return workInfo;
             }
             else if (resp.readyState === 4 && resp.status === 404) {
-                return await this.getAnnouncePromise(rjCode, DLsite.getParentWorkRjCode(resp.finalUrl));
+                return await DLsite.getAnnouncePromise(rjCode, DLsite.getParentWorkRjCode(resp.finalUrl));
             }
         },
 
         getApi2Promise: async function (rjCode, locale = undefined) {
             let url = `https://www.dlsite.com/maniax/api/=/product.json?workno=${rjCode}` + (locale ? `&locale=${locale}` : "");
-            let resp = await this.getHttpAsync(url);
+            let resp = await DLsite.getHttpAsync(url);
             let data;
             if (resp.readyState === 4 && resp.status === 200) {
                 data = JSON.parse(resp.responseText);
@@ -3394,7 +3420,7 @@
             }
 
             const translation_info = data.translation_info ? data.translation_info : {};
-            data.lang = this.getLangCode(translation_info.lang);
+            data.lang = DLsite.getLangCode(translation_info.lang);
 
             return data;
         },
@@ -3402,7 +3428,7 @@
         getApiPromise: async function (rjCode, locale = undefined) {
             //获取对应语言下的实际信息
             let url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${rjCode}&cdn_cache_min=1` + (locale ? `&locale=${locale}` : "");
-            let resp = await this.getHttpAsync(url);
+            let resp = await DLsite.getHttpAsync(url);
             let data;
             if (resp.readyState === 4 && resp.status === 200) {
                 data = JSON.parse(resp.responseText);
@@ -3417,9 +3443,9 @@
             }
 
             const translation_info = data.translation_info ? data.translation_info : {};
-            data.lang = this.getLangCode(translation_info.lang);
+            data.lang = DLsite.getLangCode(translation_info.lang);
 
-            return this.parseApiData(rjCode, data);
+            return DLsite.parseApiData(rjCode, data);
         },
 
         getCirclePromise: async function (rjCode, apiPromise){
@@ -3432,7 +3458,7 @@
             let data;
             try {
                 url = `https://media.ci-en.jp/dlsite/lookup/${maker_id}.json`;
-                resp = await this.getHttpAsync(url);
+                resp = await DLsite.getHttpAsync(url);
                 data = undefined;
                 if (resp.readyState === 4 && resp.status === 200) {
                     data = JSON.parse(resp.responseText);
@@ -3445,7 +3471,7 @@
             if(!data || !data.name){
                 //未获取到社团名称则使用html解析获取
                 url = `https://www.dlsite.com/maniax/circle/profile/=/maker_id/${maker_id}.html`;
-                resp = await this.getHttpAsync(url);
+                resp = await DLsite.getHttpAsync(url);
                 data = data ? data : {};
                 if(resp.readyState === 4 && resp.status === 200){
                     let doc = new DOMParser().parseFromString(resp.responseText, "text/html");
@@ -3529,7 +3555,7 @@
                 },
             };
 
-            const resp = await this.getHttpAsync(url);
+            const resp = await DLsite.getHttpAsync(url);
             if (resp.readyState !== 4 || resp.status !== 200) {
                 return result;
             }
@@ -5273,6 +5299,12 @@
                 if (e.blockedURI.includes("img.dlsite.jp")) {
                     const img = document.querySelector(`img[src="${e.blockedURI}"]`);
                     img.remove();
+
+                    const imgContainer = Popup.popupElement.img.container;
+                    if(imgContainer){
+                        imgContainer.style.display = "none";
+                        Popup.hideImg = true;
+                    }
                 }
             });
 
@@ -5301,7 +5333,7 @@
             }
         });
 
-        observer.observe(document.body, { childList: true, subtree: true })
+        observer.observe(document.body, { childList: true, subtree: true})
         setUserSelectTitle();
 
         //显示重要通知
