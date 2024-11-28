@@ -5,6 +5,8 @@
 // @match       *://*/*
 // @match       file:///*
 // @exclude     *://copilot.microsoft.com/*
+// @exclude     *://www.microsoft.com/*
+// @exclude     *://www.microsoft.com/*
 // @version     4.1.0
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
@@ -1034,85 +1036,85 @@
         z-index: 2147483646 !important;
         max-width: 80% !important;
         position: fixed !important;
-        line-height: normal;  /*原1.4em;*/
+        line-height: normal !important;  /*原1.4em !important;*/
         font-size:1.1em!important;
-        margin-bottom: 10px;
-        box-shadow: 0 0 .125em 0 rgba(0,0,0,.5);
-        border-radius: 0.5em;
-        background-color:#8080C0;
-        color:#F6F6F6;
-        text-align: left;
-        padding: 10px;
-        pointer-events: none;
+        margin-bottom: 10px !important;
+        box-shadow: 0 0 .125em 0 rgba(0,0,0,.5) !important;
+        border-radius: 0.5em !important;
+        background-color:#8080C0 !important;
+        color:#F6F6F6 !important;
+        text-align: left !important;
+        padding: 10px !important;
+        pointer-events: none !important;
     }
     
     #${VOICELINK_CLASS}_info-container > div {
-        margin-bottom: 3px;
-        font-size: 15.4px;
+        margin-bottom: 3px !important;
+        font-size: 15.4px !important;
     }
     #${VOICELINK_CLASS}_info-container .${VOICELINK_CLASS}_tags {
-        margin-top: 12px;
-        margin-bottom: 0;
+        margin-top: 12px !important;
+        margin-bottom: 0 !important;
     }
     
     .${VOICELINK_CLASS}_loader {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 100%;
-        height: 100%;
-        min-width: 300px;
-        min-height: 30px;
-        z-index: -1;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 300px !important;
+        min-height: 30px !important;
+        z-index: -1 !important;
     }
     .${VOICELINK_CLASS}_dot {
-        width: 20px;
-        height: 20px;
-        margin: 0 8px;
-        background-color: #fbfbfb;
-        border-radius: 50%;
-        animation: ${VOICELINK_CLASS}_scale 1s infinite;
+        width: 20px !important;
+        height: 20px !important;
+        margin: 0 8px !important;
+        background-color: #fbfbfb !important;
+        border-radius: 50% !important;
+        animation: ${VOICELINK_CLASS}_scale 1s infinite !important;
     }
     .${VOICELINK_CLASS}_dot:nth-child(1) {
-        animation-delay: 0s;
+        animation-delay: 0s !important;
     }
     .${VOICELINK_CLASS}_dot:nth-child(2) {
-        animation-delay: 0.2s;
+        animation-delay: 0.2s !important;
     }
     .${VOICELINK_CLASS}_dot:nth-child(3) {
-        animation-delay: 0.4s;
+        animation-delay: 0.4s !important;
     }
     @keyframes ${VOICELINK_CLASS}_scale {
       0%, 100% {
-          transform: scale(1);
+          transform: scale(1) !important;
       }
       50% {
-          transform: scale(1.5);
+          transform: scale(1.5) !important;
       }
     }
     
     .${VOICELINK_CLASS}_voicepopup-maniax{
-        background-color:#8080C0;
+        background-color:#8080C0 !important;
     }
     
     .${VOICELINK_CLASS}_voicepopup-girls{
-        background-color:#B33761;
+        background-color:#B33761 !important;
     }
     
     .${VOICELINK_CLASS}_voicepopup .${VOICELINK_CLASS}_img_container{
-        width: 300px;
-        margin: 0 12px 0 0;
-        padding: 3px;
-        flex-shrink: 0;
+        width: 300px !important;
+        margin: 0 12px 0 0 !important;
+        padding: 3px !important;
+        flex-shrink: 0 !important;
     }
 
     .${VOICELINK_CLASS}_img_container img {
-        width: 100%;
-        height: auto;
+        width: 100% !important;
+        height: auto !important;
     }
     
     .${VOICELINK_CLASS}_voicepopup a {
@@ -1129,134 +1131,134 @@
     }
 
     .${VOICELINK_CLASS}_voice-title {
-        font-size: 21px;   /*原1.4em*/
-        font-weight: bold;
-        text-align: center;
-        margin: 5px 10px 0 0;
-        display: block;
+        font-size: 21px !important;   /*原1.4em*/
+        font-weight: bold !important;
+        text-align: center !important;
+        margin: 5px 10px 0 0 !important;
+        display: block !important;
     }
 
     .${VOICELINK_CLASS}_rjcode {
-        text-align: center;
-        margin: 5px 0;
-        font-size: 18.5px;  /*原1.2em;*/
-        font-style: italic;
-        opacity: 0.3;
+        text-align: center !important;
+        margin: 5px 0 !important;
+        font-size: 18.5px !important;  /*原1.2em !important;*/
+        font-style: italic !important;
+        opacity: 0.3 !important;
     }
 
     .${VOICELINK_CLASS}_error {
-        height: 210px;
-        line-height: 210px;
-        text-align: center;
+        height: 210px !important;
+        line-height: 210px !important;
+        text-align: center !important;
     }
 
     .${VOICELINK_CLASS}_discord-dark {
-        background-color: #36393f;
-        color: #dcddde;
-        font-size: 0.9375rem;
+        background-color: #36393f !important;
+        color: #dcddde !important;
+        font-size: 0.9375rem !important;
     }
     
     .${VOICELINK_CLASS}_work_title:hover #${VOICELINK_CLASS}_copy_btn {
-        opacity: 1;
+        opacity: 1 !important;
     }
     
     #${VOICELINK_CLASS}_copy_btn {
-        background: transparent;
-        border-color: transparent;
-        cursor: pointer;
-        transition: all 0.3s;
-        opacity: 0;
-        font-size: 0.75em;
-        user-select: none;
-        position: absolute;
+        background: transparent !important;
+        border-color: transparent !important;
+        cursor: pointer !important;
+        transition: all 0.3s !important;
+        opacity: 0 !important;
+        font-size: 0.75em !important;
+        user-select: none !important;
+        position: absolute !important;
     }
     
     #${VOICELINK_CLASS}_copy_btn:hover {
-        scale: 1.2;
+        scale: 1.2 !important;
     }
     
     #${VOICELINK_CLASS}_copy_btn:active {
-        scale: 1.1;
+        scale: 1.1 !important;
     }
     
   `
     const SETTINGS_CSS = `
         #${VOICELINK_CLASS}_settings-container {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            margin: auto;
-            padding: 20px 30px;
-            line-height: unset;
+            font-family: Arial, sans-serif !important;
+            background-color: #f4f4f9 !important;
+            margin: auto !important;
+            padding: 20px 30px !important;
+            line-height: unset !important;
             
-            position: fixed;
-            overflow-y: auto;
-            overflow-x: hidden;
-            top: 20px;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            box-sizing: border-box;
-            max-width: 800px;
-            width: 100%;
-            height: calc(100% - 40px);
-            z-index: 2147483647;
-            border-radius: 20px;
-            box-shadow: darkgray 0px 0px 17px 2px;
+            position: fixed !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            top: 20px !important;
+            bottom: 20px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            box-sizing: border-box !important;
+            max-width: 800px !important;
+            width: 100% !important;
+            height: calc(100% - 40px) !important;
+            z-index: 2147483647 !important;
+            border-radius: 20px !important;
+            box-shadow: darkgray 0px 0px 17px 2px !important;
             
             /*scrollbar-width: none;*/
             /*-ms-overflow-style: none;*/
         }
         #${VOICELINK_CLASS}_settings-container::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
+            width: 5px !important;
+            height: 5px !important;
         }
         #${VOICELINK_CLASS}_settings-container::-webkit-scrollbar-track {
-            background-color: #f4f4f9;
-            border-radius: 5px;
+            background-color: #f4f4f9 !important;
+            border-radius: 5px !important;
         }
         #${VOICELINK_CLASS}_settings-container::-webkit-scrollbar-thumb {
-            background-color: #888;
-            border-radius: 5px; 
+            background-color: #888 !important;
+            border-radius: 5px !important; 
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_container {
-            max-width: 800px;
-            margin: auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px !important;
+            margin: auto !important;
+            background: #fff !important;
+            padding: 20px !important;
+            border-radius: 10px !important;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1) !important;
         }
         #${VOICELINK_CLASS}_settings-container h1 {
-            display: block;
-            text-align: center;
-            color: #333;
-            font-size: 32px;
-            margin: 21.44px 0;
-            font-weight: bold;
-            line-height: normal;
+            display: block !important;
+            text-align: center !important;
+            color: #333 !important;
+            font-size: 32px !important;
+            margin: 21.44px 0 !important;
+            font-weight: bold !important;
+            line-height: normal !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_section-container {
-            margin: 20px 0;
+            margin: 20px 0 !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_section-container h2 {
-            display: block;
-            color: #007bff;
-            font-size: 24px;
-            margin: 22px 0 14px 0;
-            font-weight: bold;
-            line-height: normal;
+            display: block !important;
+            color: #007bff !important;
+            font-size: 24px !important;
+            margin: 22px 0 14px 0 !important;
+            font-weight: bold !important;
+            line-height: normal !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting {
             /*display: flex;*/
             /*align-items: center;*/
             /*justify-content: space-between;*/
-            margin: 10px 0;
+            margin: 10px 0 !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting .${VOICELINK_CLASS}_row-title {
-            margin: 0 0 0 10px;
-            color: #555;
-            font-size: 18px;
-            font-weight: normal;
+            margin: 0 0 0 10px !important;
+            color: #555 !important;
+            font-size: 18px !important;
+            font-weight: normal !important;
             /*flex-grow: 1;*/
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting input[type="text"],
@@ -1264,202 +1266,202 @@
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting input[type="number"],
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting input[type="email"],
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background: #fafafa;
-            box-sizing: border-box;
-            color: #666666FF;
-            font-size: 13.3333px;
-            height: unset;
-            max-height: unset;
-            max-width: unset;
+            width: 100% !important;
+            padding: 10px !important;
+            border: 1px solid #ddd !important;
+            border-radius: 5px !important;
+            background: #fafafa !important;
+            box-sizing: border-box !important;
+            color: #666666FF !important;
+            font-size: 13.3333px !important;
+            height: unset !important;
+            max-height: unset !important;
+            max-width: unset !important;
             /*margin-bottom: 10px;*/
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting input[type="checkbox"] {
-            display: none;
+            display: none !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_toggle-container {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: flex-end;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting .${VOICELINK_CLASS}_toggle {
-            display: inline-block;
-            margin: 0;
-            width: 60px;
-            height: 30px;
-            padding: 0;
-            background: #ccc;
-            border-radius: 15px;
-            position: relative;
-            cursor: pointer;
-            transition: background 0.3s;
+            display: inline-block !important;
+            margin: 0 !important;
+            width: 60px !important;
+            height: 30px !important;
+            padding: 0 !important;
+            background: #ccc !important;
+            border-radius: 15px !important;
+            position: relative !important;
+            cursor: pointer !important;
+            transition: background 0.3s !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_toggle:before {
-            content: "";
-            display: block;
-            width: 24px;
-            height: 24px;
-            background: #fff;
-            border-radius: 50%;
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            transition: transform 0.3s;
+            content: "" !important;
+            display: block !important;
+            width: 24px !important;
+            height: 24px !important;
+            background: #fff !important;
+            border-radius: 50% !important;
+            position: absolute !important;
+            top: 3px !important;
+            left: 3px !important;
+            transition: transform 0.3s !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting input[type="checkbox"]:checked + label {
-            background: #007bff;
+            background: #007bff !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_setting input[type="checkbox"]:checked + label:before {
-            transform: translateX(30px);
+            transform: translateX(30px) !important;
         }
         #${VOICELINK_CLASS}_button-close{
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 24px;
-            cursor: pointer;
-            background: rgba(0, 0, 0, 0.05);
-            border: none;
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
+            position: absolute !important;
+            top: 20px !important;
+            right: 20px !important;
+            font-size: 24px !important;
+            cursor: pointer !important;
+            background: rgba(0, 0, 0, 0.05) !important;
+            border: none !important;
+            width: 42px !important;
+            height: 42px !important;
+            border-radius: 50% !important;
         }
         #${VOICELINK_CLASS}_button-save,
         #${VOICELINK_CLASS}_button-cancel,
         #${VOICELINK_CLASS}_button-reset{
-            display: block;
-            width: 100%;
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            background: #007bff;
-            color: #fff;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
+            display: block !important;
+            width: 100% !important;
+            padding: 10px !important;
+            border: none !important;
+            border-radius: 5px !important;
+            background: #007bff !important;
+            color: #fff !important;
+            font-size: 16px !important;
+            cursor: pointer !important;
+            margin-top: 10px !important;
 
-            transition: background 0.3s, filter 0.3s;
+            transition: background 0.3s, filter 0.3s !important;
         }
         #${VOICELINK_CLASS}_button-reset{
-            background: #999;
+            background: #999 !important;
         }
         #${VOICELINK_CLASS}_button-save:hover,
         #${VOICELINK_CLASS}_button-cancel:hover,
         #${VOICELINK_CLASS}_button-reset:hover{
-            filter: brightness(1.3);
+            filter: brightness(1.3) !important;
         }
         #${VOICELINK_CLASS}_button-save:active,
         #${VOICELINK_CLASS}_button-cancel:active,
         #${VOICELINK_CLASS}_button-reset:active{
-            filter: brightness(0.9);
+            filter: brightness(0.9) !important;
         }
 
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tooltip {
-            position: relative;
+            position: relative !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tooltip .${VOICELINK_CLASS}_tooltip-text {
-            visibility: hidden;
-            min-width: 200px;
-            max-width: 100%;
-            background-color: #555;
-            color: #fff;
-            font-size: 14px;
-            text-align: center;
-            border-radius: 5px;
-            padding: 8px 10px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 0;
+            visibility: hidden !important;
+            min-width: 200px !important;
+            max-width: 100% !important;
+            background-color: #555 !important;
+            color: #fff !important;
+            font-size: 14px !important;
+            text-align: center !important;
+            border-radius: 5px !important;
+            padding: 8px 10px !important;
+            position: absolute !important;
+            z-index: 1 !important;
+            bottom: 125% !important;
+            left: 0 !important;
             /*margin-left: -100px;*/
-            opacity: 0;
-            filter: brightness(1.0);
-            transition: opacity 0.3s;
+            opacity: 0 !important;
+            filter: brightness(1.0) !important;
+            transition: opacity 0.3s !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tooltip:hover .${VOICELINK_CLASS}_tooltip-text {
-            visibility: visible;
-            opacity: 1;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_sortable {
-            cursor: move;
+            cursor: move !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_sortable span{
-            cursor: default;
+            cursor: default !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_dragging{
-            background-color: #1e82ff38;
-            user-select: none;
-            transition: background-color 0.3s;
+            background-color: #1e82ff38 !important;
+            user-select: none !important;
+            transition: background-color 0.3s !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_sortable .${VOICELINK_CLASS}_setting {
-            cursor: move;
+            cursor: move !important;
         }
         #${VOICELINK_CLASS}_settings-container table {
-            width: 100%;
-            margin-bottom: 20px;
-            border-collapse: collapse;
-            font-size: unset;
+            width: 100% !important;
+            margin-bottom: 20px !important;
+            border-collapse: collapse !important;
+            font-size: unset !important;
         }
         #${VOICELINK_CLASS}_settings-container table,
         #${VOICELINK_CLASS}_settings-container th,
         #${VOICELINK_CLASS}_settings-container td {
-            border: 0 solid #ddd;
+            border: 0 solid #ddd !important;
         }
         #${VOICELINK_CLASS}_settings-container th,
         #${VOICELINK_CLASS}_settings-container td {
-            border-bottom: 1px dashed rgba(221, 221, 221, 0.64);
+            border-bottom: 1px dashed rgba(221, 221, 221, 0.64) !important;
             /*border-top: 1px solid #ddd;*/
-            padding: 8px 10px;
-            text-align: left;
-            vertical-align: middle;
+            padding: 8px 10px !important;
+            text-align: left !important;
+            vertical-align: middle !important;
         }
 
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_hidden{
-            display: none;
+            display: none !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_input-cell{
-            text-align: right;
-            padding-right: 20px;
+            text-align: right !important;
+            padding-right: 20px !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_indent-1 > td {
-            padding: 8px 24px;
+            padding: 8px 24px !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_indent-1 .${VOICELINK_CLASS}_input-cell {
-            padding: 8px 20px;
+            padding: 8px 20px !important;
         }
 
         .${VOICELINK_CLASS}_tags{
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: left;
-            align-items: stretch;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            justify-content: left !important;
+            align-items: stretch !important;
         }
         .${VOICELINK_CLASS}_tags > label,
         .${VOICELINK_CLASS}_tags > span{
-            border-radius: 5px;
-            font-size: 14px;
-            margin-right: 8px;
-            margin-bottom: 8px;
-            padding: 5px 8px;
+            border-radius: 5px !important;
+            font-size: 14px !important;
+            margin-right: 8px !important;
+            margin-bottom: 8px !important;
+            padding: 5px 8px !important;
             
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
 
-            transition: color 0.3s, background-color 0.3s;
+            transition: color 0.3s, background-color 0.3s !important;
         }
         .${VOICELINK_CLASS}_tags > label.${VOICELINK_CLASS}_tag_tight,
         .${VOICELINK_CLASS}_tags > span.${VOICELINK_CLASS}_tag_tight{
-            padding: 2px 7px;
+            padding: 2px 7px !important;
         }
         .${VOICELINK_CLASS}_tags > label.${VOICELINK_CLASS}_tag_small,
         .${VOICELINK_CLASS}_tags > span.${VOICELINK_CLASS}_tag_small{
-            padding: 2px 7px;
-            font-size: 12px;
+            padding: 2px 7px !important;
+            font-size: 12px !important;
         }
 
         .${VOICELINK_CLASS}_tag-off{
@@ -1468,96 +1470,96 @@
         }
 
         .${VOICELINK_CLASS}_tag-purple{
-            background-color: #EED9F2;
-            color: #7B1FA2;
+            background-color: #EED9F2 !important;
+            color: #7B1FA2 !important;
         }
 
         .${VOICELINK_CLASS}_tag-blue{
-            background-color: #d9eefc;
-            color: #4285F4;
+            background-color: #d9eefc !important;
+            color: #4285F4 !important;
         }
 
         .${VOICELINK_CLASS}_tag-red{
-            background-color: #ffd6da;
-            color: #EA4335;
+            background-color: #ffd6da !important;
+            color: #EA4335 !important;
         }
 
         .${VOICELINK_CLASS}_tag-yellow{
-            background-color: #FFF8E1;
-            color: #F57F17;
+            background-color: #FFF8E1 !important;
+            color: #F57F17 !important;
         }
 
         .${VOICELINK_CLASS}_tag-green{
-            background-color: #dcf5e4;
-            color: #34A853;
+            background-color: #dcf5e4 !important;
+            color: #34A853 !important;
         }
 
         .${VOICELINK_CLASS}_tag-teal{
-            background-color: #d8eced;
-            color: #0097A7;
+            background-color: #d8eced !important;
+            color: #0097A7 !important;
         }
 
         .${VOICELINK_CLASS}_tag-gray{
-            background-color: #E0E0E0;
-            color: #424242;
+            background-color: #E0E0E0 !important;
+            color: #424242 !important;
         }
 
         .${VOICELINK_CLASS}_tag-pink{
-            background-color: #ffd9e7;
-            color: #f032a7;
+            background-color: #ffd9e7 !important;
+            color: #f032a7 !important;
         }
 
         .${VOICELINK_CLASS}_tag-orange{
-            background-color: #ffebcc;
-            color: #f04000;
+            background-color: #ffebcc !important;
+            color: #f04000 !important;
         }
 
         .${VOICELINK_CLASS}_tag-darkblue{
-            background-color: #d2e7fa;
-            color: #0D47A1;
+            background-color: #d2e7fa !important;
+            color: #0D47A1 !important;
         }
 
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_reset-btn-small {
-            position: relative;
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            margin-right: 4px;
-            padding: 0;
-            color: transparent;
-            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAA6xJREFUeF7tmlFy2jAQhn+ZHIScJOEixYQ++BYJt/BDSU0vUnKSuvcoVkeq3RpXsndlScYAMzwwyLL20+rXarUCN/4RN24/7gDuHnDjBO5LYEoHSF+ytHjPiynHMJkHrLfZVwApgOKwzzdTQZgEQMv4xu7JIEQHYDB+UghRAfQYDyGwKr7kx9hLIRqASzRewY4C4FKNjwKgz3gAZesLIfGhBhVzawzqAQPG9y13DUZIHFDhWBS5+h3kEwxA+jl7lhLfPYxaGX8UJ+xCgAgHIM2WVYK1EHjzAEF1UUqJ4tt7vvPUn+4mGADVeeofggYhTlj58oagAAgQSiGwwS+UeMASFZZS4KkOkXs1wpc3BAdAgmCYUeU9coHXPhhS4m3skogCwBVC85xcQB2cnk0uMRZCNAAECMfDPl+ZjBzQEr2MXMPoqAB6IJSHff44pO6fXrJXy67iLIzRARggkIxv4KgkihR6SXQ/rH6ahycB0IbgImI2TxASG24YPRmAIXcf+t8Cge0FswVQb5Mq1F62YXG9YLYA9DIy6wHLC+YN4E+w9F+MwMkuzRqA8gKTFnCCo9kDqLXgR0c0rUFVV1xnD0AZtN5mSgzPQuXDPifZRmo0tCVN/b8JgDjhkXJkvhYAzS3T37mgCuFVADAJoVcASmiQdI6jgZOVnGVligeoARHJA0wJTs5WwzHGpa3RA4jngqsAYEq/exXBsXuty6xyngkOoN5rZWdQrJibYxC37XqbqUDo7FDkPQ4w7rUT3eh2Aa23WXdy4B3A2JibO6vU9pYTIbnggiSCTQZHLuAcc1MN4rYbEwWqd5EB2GJuasDBNYzS3pYfpLo/G4CPBATFMGobk/hx4xOWB1i2Q3BfSjWwr50tMcqZfbYHaC2wpKGExI6bkXUFYbt6p4a/7feyPKAlhqarqlE3NFQYNi9Ut8aUy5Xue9gANAR78YPzDQ0FQF/RhasYOwFQg+27pvJ1dd2G0ms88eBjguwMYACCFsakwoGSlembfUKRBTn/5x0AYXDOZS2EvpU9o4x32gW6FIkD/Vf1laC0XWW3+lIJTmM9QPN+X1vvqCXQhtGjCTYPb5e+nZ3khgTRVfC8LwGTNwyVtQwZN/C/KpfbjNWVUXEAxYB6r7aWtVD66LQJFmN4WwImo+qokVL1ZXpcC2gC/AwZYQYF0Fils8oPWFYVnoTQmZv2t9ECLZRSokwSfLjW/HC9KwoA7qBitr8DiEn7Et9194BLnJWYY7p5D/gNXP0HX03p5E0AAAAASUVORK5CYII=");
-            background-position: center;
-            background-size: contain;
-            background-color: transparent;
-            border-radius: 3px;
-            border: none;
-            opacity: 0.5;
+            position: relative !important;
+            display: inline-block !important;
+            width: 16px !important;
+            height: 16px !important;
+            margin-right: 4px !important;
+            padding: 0 !important;
+            color: transparent !important;
+            background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAA6xJREFUeF7tmlFy2jAQhn+ZHIScJOEixYQ++BYJt/BDSU0vUnKSuvcoVkeq3RpXsndlScYAMzwwyLL20+rXarUCN/4RN24/7gDuHnDjBO5LYEoHSF+ytHjPiynHMJkHrLfZVwApgOKwzzdTQZgEQMv4xu7JIEQHYDB+UghRAfQYDyGwKr7kx9hLIRqASzRewY4C4FKNjwKgz3gAZesLIfGhBhVzawzqAQPG9y13DUZIHFDhWBS5+h3kEwxA+jl7lhLfPYxaGX8UJ+xCgAgHIM2WVYK1EHjzAEF1UUqJ4tt7vvPUn+4mGADVeeofggYhTlj58oagAAgQSiGwwS+UeMASFZZS4KkOkXs1wpc3BAdAgmCYUeU9coHXPhhS4m3skogCwBVC85xcQB2cnk0uMRZCNAAECMfDPl+ZjBzQEr2MXMPoqAB6IJSHff44pO6fXrJXy67iLIzRARggkIxv4KgkihR6SXQ/rH6ahycB0IbgImI2TxASG24YPRmAIXcf+t8Cge0FswVQb5Mq1F62YXG9YLYA9DIy6wHLC+YN4E+w9F+MwMkuzRqA8gKTFnCCo9kDqLXgR0c0rUFVV1xnD0AZtN5mSgzPQuXDPifZRmo0tCVN/b8JgDjhkXJkvhYAzS3T37mgCuFVADAJoVcASmiQdI6jgZOVnGVligeoARHJA0wJTs5WwzHGpa3RA4jngqsAYEq/exXBsXuty6xyngkOoN5rZWdQrJibYxC37XqbqUDo7FDkPQ4w7rUT3eh2Aa23WXdy4B3A2JibO6vU9pYTIbnggiSCTQZHLuAcc1MN4rYbEwWqd5EB2GJuasDBNYzS3pYfpLo/G4CPBATFMGobk/hx4xOWB1i2Q3BfSjWwr50tMcqZfbYHaC2wpKGExI6bkXUFYbt6p4a/7feyPKAlhqarqlE3NFQYNi9Ut8aUy5Xue9gANAR78YPzDQ0FQF/RhasYOwFQg+27pvJ1dd2G0ms88eBjguwMYACCFsakwoGSlembfUKRBTn/5x0AYXDOZS2EvpU9o4x32gW6FIkD/Vf1laC0XWW3+lIJTmM9QPN+X1vvqCXQhtGjCTYPb5e+nZ3khgTRVfC8LwGTNwyVtQwZN/C/KpfbjNWVUXEAxYB6r7aWtVD66LQJFmN4WwImo+qokVL1ZXpcC2gC/AwZYQYF0Fils8oPWFYVnoTQmZv2t9ECLZRSokwSfLjW/HC9KwoA7qBitr8DiEn7Et9194BLnJWYY7p5D/gNXP0HX03p5E0AAAAASUVORK5CYII=") !important;
+            background-position: center !important;
+            background-size: contain !important;
+            background-color: transparent !important;
+            border-radius: 3px !important;
+            border: none !important;
+            opacity: 0.5 !important;
         }
         #${VOICELINK_CLASS}_settings-container button.${VOICELINK_CLASS}_reset-btn-small:hover {
-            opacity: 1;
+            opacity: 1 !important;
         }
 
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_button-flat {
-            background-color: transparent;
-            border: none;
-            color: #aaa;
-            cursor: pointer;
-            border-radius: 5px;
-            padding: 5px 5px;
-            margin-bottom: 6px;
-            margin-right: 6px;
+            background-color: transparent !important;
+            border: none !important;
+            color: #aaa !important;
+            cursor: pointer !important;
+            border-radius: 5px !important;
+            padding: 5px 5px !important;
+            margin-bottom: 6px !important;
+            margin-right: 6px !important;
 
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
 
-            transition: background-color 0.3s;
+            transition: background-color 0.3s !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_button-flat:hover {
-            background-color: rgba(0, 0, 0, 0.1);
+            background-color: rgba(0, 0, 0, 0.1) !important;
         }
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_button-flat span{
-            display: inline-block;
+            display: inline-block !important;
         }
     `
 
@@ -1629,26 +1631,26 @@
 
         const button = document.createElement("button");
         button.id = `${VOICELINK_CLASS}_copy_btn`;
-        button.innerHTML = "📃";
+        button.innerText = "📃";
         button.addEventListener("mouseenter", function(){
-            button.innerHTML = "📃 复制为有效文件名";
+            button.innerText = "📃 复制为有效文件名";
         });
         button.addEventListener("mouseleave", function(){
-            button.innerHTML = "📃";
+            button.innerText = "📃";
         });
         button.addEventListener("click", function(){
             const fileName = convertToValidFileName(titleStr);
             const promise = navigator.clipboard.writeText(fileName);
             promise.then(() => {
-                button.innerHTML = "✔ 复制成功";
+                button.innerText = "✔ 复制成功";
             });
             promise.catch(e => {
                 window.prompt("复制失败，请手动复制", fileName);
-                button.innerHTML = "📃";
+                button.innerText = "📃";
             });
         });
 
-        title.style.userSelect = "text";
+        title.style.setProperty("user-select", "text", "important");  //userSelect = "text !important";
         title.classList.add(`${VOICELINK_CLASS}_work_title`);
 
         if(settings._s_show_translated_title_in_dl){
@@ -1755,7 +1757,7 @@
             let e;
             e = document.createElement("span");
             e.classList = VOICELINK_CLASS;
-            e.innerHTML = content;
+            e.innerText = content;
             e.classList.add(VOICELINK_IGNORED_CLASS);
             return e;
         },
@@ -1765,11 +1767,11 @@
             e = document.createElement("a");
             e.classList = VOICELINK_CLASS;
             e.href = `https://www.dlsite.com/maniax/work/=/product_id/${rjCode.toUpperCase()}.html`
-            e.innerHTML = rjCode;
+            e.innerText = rjCode;
             e.target = "_blank";
             e.rel = "noreferrer";
             e.classList.add(VOICELINK_IGNORED_CLASS);
-            e.style.display = "inline";
+            e.style.setProperty("display", "inline", "important");  //display = "inline !important";
 
             e.setAttribute(RJCODE_ATTRIBUTE, rjCode.toUpperCase());
             e.setAttribute("voicelink-linkified", "true");
@@ -1992,7 +1994,7 @@
 
             if(date.getTime() < today.getTime()) return "";
             let days = (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
-            return `<span style="color:#ffeb3b; font-size: 16px; font-style: italic; margin-left: 16px">(Coming in ${days} day${(days > 1 ? "s" : "")})</span>`
+            return `<span style="color:#ffeb3b !important; font-size: 16px !important; font-style: italic !important; margin-left: 16px !important">(Coming in ${days} day${(days > 1 ? "s" : "")})</span>`
         },
     }
 
@@ -2029,13 +2031,16 @@
 
             popup.className = `${VOICELINK_CLASS}_voicepopup ${VOICELINK_CLASS}_voicepopup-maniax ` + (getAdditionalPopupClasses() || '');
             popup.id = `${VOICELINK_CLASS}-voice-popup`;  // + rjCode;
-            popup.style.display = display === false ? "none" : "flex";
+            popup.style.setProperty("display", display === false ? "none" : "flex", "important");  //display = display === false ? "none" : "flex";
             document.body.appendChild(popup);
 
             const notFoundElement = document.createElement("div");
             ele.not_found = notFoundElement;
             //占满整个popup
-            notFoundElement.style = "display: none; width: 100%; height: 100%";
+            //"display: none; width: 100%; height: 100%";
+            notFoundElement.style.setProperty("display", "none", "important");
+            notFoundElement.style.setProperty("width", "100%", "important");
+            notFoundElement.style.setProperty("height", "100%", "important");
             notFoundElement.innerText = "Work Not Found.";
             popup.appendChild(notFoundElement);
 
@@ -2059,17 +2064,17 @@
             const infoContainer = document.createElement("div");
             ele.info_container = infoContainer;
             infoContainer.id = `${VOICELINK_CLASS}_info-container`;
-            infoContainer.style.position = "relative";
-            infoContainer.style.minHeight = "70px";
+            infoContainer.style.setProperty("position", "relative", "important");  //position = "relative !important";
+            infoContainer.style.setProperty("min-height", "70px", "important");  //minHeight = "70px !important";
             rightPanel.appendChild(infoContainer);
 
             const loader = document.createElement("div");
             loader.className = `${VOICELINK_CLASS}_loader`;
-            loader.innerHTML = `
+            loader.innerHTML = Csp.createHTML(`
             <div class="${VOICELINK_CLASS}_dot"></div>
             <div class="${VOICELINK_CLASS}_dot"></div>
             <div class="${VOICELINK_CLASS}_dot"></div>
-            `;
+            `);
             ele.loader = loader;
             infoContainer.appendChild(loader);
 
@@ -2089,8 +2094,8 @@
             ele.genre = document.createElement("div");
             ele.file_size = document.createElement("div");
 
-            rightPanel.style.paddingBottom = "3px";
-            rightPanel.style.flexGrow = "1";
+            rightPanel.style.setProperty("padding-bottom", "3px", "important");  //paddingBottom = "3px !important";
+            rightPanel.style.setProperty("flex-grow", "1", "important");  //flexGrow = "1 !important";
             popup.appendChild(rightPanel);
             popup.insertBefore(imgContainer, popup.childNodes[0]);
         },
@@ -2100,7 +2105,7 @@
             const popup = ele.popup;
             popup.className = `${VOICELINK_CLASS}_voicepopup ${VOICELINK_CLASS}_voicepopup-maniax ` + (getAdditionalPopupClasses() || '');
             // popup.id = "voice-" + rjCode;
-            popup.style = "display: flex";
+            popup.style.setProperty("display", "flex", "important");  //= "display: flex";
             popup.setAttribute(RJCODE_ATTRIBUTE, rjCode);
 
             let workFound = true;
@@ -2132,7 +2137,7 @@
                     return;
                 }
 
-                ele.not_found.style.display = found ? "none" : "block";
+                ele.not_found.style.setProperty("display", found ? "none" : "block", "important");  //display = found ? "none" : "block";
                 Popup.setFoundState(found);
                 workFound = found;
             });
@@ -2151,9 +2156,9 @@
                 imgContainer.appendChild(img);
             }
             for (let i = 0; i < imgContainer.childNodes.length; ++i) {
-                imgContainer.childNodes[i].style.display = "none";
+                imgContainer.childNodes[i].style.setProperty("display", "none", "important");  //display = "none !important";
             }
-            img.style.display = "block"
+            img.style.setProperty("display", "block", "important");  //display = "block"
             WorkPromise.getImgLink(rjCode).then(link => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 img.src = link;
@@ -2166,14 +2171,14 @@
                 titleElement.innerText = title
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                titleElement.innerHTML = ""
+                titleElement.innerHTML = Csp.createHTML("");
             });
 
             const rjCodeElement = ele.rj_code;
-            rjCodeElement.innerHTML = `[${isParent ? " ↑ " : ""}<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold">${rjCode}</span>]`;
+            rjCodeElement.innerHTML = Csp.createHTML(`[${isParent ? " ↑ " : ""}<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold !important;text-decoration-line: underline !important;">${rjCode}</span>]`);
             WorkPromise.getRJChain(rjCode).then(chain => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                rjCodeElement.innerHTML = chain;
+                rjCodeElement.innerHTML = Csp.createHTML(chain);
             });
 
             //清除原有信息并展示加载界面
@@ -2181,7 +2186,7 @@
                 if(child === this.popupElement.loader) continue;
                 child.remove();
             }
-            ele.loader.style.display = "flex";
+            ele.loader.style.setProperty("display", "flex", "important");  //display = "flex !important";
             WorkPromise.getWorkCategory(rjCode).then(category => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 this.set_info_container(rjCode, category);
@@ -2198,23 +2203,23 @@
             const ele = Popup.popupElement;
             const popup = ele.popup;
 
-            ele.not_found.style.display = found ? "none" : "block";
-            ele.img.container.style.display = found && !Popup.hideImg ? "block" : "none";
-            ele.right_panel.style.display = found ? "block" : "none";
-            ele.title.style.display = found ? "block" : "none";
-            ele.rj_code.style.display = found ? "block" : "none";
+            ele.not_found.style.setProperty("display", found ? "none" : "block", "important");  //display = found ? "none" : "block";
+            ele.img.container.style.setProperty("display", found && !Popup.hideImg ? "block" : "none", "important");  //display = found && !Popup.hideImg ? "block" : "none";
+            ele.right_panel.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.title.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.rj_code.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
             //ele.flag.style.display = found ? "block" : "none";
-            ele.circle_name.style.display = found ? "block" : "none";
-            ele.debug.style.display = found ? "block" : "none";
+            ele.circle_name.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.debug.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
             //ele.translatable.style.display = found && ele.translatable.innerHTML.trim().length > 0 ? "inline-block" : "none";
-            ele.translator_name.style.display = found ? "block" : "none";
-            ele.release_date.style.display = found ? "block" : "none";
-            ele.update_date.style.display = found ? "block" : "none";
-            ele.age_rating.style.display = found ? "block" : "none";
-            ele.voice_actor.style.display = found ? "block" : "none";
-            ele.music.style.display = found ? "block" : "none";
-            ele.genre.style.display = found ? "block" : "none";
-            ele.file_size.style.display = found ? "block" : "none";
+            ele.translator_name.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.release_date.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.update_date.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.age_rating.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.voice_actor.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.music.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.genre.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.file_size.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
         },
 
         set_circle_name: function (rjCode, category){
@@ -2225,13 +2230,13 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const circleElement = ele.circle_name;
-            circleElement.innerHTML = `${localizePopup(localizationMap.circle_name)}: Loading...`;
+            circleElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.circle_name)}: Loading...`);
             WorkPromise.getCircle(rjCode).then(circle => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                circleElement.innerHTML = `${localizePopup(localizationMap.circle_name)}: <a>${circle}</a>`;
+                circleElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.circle_name)}: <a>${circle}</a>`);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                circleElement.innerHTML = "";
+                circleElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(circleElement);
@@ -2244,13 +2249,13 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const translatorElement = ele.translator_name;
-            translatorElement.innerHTML = `${localizePopup(localizationMap.translator_name)}: Loading...`;
+            translatorElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.translator_name)}: Loading...`);
             WorkPromise.getTranslatorName(rjCode).then(name => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                translatorElement.innerHTML = `${localizePopup(localizationMap.translator_name)}: <a>${name}</a>`;
+                translatorElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.translator_name)}: <a>${name}</a>`);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                translatorElement.innerHTML = "";
+                translatorElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(translatorElement);
@@ -2263,13 +2268,13 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const releaseElement = ele.release_date;
-            releaseElement.innerHTML = `${localizePopup(localizationMap.release_date)}: Loading...`;
+            releaseElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.release_date)}: Loading...`);
             WorkPromise.getReleaseDate(rjCode).then(date => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                releaseElement.innerHTML = `${localizePopup(localizationMap.release_date)}: <a>${date}</a>`;
+                releaseElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.release_date)}: <a>${date}</a>`);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                releaseElement.innerHTML = "";
+                releaseElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(releaseElement);
@@ -2282,13 +2287,13 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const updateElement = ele.update_date;
-            updateElement.innerHTML = `${localizePopup(localizationMap.update_date)}: Loading...`;
+            updateElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.update_date)}: Loading...`);
             WorkPromise.getUpdateDate(rjCode).then(date => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                updateElement.innerHTML = `${localizePopup(localizationMap.update_date)}: <a>${date}</a>`;
+                updateElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.update_date)}: <a>${date}</a>`);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                updateElement.innerHTML = "";
+                updateElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(updateElement);
@@ -2301,17 +2306,17 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const ageElement = ele.age_rating;
-            ageElement.innerHTML = `${localizePopup(localizationMap.age_rating)}: Loading...`;
+            ageElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.age_rating)}: Loading...`);
             WorkPromise.getAgeRating(rjCode).then(rating => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 let ratingClass = `${VOICELINK_CLASS}_age-all`;
                 if(rating.includes("18")){
                     ratingClass = `${VOICELINK_CLASS}_age-18`;
                 }
-                ageElement.innerHTML = `${localizePopup(localizationMap.age_rating)}: <a class="${ratingClass}">${rating}</a>`;
+                ageElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.age_rating)}: <a class="${ratingClass}">${rating}</a>`);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                ageElement.innerHTML = "";
+                ageElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(ageElement);
@@ -2324,13 +2329,13 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const scenarioElement = ele.scenario;
-            scenarioElement.innerHTML = `${localizePopup(localizationMap.scenario)}: Loading...`;
+            scenarioElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.scenario)}: Loading...`);
             WorkPromise.getScenario(rjCode).then(name => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                scenarioElement.innerHTML = `${localizePopup(localizationMap.scenario)}: <a>${name}</a>`;
+                scenarioElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.scenario)}: <a>${name}</a>`);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                scenarioElement.innerHTML = "";
+                scenarioElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(scenarioElement);
@@ -2343,13 +2348,13 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const illustrationElement = ele.illustration;
-            illustrationElement.innerHTML = `${localizePopup(localizationMap.illustration)}: Loading...`;
+            illustrationElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.illustration)}: Loading...`);
             WorkPromise.getIllustrator(rjCode).then(name => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                illustrationElement.innerHTML = `${localizePopup(localizationMap.illustration)}: <a>${name}</a>`;
+                illustrationElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.illustration)}: <a>${name}</a>`);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                illustrationElement.innerHTML = "";
+                illustrationElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(illustrationElement);
@@ -2362,13 +2367,13 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const voiceActorElement = ele.voice_actor;
-            voiceActorElement.innerHTML = `${localizePopup(localizationMap.voice_actor)}: Loading...`;
+            voiceActorElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.voice_actor)}: Loading...`);
             WorkPromise.getCV(rjCode).then(name => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                voiceActorElement.innerHTML = `${localizePopup(localizationMap.voice_actor)}: <a>${name}</a>`;
+                voiceActorElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.voice_actor)}: <a>${name}</a>`);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                voiceActorElement.innerHTML = "";
+                voiceActorElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(voiceActorElement);
@@ -2381,13 +2386,13 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const musicElement = ele.music;
-            musicElement.innerHTML = `${localizePopup(localizationMap.music)}: Loading...`;
+            musicElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.music)}: Loading...`);
             WorkPromise.getMusic(rjCode).then(name => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                musicElement.innerHTML = `${localizePopup(localizationMap.music)}: <a>${name}</a>`;
+                musicElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.music)}: <a>${name}</a>`);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                musicElement.innerHTML = "";
+                musicElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(musicElement);
@@ -2400,7 +2405,7 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const genreElement = ele.genre;
-            genreElement.innerHTML = `${localizePopup(localizationMap.genre)}: Loading...`;
+            genreElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.genre)}: Loading...`);
             WorkPromise.getTags(rjCode).then(tags => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 let tagsHtml = `${localizePopup(localizationMap.genre)}: <a>`;
@@ -2408,10 +2413,10 @@
                     tagsHtml += tag + "\u3000";
                 });
                 tagsHtml += "</a>";
-                genreElement.innerHTML = tagsHtml;
+                genreElement.innerHTML = Csp.createHTML(tagsHtml);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                genreElement.innerHTML = "";
+                genreElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(genreElement);
@@ -2424,13 +2429,13 @@
             const ele = this.popupElement;
             const popup = ele.popup;
             const fileSizeElement = ele.file_size;
-            fileSizeElement.innerHTML = `${localizePopup(localizationMap.file_size)}: Loading...`;
+            fileSizeElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.file_size)}: Loading...`);
             WorkPromise.getFileSize(rjCode).then(filesize => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                fileSizeElement.innerHTML = `${localizePopup(localizationMap.file_size)}: ${filesize}`;
+                fileSizeElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.file_size)}: ${filesize}`);
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                fileSizeElement.innerHTML = "";
+                fileSizeElement.innerHTML = Csp.createHTML("");
             });
 
             ele.info_container.appendChild(fileSizeElement);
@@ -2575,7 +2580,7 @@
                 if(settings[`_s_${tag_id}`] !== true) continue;
 
                 let shadowTag = document.createElement("span");
-                shadowTag.style.display = "none";
+                shadowTag.style.setProperty("display", "none", "important");  //display = "none !important";
                 shadowTag.setAttribute("data-id", tag_id);
                 container.appendChild(shadowTag);
 
@@ -2592,10 +2597,10 @@
         get_translatable_tag_container: function (rjCode, tag_list) {
             const container = document.createElement("div");
             container.classList.add(`${VOICELINK_CLASS}_tags`);
-            container.style.marginTop = "0";
+            container.style.setProperty("margin-top", "0", "important");  //marginTop = "0 !important";
             for (const tag_id of tag_list) {
                 let shadowTag = document.createElement("span");
-                shadowTag.style.display = "none";
+                shadowTag.style.setProperty("display", "none", "important");  //display = "none !important";
                 shadowTag.setAttribute("data-id", tag_id);
                 container.appendChild(shadowTag);
 
@@ -2614,7 +2619,7 @@
             //清除上次的信息
             for(let child of [...this.popupElement.info_container.children]){
                 if(child === this.popupElement.loader) {
-                    child.style.display = "none";
+                    child.style.setProperty("display", "none", "important");  //display = "none !important";
                     continue;
                 }
                 child.remove();
@@ -2632,7 +2637,7 @@
 
             //翻译申请情况
             const shadowContainer = document.createElement("div");
-            shadowContainer.style.display = "none";
+            shadowContainer.style.setProperty("display", "none", "important");  //display = "none !important";
             infoContainer.appendChild(shadowContainer);
             WorkPromise.getTranslatable(rjCode).then(able => {
                 if(rjCode !== Popup.popupElement.popup.getAttribute(RJCODE_ATTRIBUTE)) return;
@@ -2658,7 +2663,7 @@
             const debugElement = document.createElement("div");
             this.popupElement.info_container.appendChild(debugElement);
             WorkPromise.getDebug(rjCode).then(t => {
-                debugElement.innerHTML = t;
+                debugElement.innerHTML = Csp.createHTML(t);
             });
         },
 
@@ -2681,7 +2686,7 @@
 
             const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if (popup) {
-                popup.style.display = "flex";
+                popup.style.setProperty("display", "flex", "important");  //display = "flex !important";
             }
             else {
                 Popup.makePopup();
@@ -2692,7 +2697,7 @@
         out: function (e) {
             const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if (popup) {
-                popup.style.display = "none";
+                popup.style.setProperty("display", "none", "important");  //display = "none !important";
             }
         },
 
@@ -2700,17 +2705,17 @@
             const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if (popup) {
                 if (popup.offsetWidth + e.clientX + 10 < window.innerWidth - 10) {
-                    popup.style.left = (e.clientX + 10) + "px";
+                    popup.style.setProperty("left", (e.clientX + 10) + "px", "important");  //left = (e.clientX + 10) + "px";
                 }
                 else {
-                    popup.style.left = (window.innerWidth - popup.offsetWidth - 10) + "px";
+                    popup.style.setProperty("left", (window.innerWidth - popup.offsetWidth - 10) + "px", "important");  //left = (window.innerWidth - popup.offsetWidth - 10) + "px";
                 }
 
                 if (popup.offsetHeight + e.clientY + 50 > window.innerHeight) {
-                    popup.style.top = (e.clientY - popup.offsetHeight - 8) + "px";
+                    popup.style.setProperty("top", (e.clientY - popup.offsetHeight - 8) + "px", "important");  //top = (e.clientY - popup.offsetHeight - 8) + "px";
                 }
                 else {
-                    popup.style.top = (e.clientY + 20) + "px";
+                    popup.style.setProperty("top", (e.clientY + 20) + "px", "important");  //top = (e.clientY + 20) + "px";
                 }
             }
         },
@@ -2762,14 +2767,14 @@
         getRJChain: async function(rjCode) {
             //RJxxx → RJxxx → RJxxx，这样从子级指向父级
             const trans = await WorkPromise.getTranslationInfo(rjCode);
-            let chain = `<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold">${rjCode}</span>`;
+            let chain = `<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold !important;text-decoration-line: underline !important;">${rjCode}</span>`;
             if(trans.is_child){
                 chain += ` → ${trans.parent_workno} → ${trans.original_workno}`;
             }else if(trans.is_parent){
                 chain += ` → ${trans.original_workno}`;
             }
 
-            return `[${chain}]`;
+            return `[ ${chain} ]`;
         },
 
         getParentRJ: async function(rjCode){
@@ -3079,7 +3084,7 @@
             const info = await p.info;
             if(info && !info.is_announce && info.date) return info.date;
             if(info && info.is_announce && info.dateAnnounce) {
-                return `<span style="color: gold">${info.dateAnnounce}</span>${DateParser.getCountDownDateText(DateParser.parseDateStr(info.dateAnnounce, info.lang))}`
+                return `<span style="color: gold !important;">${info.dateAnnounce}</span>${DateParser.getCountDownDateText(DateParser.parseDateStr(info.dateAnnounce, info.lang))}`
             }
 
             //从api中查找发售时间
@@ -3372,7 +3377,7 @@
             const url = `https://www.dlsite.com/maniax/announce/=/product_id/${rjCode}.html`;
             let resp = await DLsite.getHttpAsync(url);
             if (resp.readyState === 4 && resp.status === 200) {
-                const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
+                const dom = new DOMParser().parseFromString(Csp.createHTML(resp.responseText), "text/html");
                 const workInfo = DLsite.parseWorkDOM(dom, rjCode);
                 workInfo.parentWork = parentRJ === rjCode ? null : parentRJ;
                 workInfo.is_announce = true;
@@ -3391,7 +3396,7 @@
             const url = `https://www.dlsite.com/maniax/work/=/product_id/${rjCode}.html`;
             let resp = await DLsite.getHttpAsync(url);
             if (resp.readyState === 4 && resp.status === 200) {
-                const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
+                const dom = new DOMParser().parseFromString(Csp.createHTML(resp.responseText), "text/html");
                 const workInfo = DLsite.parseWorkDOM(dom, rjCode);
                 workInfo.parentWork = DLsite.getParentWorkRjCode(resp.finalUrl);
                 workInfo.parentWork = workInfo.parentWork === rjCode ? null : workInfo.parentWork;
@@ -3474,7 +3479,7 @@
                 resp = await DLsite.getHttpAsync(url);
                 data = data ? data : {};
                 if(resp.readyState === 4 && resp.status === 200){
-                    let doc = new DOMParser().parseFromString(resp.responseText, "text/html");
+                    let doc = new DOMParser().parseFromString(Csp.createHTML(resp.responseText), "text/html");
                     let name = doc.querySelector("strong.prof_maker_name");
                     name = name ? name.innerText : null;
                     data.name = name;
@@ -3560,7 +3565,7 @@
                 return result;
             }
 
-            const dom = new DOMParser().parseFromString(resp.responseText, "text/html");
+            const dom = new DOMParser().parseFromString(Csp.createHTML(resp.responseText), "text/html");
             const table = dom.querySelector(
                 `input#_${rjCode} ~ dd[onclick*=toggleTranslationStatus] table.translation_table tbody`);
             if (table == null) return result;
@@ -4699,12 +4704,12 @@
                     const resetCell = document.createElement("td");
                     resetCell.classList.add(this.getClass("input-cell"))
                     resetCell.colSpan = 2;
-                    resetCell.style.textAlign = "right";
+                    resetCell.style.setProperty("text-align", "right", "important");  //textAlign = "right !important";
                     const resetButton = document.createElement("button");
                     resetButton.classList.add(this.getClass("button-flat"));
                     resetButton.title = localize(localizationMap.reset_order);
-                    resetButton.style.marginRight = "0";
-                    resetButton.style.marginBottom = "0";
+                    resetButton.style.setProperty("margin-right", "0", "important");  //marginRight = "0 !important";
+                    resetButton.style.setProperty("margin-bottom", "0", "important");  //marginBottom = "0 !important";
                     const icon = document.createElement("span");
                     icon.classList.add(this.getClass("reset-btn-small"));
                     resetButton.appendChild(icon);
@@ -4781,13 +4786,13 @@
             titleCell.className = this.getClass("tooltip");
             const title = document.createElement("span");
             title.className = this.getClass("row-title") + " " + this.getClass("ignore-drag");
-            title.innerHTML = row.title;
+            title.innerHTML = Csp.createHTML(row.title);
             titleCell.appendChild(title);
 
             if(row.tooltip) {
                 const tooltip = document.createElement("span");
                 tooltip.className = this.getClass("tooltip-text");
-                tooltip.innerHTML = row.tooltip;
+                tooltip.innerHTML = Csp.createHTML(row.tooltip);
                 titleCell.appendChild(tooltip);
             }
 
@@ -4812,7 +4817,7 @@
             label.setAttribute("for", input.id);
             const hidden = document.createElement("span");
             hidden.classList.add(this.getClass("hidden"));
-            hidden.innerHTML = row.title;
+            hidden.innerHTML = Csp.createHTML(row.title);
             label.appendChild(hidden);
             // inputCell.appendChild(label);
             inputContainer.appendChild(label);
@@ -4832,7 +4837,7 @@
 
                 input.addEventListener("change", () => {
                     //决定是否显示重置按钮
-                    resetButton.style.display = input.checked === defaultValue ? "none" : "inline-block";
+                    resetButton.style.setProperty("display", input.checked === defaultValue ? "none" : "inline-block", "important");  //display = input.checked === defaultValue ? "none" : "inline-block";
                 });
             }
 
@@ -4860,13 +4865,13 @@
             const label = document.createElement("label");
             label.className = this.getClass("row-title") + " " + this.getClass("ignore-drag");
             label.setAttribute("for", this.getClass(row.id));
-            label.innerHTML = row.title;
+            label.innerHTML = Csp.createHTML(row.title);
             titleCell.appendChild(label);
 
             if(row.tooltip) {
                 const tooltip = document.createElement("span");
                 tooltip.className = this.getClass("tooltip-text");
-                tooltip.innerHTML = row.tooltip;
+                tooltip.innerHTML = Csp.createHTML(row.tooltip);
                 titleCell.appendChild(tooltip);
             }
 
@@ -4899,7 +4904,7 @@
 
                 select.addEventListener("change", () => {
                     //决定是否显示重置按钮
-                    resetButton.style.display = select.value === defaultValue ? "none" : "inline-block";
+                    resetButton.style.setProperty("display", select.value === defaultValue ? "none" : "inline-block", "important");  //display = select.value === defaultValue ? "none" : "inline-block";
                 });
             }
 
@@ -4927,13 +4932,13 @@
             const label = document.createElement("label");
             label.className = this.getClass("row-title") + " " + this.getClass("ignore-drag");
             label.setAttribute("for", this.getClass(row.id));
-            label.innerHTML = row.title;
+            label.innerHTML = Csp.createHTML(row.title);
             titleCell.appendChild(label);
 
             if(row.tooltip) {
                 const tooltip = document.createElement("span");
                 tooltip.className = this.getClass("tooltip-text");
-                tooltip.innerHTML = row.tooltip;
+                tooltip.innerHTML = Csp.createHTML(row.tooltip);
                 titleCell.appendChild(tooltip);
             }
 
@@ -4960,7 +4965,7 @@
 
                 input.addEventListener("change", () => {
                     //决定是否显示重置按钮
-                    resetButton.style.display = input.value === defaultValue ? "none" : "inline-block";
+                    resetButton.style.setProperty("display", input.value === defaultValue ? "none" : "inline-block", "important");  //display = input.value === defaultValue ? "none" : "inline-block";
                 });
             }
 
@@ -5002,7 +5007,7 @@
                 //添加switch
                 const settingId = `_s_${tag.id}`;
                 const switchInput = document.createElement("input");
-                switchInput.style.display = "none";
+                switchInput.style.setProperty("display", "none", "important");  //display = "none !important";
                 switchInput.type = "checkbox";
                 switchInput.id = this.getClass(tag.id);
                 switchInput.name = switchInput.id;
@@ -5026,7 +5031,7 @@
                     tagSpan.classList.add(this.getClass("tooltip"));
                     const tooltip = document.createElement("span");
                     tooltip.className = this.getClass("tooltip-text");
-                    tooltip.innerHTML = tag.tooltip;
+                    tooltip.innerHTML = Csp.createHTML(tag.tooltip);
                     tagSpan.appendChild(tooltip);
                 }
 
@@ -5119,10 +5124,10 @@
             target.addEventListener("change", (event) => {
                 const value = event.target.value;
                 const checked = event.target.checked;
-                element.style.display = value === binding.value || checked === binding.value ? showState : "none";
+                element.style.setProperty("display", value === binding.value || checked === binding.value ? showState : "none", "important");  //display = value === binding.value || checked === binding.value ? showState : "none";
             });
 
-            element.style.display = target.value === binding.value || target.checked === binding.value ? showState : "none";
+            element.style.setProperty("display", target.value === binding.value || target.checked === binding.value ? showState : "none", "important");  //display = target.value === binding.value || target.checked === binding.value ? showState : "none";
         };
 
         sortSortable(sortList, sortId, orderList){
@@ -5302,7 +5307,7 @@
 
                     const imgContainer = Popup.popupElement.img.container;
                     if(imgContainer){
-                        imgContainer.style.display = "none";
+                        imgContainer.style.setProperty("display", "none", "important");  //display = "none !important";
                         Popup.hideImg = true;
                     }
                 }
@@ -5366,7 +5371,7 @@
         
         border-radius: 10px;
         border: 2px solid gray`;
-        popup.innerHTML = `
+        popup.innerHTML = Csp.createHTML(`
         <h1 style="text-indent: 0; color: black;">Notice from VoiceLinks</h1>
         <p>
         <strong><span style="font-size:14px;">重大更新，添加大量自定义设置，部分原有设置被重置，请打开<a data-link="settings">设置</a>界面重新设置。</span></strong>
@@ -5390,11 +5395,11 @@
         - 现在可以查看<strong>翻译申请情况</strong>了
         </p>
         <input style="font-size: 16px; text-align: center; width: 100%; padding: 5px 10px" type="button" value="OK">
-        `
+        `);
         popup.querySelectorAll("a[data-link=settings]").forEach(link => {
-            link.style.color = "blue";
-            link.style.cursor = "pointer";
-            link.style.textDecoration = "underline";
+            link.style.color = "blue !important";
+            link.style.cursor = "pointer !important";
+            link.style.textDecoration = "underline !important";
             link.addEventListener("click", function () {
                 SettingsPopup.showPopup();
             })
@@ -5414,7 +5419,7 @@
     };
     if(window.isSecureContext === true && trustedTypes){
         Csp = trustedTypes.createPolicy(
-            trustedTypes.defaultPolicy ? "VoiceLinkTrustedTypes" : "default",
+            trustedTypes.defaultPolicy ? "VoiceLinkTrustedTypes" : "VoiceLinkTrustedTypes",
             Csp);
     }
 
