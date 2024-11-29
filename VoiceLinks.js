@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.1.5
+// @version     4.1.6
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -1087,10 +1087,10 @@
     }
     @keyframes ${VOICELINK_CLASS}_scale {
       0%, 100% {
-          transform: scale(1) !important;
+          transform: scale(1);
       }
       50% {
-          transform: scale(1.5) !important;
+          transform: scale(1.5);
       }
     }
     
