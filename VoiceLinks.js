@@ -4,10 +4,9 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @exclude     *://copilot.microsoft.com/*
 // @exclude     *://www.microsoft.com/*
 // @exclude     *://www.microsoft.com/*
-// @version     4.1.0
+// @version     4.1.5
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -2567,7 +2566,7 @@
             const hasSale = stat.sale > 0;
             const displayCount = stat.agree || hasRequest || hasSale;
             const lang = tag_id.substring("translation_request_".length);
-            const tag = Popup.get_tag(`${localizePopup(localizationMap[`language_${lang}_abbr`])}${stat.agree ? "" : " ✘"} ${displayCount ? ` ${stat.request}-${stat.sale}` : ""}`,
+            const tag = Popup.get_tag(`${localizePopup(localizationMap[`language_${lang}_abbr`])}${stat.agree ? "" : (stat.agree === false ? " ✘" : " ?")} ${displayCount ? ` ${stat.request}-${stat.sale}` : ""}`,
                 hasSale ? "tag-green" : (hasRequest ? "tag-orange" : "tag-gray"));
             tag.classList.add(`${VOICELINK_CLASS}_tag_small`);
             return tag;
@@ -2794,7 +2793,7 @@
         getGirls: async function(rjCode){
             const p = WorkPromise.getWorkPromise(rjCode);
             let data = await p.api2;
-            if(data.options && data.options.indexOf("OTM") >= 0) return true;
+            if(data.sex_category && data.sex_category === 2) return true;
             if(data.site_id === "girls") return true;
 
             //否则再次检查api1
@@ -3491,109 +3490,138 @@
 
         getTranslatablePromise: async function (rjCode) {
             rjCode = rjCode.toUpperCase();
-            const url = `https://www.dlsite.com/maniax/works/translatable?keyword=${rjCode}`;
             const result = {
                 translation_request_english: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_simplified_chinese:{
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_traditional_chinese:{
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_korean: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_spanish: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_german: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_french: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_indonesian: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_italian: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_portuguese: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_swedish: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_thai: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
                 translation_request_vietnamese: {
-                    agree: false,
+                    agree: undefined,
                     request: undefined,
                     sale: undefined
                 },
             };
-
-            const resp = await DLsite.getHttpAsync(url);
-            if (resp.readyState !== 4 || resp.status !== 200) {
+            const data = await DLsite.getTranslatableApiPromise(rjCode);
+            if(!data.translationStatusForTranslator){
                 return result;
             }
 
-            const dom = new DOMParser().parseFromString(Csp.createHTML(resp.responseText), "text/html");
-            const table = dom.querySelector(
-                `input#_${rjCode} ~ dd[onclick*=toggleTranslationStatus] table.translation_table tbody`);
-            if (table == null) return result;
-            const t = table.children;
-
-            const order = [
-                "translation_request_english",
-                "translation_request_simplified_chinese",
-                "translation_request_traditional_chinese",
-                "translation_request_korean",
-                "translation_request_spanish",
-                "translation_request_german",
-                "translation_request_french",
-                "translation_request_indonesian",
-                "translation_request_italian",
-                "translation_request_portuguese",
-                "translation_request_swedish",
-                "translation_request_thai",
-                "translation_request_vietnamese",
-            ];
-            for (let i = 1; i <= 13; ++i) {
-                let key = order[i - 1];
-                result[key].agree = t[i].querySelector("td strong") != null;
-                result[key].request = t[i].children[2].innerText;
-                result[key].sale = t[i].children[3].innerText;
+            const map = {
+                translation_request_english: "ENG",
+                translation_request_simplified_chinese: "CHI_HANS",
+                translation_request_traditional_chinese: "CHI_HANT",
+                translation_request_korean: "KO_KR",
+                translation_request_spanish: "SPA",
+                translation_request_german: "GER",
+                translation_request_french: "FRE",
+                translation_request_indonesian: "IND",
+                translation_request_italian: "ITA",
+                translation_request_portuguese: "POR",
+                translation_request_swedish: "SWE",
+                translation_request_thai: "THA",
+                translation_request_vietnamese: "VIE",
+            };
+            for (let key in map) {
+                let lang = map[key];
+                let status = data.translationStatusForTranslator[lang];
+                if(!status){
+                    //状况未知
+                    continue;
+                }
+                result[key].agree = status.available;
+                result[key].request = status.count;
+                result[key].sale = status.on_sale_count;
             }
 
             return result;
+        },
+
+        getTranslatableApiPromise: async function (rjCode) {
+            //新的可用api，用于搜索作品翻译情况，但也可以获得其它信息。
+            rjCode = rjCode.toUpperCase();
+            let url = `https://www.dlsite.com/maniax/api/=/translatableProducts.json?keyword=${rjCode}`;    //可以使用locale参数指定语言，但这里不需要
+            let resp = await DLsite.getHttpAsync(url);
+            let data;
+            if (resp.readyState === 4 && resp.status === 200) {
+                data = JSON.parse(resp.responseText);
+            }
+            else {
+                throw new Error(`无法通过API获取${rjCode}的翻译信息：${resp.status} ${resp.statusText}`);
+            }
+
+            //从结果中找到对应RJ号，由于关键字是RJ号的话结果一般都在第一页，所以就放弃翻页寻找了
+            if(data.meta && data.meta.code !== 200){
+                throw new Error(`无法通过API查询${rjCode}的翻译信息：${data.meta.code} - ${data.meta.errorType} - ${data.meta.errorMessage}`);
+            }
+            if(!data.data || !Array.isArray(data.data.products)){
+                throw new Error(`无法通过API查询${rjCode}的翻译信息：未预料到的响应格式。`);
+            }
+
+            for (const work of data.data.products) {
+                if(work.id === rjCode){
+                    return work;
+                }
+            }
+
+            //未找到则返回空对象
+            return {};
+
         },
 
         getWorkRequestPromise: function (rjCode) {
