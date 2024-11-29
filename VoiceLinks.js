@@ -4,8 +4,6 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @exclude     *://www.microsoft.com/*
-// @exclude     *://www.microsoft.com/*
 // @version     4.1.5
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
