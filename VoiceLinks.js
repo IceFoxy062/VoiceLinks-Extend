@@ -2708,11 +2708,11 @@
                     popup.style.setProperty("left", (window.innerWidth - popup.offsetWidth - 10) + "px", "important");  //left = (window.innerWidth - popup.offsetWidth - 10) + "px";
                 }
 
-                if (popup.offsetHeight + e.clientY + 50 > window.innerHeight) {
-                    popup.style.setProperty("top", (e.clientY - popup.offsetHeight - 8) + "px", "important");  //top = (e.clientY - popup.offsetHeight - 8) + "px";
+                if (e.clientY > window.innerHeight / 2) {
+                    popup.style.setProperty("top", Math.max(e.clientY - popup.offsetHeight - 8, 0) + "px", "important");  //top = (e.clientY - popup.offsetHeight - 8) + "px";
                 }
                 else {
-                    popup.style.setProperty("top", (e.clientY + 20) + "px", "important");  //top = (e.clientY + 20) + "px";
+                    popup.style.setProperty("top", Math.min(e.clientY + 20, window.innerHeight - popup.offsetHeight) + "px", "important");  //top = (e.clientY + 20) + "px";
                 }
             }
         },
