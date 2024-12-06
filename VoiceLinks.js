@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.1.6
+// @version     4.1.7
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -2963,33 +2963,35 @@
         getWorkType: async function(rjCode) {
             const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
+            let workType = api2.work_type;
+            if(!workType) workType = (await p.api).work_type;
 
-            switch (api2.work_type) {
+            switch (workType) {
                 case "SOU":
                     return 0;
                 case (["ACN", "QIZ", "ADV", "RPG", "TBL", "DNV", "SLN", "TYP", "STG", "PZL", "ETC"]
-                    .includes(api2.work_type) ? api2.work_type : "ERR"):
+                    .includes(workType) ? workType : "ERR"):
                     return 1;
                 case (["MNG", "SCM", "WBT"]
-                    .includes(api2.work_type) ? api2.work_type : "ERR"):
+                    .includes(workType) ? workType : "ERR"):
                     return 2;
                 case "ICG":
                     return 3;
-                case (["NRE", "KSV"].includes(api2.work_type) ? api2.work_type : "ERR"):
+                case (["NRE", "KSV"].includes(workType) ? workType : "ERR"):
                     return 4;
                 case "MOV":
                     return 5;
                 case "MUS":
                     return 6;
                 case (["TOL", "IMT", "AMT"]
-                    .includes(api2.work_type) ? api2.work_type : "ERR"):
+                    .includes(workType) ? workType : "ERR"):
                     return 7;
                 case "VCM":
                     return 8;
                 case "ET3":
                     return 9;
                 default:
-                    throw new Error("无法获取作品类型/未知作品类型：" + api2.work_type);
+                    throw new Error("无法获取作品类型/未知作品类型：" + workType);
             }
         },
 
