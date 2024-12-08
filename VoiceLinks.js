@@ -1045,13 +1045,17 @@
         pointer-events: none !important;
     }
     
+    #${VOICELINK_CLASS}_info-container {
+        font-size: 1em !important;
+    }
     #${VOICELINK_CLASS}_info-container > div {
         margin-bottom: 3px !important;
-        font-size: 15.4px !important;
+        font-size: 1em !important;
     }
     #${VOICELINK_CLASS}_info-container .${VOICELINK_CLASS}_tags {
         margin-top: 12px !important;
         margin-bottom: 0 !important;
+        font-size: 0.909091em !important;
     }
     
     .${VOICELINK_CLASS}_loader {
@@ -1128,7 +1132,7 @@
     }
 
     .${VOICELINK_CLASS}_voice-title {
-        font-size: 21px !important;   /*原1.4em*/
+        font-size: 1.363636em !important;   /*原1.4em*/
         font-weight: bold !important;
         text-align: center !important;
         margin: 5px 10px 0 0 !important;
@@ -1138,7 +1142,7 @@
     .${VOICELINK_CLASS}_rjcode {
         text-align: center !important;
         margin: 5px 0 !important;
-        font-size: 18.5px !important;  /*原1.2em !important;*/
+        font-size: 1.2012987em !important;  /*原1.2em !important;*/
         font-style: italic !important;
         opacity: 0.3 !important;
     }
@@ -1440,7 +1444,7 @@
         .${VOICELINK_CLASS}_tags > label,
         .${VOICELINK_CLASS}_tags > span{
             border-radius: 5px !important;
-            font-size: 14px !important;
+            font-size: 1em !important;
             margin-right: 8px !important;
             margin-bottom: 8px !important;
             padding: 5px 8px !important;
@@ -1458,7 +1462,7 @@
         .${VOICELINK_CLASS}_tags > label.${VOICELINK_CLASS}_tag_small,
         .${VOICELINK_CLASS}_tags > span.${VOICELINK_CLASS}_tag_small{
             padding: 2px 7px !important;
-            font-size: 12px !important;
+            font-size: 0.857143em !important;
         }
 
         .${VOICELINK_CLASS}_tag-off{
@@ -2684,6 +2688,8 @@
             const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if (popup) {
                 popup.style.setProperty("display", "flex", "important");  //display = "flex !important";
+                //先将字体大小变回原样
+                popup.style.setProperty("font-size", "15.4px", "important");
             }
             else {
                 Popup.makePopup();
@@ -2700,22 +2706,39 @@
 
         move: function (e) {
             const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
-            if (popup) {
-                if (popup.offsetWidth + e.clientX + 10 < window.innerWidth - 10) {
-                    popup.style.setProperty("left", (e.clientX + 10) + "px", "important");  //left = (e.clientX + 10) + "px";
-                }
-                else {
-                    popup.style.setProperty("left", (window.innerWidth - popup.offsetWidth - 10) + "px", "important");  //left = (window.innerWidth - popup.offsetWidth - 10) + "px";
-                }
+            if(!popup) return;
 
-                if (e.clientY > window.innerHeight / 2) {
-                    popup.style.setProperty("top", Math.max(e.clientY - popup.offsetHeight - 8, 0) + "px", "important");  //top = (e.clientY - popup.offsetHeight - 8) + "px";
-                }
-                else {
-                    popup.style.setProperty("top", Math.min(e.clientY + 20, window.innerHeight - popup.offsetHeight) + "px", "important");  //top = (e.clientY + 20) + "px";
-                }
+            //定位修正
+            if (popup.offsetWidth + e.clientX + 10 < window.innerWidth - 10) {
+                popup.style.setProperty("left", (e.clientX + 10) + "px", "important");  //left = (e.clientX + 10) + "px";
             }
-        },
+            else {
+                popup.style.setProperty("left", (window.innerWidth - popup.offsetWidth - 10) + "px", "important");  //left = (window.innerWidth - popup.offsetWidth - 10) + "px";
+            }
+
+            if (e.clientY > window.innerHeight / 2) {
+                popup.style.setProperty("top", Math.max(e.clientY - popup.offsetHeight - 8, 0) + "px", "important");  //top = (e.clientY - popup.offsetHeight - 8) + "px";
+            }
+            else {
+                popup.style.setProperty("top", Math.min(e.clientY + 20, window.innerHeight - popup.offsetHeight) + "px", "important");  //top = (e.clientY + 20) + "px";
+            }
+
+            //大小修正
+            let currentFontSize = popup.computedStyleMap().get("font-size").toString();
+            currentFontSize = parseFloat(currentFontSize.substring(0, Math.max(currentFontSize.indexOf("px"), 1)));
+            const sizeLevel = [15, 14.5, 14, 13.5, 13, 12.5, 12];
+            let size = sizeLevel[sizeLevel.length - 1];
+            if(popup.offsetHeight > window.innerHeight){
+                //计算popup的高度与window高度的比值，找到离它最相近且更大的当前字体大小和sizeLevel的比值
+                for (const s of sizeLevel) {
+                    if(popup.offsetHeight / window.innerHeight < currentFontSize / s){
+                        size = s;
+                        break;
+                    }
+                }
+                popup.style.setProperty("font-size", size + "px", "important");
+            }
+        }
     }
 
     const WorkPromise = {
@@ -3356,7 +3379,7 @@
             return apiData;
         },
 
-        getHttpAsync: async function (url){
+        getHttpAsync: async function (url, anonymous = false){
             return new Promise((resolve, reject) => {
                 getXmlHttpRequest()({
                     method: "GET",
@@ -3367,7 +3390,8 @@
                         "Cache-Control": "no-cache"
                     },
                     onload: resolve,
-                    onerror: reject
+                    onerror: reject,
+                    anonymous: anonymous
                 });
             })
         },
@@ -3488,7 +3512,7 @@
             return data;
         },
 
-        getTranslatablePromise: async function (rjCode) {
+        getTranslatablePromise: async function (rjCode, site = "maniax") {
             rjCode = rjCode.toUpperCase();
             const result = {
                 translation_request_english: {
@@ -3557,7 +3581,7 @@
                     sale: undefined
                 },
             };
-            const data = await DLsite.getTranslatableApiPromise(rjCode);
+            const data = await DLsite.getTranslatableApiPromise(rjCode, site);
             if(!data.translationStatusForTranslator){
                 return result;
             }
@@ -3592,11 +3616,11 @@
             return result;
         },
 
-        getTranslatableApiPromise: async function (rjCode) {
+        getTranslatableApiPromise: async function (rjCode, site = "maniax") {
             //新的可用api，用于搜索作品翻译情况，但也可以获得其它信息。
             rjCode = rjCode.toUpperCase();
-            let url = `https://www.dlsite.com/maniax/api/=/translatableProducts.json?keyword=${rjCode}`;    //可以使用locale参数指定语言，但这里不需要
-            let resp = await DLsite.getHttpAsync(url);
+            let url = `https://www.dlsite.com/${site}/api/=/translatableProducts.json?keyword=${rjCode}`;    //可以使用locale参数指定语言，但这里不需要
+            let resp = await DLsite.getHttpAsync(url, true);
             let data;
             if (resp.readyState === 4 && resp.status === 200) {
                 data = JSON.parse(resp.responseText);
@@ -3645,7 +3669,14 @@
                     return this._circle ? this._circle : this._circle = DLsite.getCirclePromise(rjCode, this.api);
                 },
                 get translatable() {
-                    return this._translatable ? this._translatable : this._translatable = DLsite.getTranslatablePromise(rjCode);
+                    async function getter(t){
+                        let api = await t.api2;
+                        if(!api.site_id) api = await t.api;
+
+                        return t._translatable ? t._translatable : t._translatable = DLsite.getTranslatablePromise(rjCode,
+                            api.site_id ? api.site_id : "maniax");
+                    }
+                    return getter(this);
                 },
                 get translated_title(){
                     async function getter(t){
