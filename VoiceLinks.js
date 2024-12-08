@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.1.7
+// @version     4.2.0
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -1435,14 +1435,17 @@
             padding: 8px 20px !important;
         }
 
-        .${VOICELINK_CLASS}_tags{
+        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tags {
+            font-size: 14px;
+        }
+        .${VOICELINK_CLASS}_tags {
             display: flex !important;
             flex-wrap: wrap !important;
             justify-content: left !important;
             align-items: stretch !important;
         }
         .${VOICELINK_CLASS}_tags > label,
-        .${VOICELINK_CLASS}_tags > span{
+        .${VOICELINK_CLASS}_tags > span {
             border-radius: 5px !important;
             font-size: 1em !important;
             margin-right: 8px !important;
@@ -1465,7 +1468,7 @@
             font-size: 0.857143em !important;
         }
 
-        .${VOICELINK_CLASS}_tag-off{
+        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_tag-off{
             background-color: #ffffff !important;
             color: #aaaaaa !important;
         }
