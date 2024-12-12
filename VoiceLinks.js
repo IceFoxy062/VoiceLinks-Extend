@@ -35,6 +35,8 @@
         _s_show_compatibility_warning: true,
         _s_url_insert_mode: "before_rj",
         _s_url_insert_text: "🔗",
+        _s_nsfw_mode: false,
+        _s_nsfw_blur_level: "medium",
 
         //信息显示设置
         _s_category_preset: "voice",
@@ -453,6 +455,42 @@
             zh_CN: "导向文本",
             zh_TW: "導向文本",
             en_US: "Text to insert"
+        },
+
+        nsfw_mode: {
+            zh_CN: "NSFW 模式",
+            zh_TW: "NSFW 模式",
+            en_US: "NSFW Mode"
+        },
+
+        nsfw_mode_tooltip: {
+            zh_CN: "启用后，所有R18作品封面均会模糊处理",
+            zh_TW: "啟用後，所有R18作品封面均會模糊處理",
+            en_US: "Turn on to blur the cover of all R18 works."
+        },
+
+        nsfw_blur_level: {
+            zh_CN: "模糊程度",
+            zh_TW: "模糊程度",
+            en_US: "Blur level"
+        },
+
+        low: {
+            zh_CN: "低",
+            zh_TW: "低",
+            en_US: "Low"
+        },
+
+        medium: {
+            zh_CN: "中",
+            zh_TW: "中",
+            en_US: "Medium"
+        },
+
+        high: {
+            zh_CN: "高",
+            zh_TW: "高",
+            en_US: "High"
         },
 
         title_info_settings: {
@@ -1106,16 +1144,30 @@
         background-color:#B33761 !important;
     }
     
-    .${VOICELINK_CLASS}_voicepopup .${VOICELINK_CLASS}_img_container{
-        width: 300px !important;
-        margin: 0 12px 0 0 !important;
-        padding: 3px !important;
+    .${VOICELINK_CLASS}_voicepopup .${VOICELINK_CLASS}_left_panel{
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        margin: 0 16px 0 0 !important;
+        width: 310px !important;
         flex-shrink: 0 !important;
+    }
+    
+    .${VOICELINK_CLASS}_voicepopup .${VOICELINK_CLASS}_img_container{
+        width: 100% !important;
+        padding: 3px !important;
     }
 
     .${VOICELINK_CLASS}_img_container img {
         width: 100% !important;
         height: auto !important;
+    }
+    
+    #${VOICELINK_CLASS}_hint {
+        font-size: 0.8em !important;
+        opacity: 0.5 !important;
+        max-width: 300px !important;
+        margin-top: 5px !important;
     }
     
     .${VOICELINK_CLASS}_voicepopup a {
@@ -2006,6 +2058,7 @@
         popupElement: {
             popup: null,
             not_found: null,
+            left_panel: null,
             img: {container: null},
             right_panel: null,
             title: null,
@@ -2048,9 +2101,21 @@
             notFoundElement.innerText = "Work Not Found.";
             popup.appendChild(notFoundElement);
 
+            const leftPanel = document.createElement("div");
+            leftPanel.classList.add(`${VOICELINK_CLASS}_left_panel`);
+            popup.appendChild(leftPanel);
+            ele.left_panel = leftPanel;
+
             const imgContainer = document.createElement("div")
             imgContainer.classList.add(`${VOICELINK_CLASS}_img_container`);
             ele.img.container = imgContainer;
+            leftPanel.appendChild(imgContainer);
+
+            //左下角提示状态栏
+            ele.hint = document.createElement("div");
+            leftPanel.appendChild(ele.hint);
+            ele.hint.id = `${VOICELINK_CLASS}_hint`;
+            ele.hint.innerText = "按住Ctrl以暂时固定弹框，对信息左键以复制，右键以订阅或打开链接（方便起见，订阅仅在同一语言下有效，若更换DLSite网站语言则会丢失订阅信息）"
 
             const rightPanel = document.createElement("div");
             ele.right_panel = rightPanel;
@@ -2101,7 +2166,7 @@
             rightPanel.style.setProperty("padding-bottom", "3px", "important");  //paddingBottom = "3px !important";
             rightPanel.style.setProperty("flex-grow", "1", "important");  //flexGrow = "1 !important";
             popup.appendChild(rightPanel);
-            popup.insertBefore(imgContainer, popup.childNodes[0]);
+            popup.insertBefore(leftPanel, popup.childNodes[0]);
         },
 
         updatePopup: function(e, rjCode, isParent=false) {
@@ -2163,10 +2228,24 @@
                 imgContainer.childNodes[i].style.setProperty("display", "none", "important");  //display = "none !important";
             }
             img.style.setProperty("display", "block", "important");  //display = "block"
+            //设置NSFW模糊
+            const blur_map = {
+                low: "4px",
+                medium: "8px",
+                high: "16px"
+            }
+            if(settings._s_nsfw_mode){
+                img.style.setProperty("filter", `blur(${blur_map[settings._s_nsfw_blur_level]})`, "important");
+            }else{
+                img.style.setProperty("filter", "unset", "important");
+            }
             WorkPromise.getImgLink(rjCode).then(link => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 img.src = link;
             }).catch(e => {});
+
+            //设置hint可见
+            ele.hint.style.setProperty("display", "block", "important");
 
             const titleElement = ele.title;
             titleElement.innerText = "Loading...";
@@ -2196,7 +2275,7 @@
                 this.set_info_container(rjCode, category);
             }).catch(e => {
                 if (rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                //TODO: 考虑是默认other还是直接报错
+                //默认other
                 this.set_info_container(rjCode, "other");
             });
 
@@ -3853,10 +3932,45 @@
                                     ]
                                 },
                                 {
+                                    //导向文本
                                     type: "input",
                                     title: localize(localizationMap.url_insert_text),
                                     id: "url_insert_text",
                                     indent: 1
+                                },
+
+                                {
+                                    //NSFW模式
+                                    type: "checkbox",
+                                    title: localize(localizationMap.nsfw_mode),
+                                    id: "nsfw_mode",
+                                    tooltip: localize(localizationMap.nsfw_mode_tooltip)
+                                },
+                                {
+                                    //模糊程度
+                                    binding: {
+                                        target: "nsfw_mode",
+                                        value: true
+                                    },
+
+                                    type: "dropdown",
+                                    title: localize(localizationMap.nsfw_blur_level),
+                                    id: "nsfw_blur_level",
+                                    indent: 1,
+                                    options: [
+                                        {
+                                            title: localize(localizationMap.low),
+                                            value: "low"
+                                        },
+                                        {
+                                            title: localize(localizationMap.medium),
+                                            value: "medium"
+                                        },
+                                        {
+                                            title: localize(localizationMap.high),
+                                            value: "high"
+                                        }
+                                    ]
                                 }
                             ]
                         }
