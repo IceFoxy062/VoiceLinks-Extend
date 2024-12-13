@@ -2904,18 +2904,26 @@
 
             //定位修正
             //TODO: 对于已固定弹框，只修正宽高和字体大小，不修正位置（top过大/过小除外）
-            if (popup.offsetWidth + e.clientX + 10 < window.innerWidth - 10) {
-                popup.style.setProperty("left", (e.clientX + 10) + "px", "important");  //left = (e.clientX + 10) + "px";
-            }
-            else {
-                popup.style.setProperty("left", (window.innerWidth - popup.offsetWidth - 10) + "px", "important");  //left = (window.innerWidth - popup.offsetWidth - 10) + "px";
+            if(!Popup.pinRJ){
+                if (popup.offsetWidth + e.clientX + 10 < window.innerWidth - 10) {
+                    popup.style.setProperty("left", (e.clientX + 10) + "px", "important");
+                }
+                else {
+                    popup.style.setProperty("left", (window.innerWidth - popup.offsetWidth - 10) + "px", "important");
+                }
             }
 
-            if (e.clientY > window.innerHeight / 2) {
-                popup.style.setProperty("top", Math.max(e.clientY - popup.offsetHeight - 8, 0) + "px", "important");  //top = (e.clientY - popup.offsetHeight - 8) + "px";
-            }
-            else {
-                popup.style.setProperty("top", Math.min(e.clientY + 20, window.innerHeight - popup.offsetHeight) + "px", "important");  //top = (e.clientY + 20) + "px";
+            let rect = popup.getBoundingClientRect();
+            if(!Popup.pinRJ || rect.top < 0 || rect.bottom > window.innerHeight){
+                if (e.clientY > window.innerHeight / 2) {
+                    let top = Math.max(e.clientY - popup.offsetHeight - 8, 0);
+                    popup.style.setProperty("top", top + "px", "important");
+                }
+                else {
+                    let top = Math.min(e.clientY + 20, window.innerHeight - popup.offsetHeight);
+                    popup.style.setProperty("top", top + "px", "important");
+                }
+
             }
 
             //大小修正
