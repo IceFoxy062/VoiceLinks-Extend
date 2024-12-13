@@ -1634,6 +1634,20 @@
         }
     }
 
+    function getOS() {
+        const userAgent = navigator.userAgent;
+        if (userAgent.indexOf("Windows NT 10.0") !== -1) return "Windows 10";
+        if (userAgent.indexOf("Windows NT 6.2") !== -1) return "Windows 8";
+        if (userAgent.indexOf("Windows NT 6.1") !== -1) return "Windows 7";
+        if (userAgent.indexOf("Windows NT 6.0") !== -1) return "Windows Vista";
+        if (userAgent.indexOf("Windows NT 5.1") !== -1) return "Windows XP";
+        if (userAgent.indexOf("Windows NT 5.0") !== -1) return "Windows 2000";
+        if (userAgent.indexOf("Mac") !== -1) return "Mac";
+        if (userAgent.indexOf("X11") !== -1) return "UNIX";
+        if (userAgent.indexOf("Linux") !== -1) return "Linux";
+        return "Other";
+    }
+
     function getVoiceLinkTarget(target){
         while (target && !target.classList.contains(VOICELINK_CLASS)){
             target = target.parentElement;
@@ -1834,6 +1848,8 @@
             e.addEventListener("mouseover", Popup.over);
             e.addEventListener("mouseout", Popup.out);
             e.addEventListener("mousemove", Popup.move);
+            e.addEventListener("keydown", Popup.keydown);
+            //e.addEventListener("keyup", Popup.keyup);
             return e;
         },
 
@@ -1863,6 +1879,8 @@
             e.addEventListener("mouseover", Popup.over);
             e.addEventListener("mouseout", Popup.out);
             e.addEventListener("mousemove", Popup.move);
+            e.addEventListener("keydown", Popup.keydown);
+            //e.addEventListener("keyup", Popup.keyup);
         },
 
         linkify: function (textNode) {
@@ -1944,6 +1962,8 @@
                 elem.addEventListener("mouseover", Popup.over);
                 elem.addEventListener("mouseout", Popup.out);
                 elem.addEventListener("mousemove", Popup.move);
+                elem.addEventListener("keydown", Popup.keydown);
+                //elem.addEventListener("keyup", Popup.keyup);
             }
             else {
                 const voicelinks = elem.querySelectorAll("." + VOICELINK_CLASS);
@@ -1952,6 +1972,8 @@
                     voicelink.addEventListener("mouseover", Popup.over);
                     voicelink.addEventListener("mouseout", Popup.out);
                     voicelink.addEventListener("mousemove", Popup.move);
+                    voicelink.addEventListener("keydown", Popup.keydown);
+                    //voicelink.addEventListener("keyup", Popup.keyup);
                 }
             }
         },
@@ -2750,13 +2772,63 @@
             });
         },
 
+        pinRJ: undefined,
+        setPinState: function (rjCode, pin, close = true){
+            const ele = Popup.popupElement;
+            const popup = ele.popup;
+            if(!pin){
+                //关闭弹框
+                popup.style.setProperty("pointer-events", "none", "important");
+                Popup.pinRJ = undefined;
 
+                if(close) popup.style.setProperty("display", "none", "important");
+
+                return
+            }
+
+            popup.style.setProperty("pointer-events", "auto", "important");
+            Popup.pinRJ = rjCode;
+            console.log(`固定 ${rjCode}`)
+        },
+        /**
+         * @param e {KeyboardEvent}
+         */
+        isHoldPinKey: function(e){
+            if(getOS() === "Mac"){
+                return e.metaKey;
+            }
+            return e.ctrlKey;
+        },
+        /**
+         * @param e {KeyboardEvent}
+         */
+        isPinKeyDown: function (e) {
+            if(getOS() === "Mac"){
+                return e.key === "Meta";
+            }
+            return e.key === "Control";
+        },
+
+        /**
+         * 鼠标移动到链接上触发
+         * @param e {MouseEvent}
+         */
         over: function (e) {
             const target = isInDLSite() ? e.target : getVoiceLinkTarget(e.target);
             if(!target || !target.classList.contains(VOICELINK_CLASS)) return;
 
             const rjCode = target.getAttribute(RJCODE_ATTRIBUTE);
             if(rjCode === null) return;
+
+            //如果用户固定了弹框，则提示用户必须ctrl关闭弹框才能解析
+            let ele = Popup.popupElement;
+            if(Popup.isHoldPinKey(e) && Popup.pinRJ){
+                ele.hint.innerText = "抬起CTRL以关闭弹框 & 查看其它作品RJ信息"
+                return;
+            }else{
+                //没有固定弹框的话清理pinRJ，因为有时候pinRJ没办法被keyup清理（如keyup未触发）
+                Popup.pinRJ = undefined
+            }
 
             //修正链接
             if(target.hasAttribute("voicelink-linkified")){
@@ -2767,7 +2839,7 @@
                 });
             }
 
-            const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
+            let popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if (popup) {
                 popup.style.setProperty("display", "flex", "important");  //display = "flex !important";
                 //先将字体大小变回原样
@@ -2775,22 +2847,63 @@
             }
             else {
                 Popup.makePopup();
+                popup = ele.popup;
             }
             Popup.updatePopup(e, rjCode);
+
+            //如果按住了CTRL，则将popup可被点击，否则设置穿透
+            if(Popup.isHoldPinKey(e)){
+                Popup.setPinState(rjCode, true)
+            }else{
+                Popup.setPinState(rjCode, false, false)
+            }
+
+            //设置焦点至链接上
+            target.focus();
         },
 
+        /**
+         * 鼠标离开时触发
+         * @param e {MouseEvent}
+         */
         out: function (e) {
+            //如果固定则禁止关闭
+            if(Popup.isHoldPinKey(e)) {
+                return
+            }
+
+            const target = isInDLSite() ? e.target : getVoiceLinkTarget(e.target);
+            if(!target || !target.classList.contains(VOICELINK_CLASS)) return;
+
+            const rjCode = target.getAttribute(RJCODE_ATTRIBUTE);
+            if(rjCode === null) return;
+
             const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if (popup) {
                 popup.style.setProperty("display", "none", "important");  //display = "none !important";
             }
+
+            //取消focus
+            target.blur();
         },
 
         move: function (e) {
+            const target = isInDLSite() ? e.target : getVoiceLinkTarget(e.target);
+            if(!target || !target.classList.contains(VOICELINK_CLASS)) return;
+
             const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
             if(!popup) return;
 
+            const rjCode = e.target.getAttribute(RJCODE_ATTRIBUTE);
+            if(rjCode === null) return;
+
+            //如果弹框已固定且固定的并非当前所选链接RJ号，则不进行定位修正
+            if(Popup.pinRJ && rjCode !== Popup.pinRJ){
+                return;
+            }
+
             //定位修正
+            //TODO: 对于已固定弹框，只修正宽高和字体大小，不修正位置（top过大/过小除外）
             if (popup.offsetWidth + e.clientX + 10 < window.innerWidth - 10) {
                 popup.style.setProperty("left", (e.clientX + 10) + "px", "important");  //left = (e.clientX + 10) + "px";
             }
@@ -2819,6 +2932,36 @@
                     }
                 }
                 popup.style.setProperty("font-size", size + "px", "important");
+            }
+
+        },
+
+        /**
+         * 按键按下时触发
+         * @param e {KeyboardEvent}
+         */
+        keydown: function (e) {
+            const target = isInDLSite() ? e.target : getVoiceLinkTarget(e.target);
+            if(!target || !target.classList.contains(VOICELINK_CLASS)) return;
+
+            const rjCode = target.getAttribute(RJCODE_ATTRIBUTE);
+            if(rjCode === null) return;
+
+            let popup = Popup.popupElement.popup;
+            if(popup.style.display !== "none" && Popup.isPinKeyDown(e)){
+                //按住CTRL以固定显示弹框
+                Popup.setPinState(rjCode, true);
+            }
+        },
+
+        /**
+         * 按键抬起时触发
+         * @param e {KeyboardEvent}
+         */
+        keyup: function (e) {
+            let popup = Popup.popupElement.popup;
+            if(popup && Popup.isPinKeyDown(e)){
+                Popup.setPinState(null, false);
             }
         }
     }
@@ -5488,6 +5631,9 @@
                     }
                 }
             });
+
+            //全局监听弹框关闭
+            document.addEventListener("keyup", Popup.keyup);
 
             isInit = true;
         }
