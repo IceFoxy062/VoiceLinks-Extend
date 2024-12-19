@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.2.0
+// @version     4.8.1
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -43,6 +43,7 @@
         //信息显示设置
         _s_category_preset: "voice",
         _s_voice__info_display_order: [
+            "voice__dl_count",
             "voice__circle_name",
             "voice__translator_name",
             "voice__release_date",
@@ -55,6 +56,7 @@
             "voice__genre",
             "voice__file_size"
         ],
+        _s_voice__dl_count: false,
         _s_voice__circle_name: true,
         _s_voice__translator_name: true,
         _s_voice__release_date: true,
@@ -67,6 +69,7 @@
         _s_voice__genre: true,
         _s_voice__file_size: true,
         _s_game__info_display_order: [
+            "game__dl_count",
             "game__circle_name",
             "game__translator_name",
             "game__release_date",
@@ -79,6 +82,7 @@
             "game__genre",
             "game__file_size"
         ],
+        _s_game__dl_count: false,
         _s_game__circle_name: true,
         _s_game__translator_name: true,
         _s_game__release_date: true,
@@ -90,7 +94,8 @@
         _s_game__music: true,
         _s_game__genre: true,
         _s_game__file_size: true,
-        _s_manga__info_display_order: [
+        _s_manga__info_display_order:[
+            "manga__dl_count",
             "manga__circle_name",
             "manga__translator_name",
             "manga__release_date",
@@ -103,6 +108,7 @@
             "manga__genre",
             "manga__file_size"
         ],
+        _s_manga__dl_count: false,
         _s_manga__circle_name: true,
         _s_manga__translator_name: true,
         _s_manga__release_date: true,
@@ -115,6 +121,7 @@
         _s_manga__genre: true,
         _s_manga__file_size: true,
         _s_video__info_display_order: [
+            "video__dl_count",
             "video__circle_name",
             "video__translator_name",
             "video__release_date",
@@ -127,6 +134,7 @@
             "video__genre",
             "video__file_size"
         ],
+        _s_video__dl_count: false,
         _s_video__circle_name: true,
         _s_video__translator_name: true,
         _s_video__release_date: true,
@@ -139,6 +147,7 @@
         _s_video__genre: true,
         _s_video__file_size: true,
         _s_novel__info_display_order: [
+            "novel__dl_count",
             "novel__circle_name",
             "novel__translator_name",
             "novel__release_date",
@@ -151,6 +160,7 @@
             "novel__genre",
             "novel__file_size"
         ],
+        _s_novel__dl_count: false,
         _s_novel__circle_name: true,
         _s_novel__translator_name: true,
         _s_novel__release_date: true,
@@ -163,6 +173,7 @@
         _s_novel__genre: true,
         _s_novel__file_size: true,
         _s_other__info_display_order: [
+            "other__dl_count",
             "other__circle_name",
             "other__translator_name",
             "other__release_date",
@@ -175,6 +186,7 @@
             "other__genre",
             "other__file_size"
         ],
+        _s_other__dl_count: false,
         _s_other__circle_name: true,
         _s_other__translator_name: true,
         _s_other__release_date: true,
@@ -191,6 +203,7 @@
         _s_tag_main_switch: true,
         _s_tag_display_order: [
             "tag_no_longer_available",
+            "tag_rate",
             "tag_work_type",
             "tag_translatable",
             "tag_not_translatable",
@@ -201,6 +214,7 @@
             "tag_file_format",
             "tag_ai",
         ],
+        _s_tag_rate: true,
         _s_tag_work_type: true,
         _s_tag_translatable: true,
         _s_tag_not_translatable: true,
@@ -263,6 +277,7 @@
         temp_edited: {},
 
         load: function(){
+            let need_reorder = false;
             for(let key in this){
                 if(!key.startsWith("_s_")) continue;
                 let val = GM_getValue(key.substring(3), this[key]);
@@ -271,8 +286,16 @@
                 }
                 if(Array.isArray(val) && val.length !== this[key].length){
                     val = this[key];
+                    need_reorder = true;
                 }
                 this[key] = val !== undefined ? val : this[key];
+            }
+
+            if(need_reorder) {
+                window.addEventListener("load", () => {
+                    window.alert("VoiceLinks: " + localize(localizationMap.need_reorder));
+                });
+                this.save();
             }
         },
 
@@ -523,6 +546,24 @@
             zh_CN: "使不同类别的作品根据需要显示不同的信息<br/><br/>注意：即使勾选了显示，若作品中不存在该信息则也会隐藏。",
             zh_TW: "使不同類別的作品根據需要顯示不同的信息<br/><br/>注意：即使勾選了顯示，若作品中不存在該信息則也會隱藏。",
             en_US: "Show the information of different categories of works. <br/><br/>Note: even if checked, the information of a work that does not exist will be hidden."
+        },
+
+        rate: {
+            zh_CN: "评分",
+            zh_TW: "評分",
+            en_US: "Rate"
+        },
+
+        rate_tooltip: {
+            zh_CN: "星数★ (评分人数)",
+            zh_TW: "星數★ (評分人數)",
+            en_US: "Star★ (number of ratings)"
+        },
+
+        dl_count: {
+            zh_CN: "销量",
+            zh_TW: "銷量",
+            en_US: "Sales"
         },
 
         circle_name: {
@@ -1011,6 +1052,12 @@
             en_US: "Reset",
         },
 
+        need_reorder: {
+            zh_CN: "检测到设置更新，可能添加了新的信息位，请重新设置对应设置项的排列",
+            zh_TW: "檢查到設置更新，可能添加了新的信息位，请重新設置對應設置項的排列",
+            en_US: "There is a new setting item added. Please reorder the corresponding setting item",
+        },
+
         save_complete: {
             zh_CN: "设置已保存，部分设置需要刷新对应页面以生效",
             zh_TW: "設置已保存，部分設置需要刷新對應頁面以生效",
@@ -1057,6 +1104,36 @@
             zh_CN: "重置元素顺序和各自的设置值",
             zh_TW: "重置元素順序和各自的設置值",
             en_US: "Reset element order and their settings",
+        },
+
+        hint_pin: {
+            zh_CN: "按住CTRL以固定弹框，固定时可复制信息",
+            zh_TW: "按住CTRL以固定彈窗，固定時可複製資訊",
+            en_US: "Hold CTRL to pin the popup, info can be copied.",
+        },
+
+        hint_unpin: {
+            zh_CN: "抬起CTRL以关闭弹框 & 查看其它作品RJ信息",
+            zh_TW: "抬起CTRL以關閉彈窗 & 查看其它作品RJ信息",
+            en_US: "Release CTRL to close the popup & view other works.",
+        },
+
+        hint_copy: {
+            zh_CN: "左键单击以复制信息",
+            zh_TW: "左鍵單擊以複製資訊",
+            en_US: "Left click to copy info.",
+        },
+
+        hint_copy_all: {
+            zh_CN: "左键单击以复制内部所有信息",
+            zh_TW: "左鍵單擊以複製內部所有資訊",
+            en_US: "Left click to copy all contained info.",
+        },
+
+        hint_copy_work_title: {
+            zh_CN: "单击复制标题，Alt+单击复制为有效文件名",
+            zh_TW: "單擊複製標題，Alt+單擊複製為有效檔名",
+            en_US: "Click to copy title, Alt+click to copy as valid filename.",
         },
 
         get: function (key, langKey = "_s_lang") {
@@ -2128,6 +2205,7 @@
             loader: null,
             flag: null,
             tags: null,
+            dl_count: null,
             circle_name: null,
             debug: null,
             translator_name: null,
@@ -2181,12 +2259,11 @@
             ele.hint = document.createElement("div");
             leftPanel.appendChild(ele.hint);
             ele.hint.id = `${VOICELINK_CLASS}_hint`;
-            ele.hint.innerText = "按住Ctrl以暂时固定弹框，对信息左键以复制，右键以订阅或打开链接（方便起见，订阅仅在同一语言下有效，若更换DLSite网站语言则会丢失订阅信息）"
 
             const rightPanel = document.createElement("div");
             ele.right_panel = rightPanel;
 
-            const titleElement = Popup.createCopyTag("div", "", false, "单击复制标题，Alt+单击复制为有效文件名");
+            const titleElement = Popup.createCopyTag("div", "", false, localizePopup(localizationMap.hint_copy_work_title));
             ele.title = titleElement;
             titleElement.classList.add(`${VOICELINK_CLASS}_voice-title`);
             rightPanel.appendChild(titleElement);
@@ -2216,6 +2293,7 @@
             ele.tags = document.createElement("div");
             infoContainer.appendChild(ele.tags);
 
+            ele.dl_count = document.createElement("div");
             ele.circle_name = document.createElement("div");
             ele.debug = document.createElement("div");
             ele.translator_name = document.createElement("div");
@@ -2342,6 +2420,7 @@
             //------设置标题------
             const titleElement = ele.title;
             titleElement.innerText = "Loading...";
+            titleElement.setHint(localizePopup(localizationMap.hint_copy_work_title));
             titleElement.setCopyText(null);
             titleElement.setSecondaryCopyText(null);
             WorkPromise.getWorkTitle(rjCode).then(title => {
@@ -2398,13 +2477,16 @@
 
         setFoundState(found){
             const ele = Popup.popupElement;
-            const popup = ele.popup;
 
             ele.not_found.style.setProperty("display", found ? "none" : "block", "important");
-            ele.img.container.style.setProperty("display", found && !Popup.hideImg ? "block" : "none", "important");
+            //ele.img.container.style.setProperty("display", found && !Popup.hideImg ? "block" : "none", "important");
+            ele.left_panel.style.setProperty("display", found ? "flex" : "none", "important");
             ele.right_panel.style.setProperty("display", found ? "block" : "none", "important");
             ele.title.style.setProperty("display", found ? "block" : "none", "important");
             ele.rj_code.style.setProperty("display", found ? "block" : "none", "important");
+            ele.info_container.style.setProperty("display", found ? "block" : "none", "important");
+            ele.hint.style.setProperty("display", found ? "block" : "none", "important");
+            /*ele.dl_count.style.setProperty("display", found ? "block" : "none", "important");
             ele.circle_name.style.setProperty("display", found ? "block" : "none", "important");
             ele.debug.style.setProperty("display", found ? "block" : "none", "important");
             ele.translator_name.style.setProperty("display", found ? "block" : "none", "important");
@@ -2414,7 +2496,7 @@
             ele.voice_actor.style.setProperty("display", found ? "block" : "none", "important");
             ele.music.style.setProperty("display", found ? "block" : "none", "important");
             ele.genre.style.setProperty("display", found ? "block" : "none", "important");
-            ele.file_size.style.setProperty("display", found ? "block" : "none", "important");
+            ele.file_size.style.setProperty("display", found ? "block" : "none", "important");*/
         },
 
         /**
@@ -2425,7 +2507,7 @@
          * @param hint {string} 提示栏显示的提示文本
          * @returns {HTMLElement} 创建/转换后的标签
          */
-        createCopyTag: function (tag, copyText, isTitle = false, hint = isTitle ? "左键单击以复制内部所有信息" : "左键单击以复制信息") {
+        createCopyTag: function (tag, copyText, isTitle = false, hint = isTitle ? localizePopup(localizationMap.hint_copy_all) : localizePopup(localizationMap.hint_copy)) {
             tag = (typeof tag === "string") ? document.createElement(tag) : tag;
             if(isTitle) tag.classList.add("info-title");
 
@@ -2556,6 +2638,12 @@
 
             return rowElement;
         },
+        set_dl_count: function (rjCode, category){
+            const id = `${category}__dl_count`;
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.dl_count, localizePopup(localizationMap.dl_count),
+                WorkPromise.getDLCount(rjCode));
+            if(element) Popup.popupElement.info_container.appendChild(element);
+        },
         set_circle_name: function (rjCode, category){
             const id = `${category}__circle_name`;
             const element = Popup.set_info_row(rjCode, id, Popup.popupElement.circle_name, localizePopup(localizationMap.circle_name),
@@ -2651,6 +2739,11 @@
             tag.classList.add(tagClass);
             tag.innerText = text;
             return tag;
+        },
+        get_tag_rate: async function (rjCode) {
+            let rate = await WorkPromise.getRateAvg(rjCode);
+            let cot = await WorkPromise.getRateCount(rjCode);
+            return Popup.get_tag(`${rate}★ (${cot})`, "tag-yellow");
         },
         get_tag_no_longer_available: async function (rjCode) {
             let sale = await WorkPromise.getSale(rjCode);
@@ -2998,12 +3091,12 @@
 
             //如果用户固定了弹框，则提示用户必须ctrl关闭弹框才能解析
             if(Popup.isHoldPinKey(e) && Popup.pinRJ){
-                ele.hint.innerText = "抬起CTRL以关闭弹框 & 查看其它作品RJ信息"
+                ele.hint.innerText = localizePopup(localizationMap.hint_unpin);
                 return;
             }else{
                 //没有固定弹框的话清理pinRJ，因为有时候pinRJ没办法被keyup清理（如keyup未触发）
                 Popup.pinRJ = undefined
-                ele.hint.innerText = "按住CTRL以固定弹框，固定时可复制信息"
+                ele.hint.innerText = localizePopup(localizationMap.hint_pin);
             }
 
             //修正链接
@@ -3031,7 +3124,7 @@
             //并设置Copy显示情况
             if(Popup.isHoldPinKey(e)){
                 Popup.setPinState(rjCode, true)
-                ele.hint.innerText = "抬起CTRL以关闭弹框 & 查看其它作品RJ信息"
+                ele.hint.innerText = localizePopup(localizationMap.hint_unpin);
             }else{
                 Popup.setPinState(rjCode, false, false)
             }
@@ -3174,13 +3267,10 @@
         getRJChain: async function(rjCode) {
             //RJxxx → RJxxx → RJxxx，这样从子级指向父级
             const trans = await WorkPromise.getTranslationInfo(rjCode);
-            //let chain = `<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold !important;text-decoration-line: underline !important;">${rjCode}</span>`;
             let chain = [rjCode];
             if(trans.is_child){
-                //chain += ` → <span>${trans.parent_workno}</span> → <span>${trans.original_workno}</span>`;
                 chain.push(trans.parent_workno, trans.original_workno);
             }else if(trans.is_parent){
-                //chain += ` → <span>${trans.original_workno}</span>`;
                 chain.push(trans.original_workno);
             }
             return chain;
@@ -3225,6 +3315,47 @@
                 return data.is_sale;
             }
             return data.is_sale || await WorkPromise.getAnnounce(rjCode);
+        },
+
+        getDLCount: async function (rjCode) {
+            const p = WorkPromise.getWorkPromise(rjCode);
+            let data = await p.api;
+            WorkPromise.checkNotNull(data.dl_count);
+            return data.dl_count;
+        },
+
+        getRateAvg: async function (rjCode) {
+            const p = WorkPromise.getWorkPromise(rjCode);
+            let data = await p.api;
+            WorkPromise.checkNotNull(data.rate_average_2dp);
+            return data.rate_average_2dp;
+        },
+
+        getRateCount: async function (rjCode) {
+            const p = WorkPromise.getWorkPromise(rjCode);
+            let data = await p.api;
+            if(data.rate_count) return data.rate_count;
+
+            //还可以累加api2的结果获得
+            data = await p.api2;
+            this.checkNotNull(data.rate_count_detail);
+            let count = 0;
+            for (const key in data.rate_count_detail) {
+                count += parseInt(data.rate_count_detail[key]);
+            }
+            return count;
+        },
+
+        getWishlistCount: async function (rjCode) {
+            const p = WorkPromise.getWorkPromise(rjCode);
+            let data = await p.api;
+            this.checkNotNull(data.wishlist_count);
+            return data.wishlist_count;
+        },
+
+        getPriceText: async function (rjCode) {
+            const p = WorkPromise.getWorkPromise(rjCode);
+            //TODO: 价格以后再加，还要考虑汇率和添加设置项
         },
 
         getBonus: async function(rjCode) {
@@ -4355,6 +4486,12 @@
                             sort_id: "voice__info_display_order",  //若排序则一定要指定id，该id将会存储在设置项中，作为列表记录每个元素的顺序
                             items: [
                                 {
+                                    //销量
+                                    type: "checkbox",
+                                    title: localize(localizationMap.dl_count),
+                                    id: "voice__dl_count",  //注意这里不同的preset要改成不同的值
+                                },
+                                {
                                     //社团名
                                     type: "checkbox",
                                     title: localize(localizationMap.circle_name),
@@ -4432,6 +4569,12 @@
                             sort_id: "game__info_display_order",
                             items: [
                                 {
+                                    //销量
+                                    type: "checkbox",
+                                    title: localize(localizationMap.dl_count),
+                                    id: "game__dl_count",
+                                },
+                                {
                                     //社团名
                                     type: "checkbox",
                                     title: localize(localizationMap.circle_name),
@@ -4508,6 +4651,12 @@
                             sortable: true,  //为true则代表该表格内的行可以排序
                             sort_id: "manga__info_display_order",
                             items: [
+                                {
+                                    //销量
+                                    type: "checkbox",
+                                    title: localize(localizationMap.dl_count),
+                                    id: "manga__dl_count",
+                                },
                                 {
                                     //社团名
                                     type: "checkbox",
@@ -4587,6 +4736,12 @@
                             sort_id: "video__info_display_order",
                             items: [
                                 {
+                                    //销量
+                                    type: "checkbox",
+                                    title: localize(localizationMap.dl_count),
+                                    id: "video__dl_count",
+                                },
+                                {
                                     //社团名
                                     type: "checkbox",
                                     title: localize(localizationMap.circle_name),
@@ -4664,6 +4819,12 @@
                             sort_id: "novel__info_display_order",
                             items: [
                                 {
+                                    //销量
+                                    type: "checkbox",
+                                    title: localize(localizationMap.dl_count),
+                                    id: "novel__dl_count",
+                                },
+                                {
                                     //社团名
                                     type: "checkbox",
                                     title: localize(localizationMap.circle_name),
@@ -4740,6 +4901,12 @@
                             sortable: true,  //为true则代表该表格内的行可以排序
                             sort_id: "other__info_display_order",
                             items: [
+                                {
+                                    //销量
+                                    type: "checkbox",
+                                    title: localize(localizationMap.dl_count),
+                                    id: "other__dl_count",
+                                },
                                 {
                                     //社团名
                                     type: "checkbox",
@@ -4839,6 +5006,13 @@
                                     sortable: true,
                                     sort_id: "tag_display_order",
                                     items: [
+                                        {
+                                            //销量
+                                            title: localize(localizationMap.rate),
+                                            id: "tag_rate",
+                                            class: "tag-yellow",
+                                            tooltip: localize(localizationMap.rate_tooltip)
+                                        },
                                         {
                                             //作品类型
                                             title: localize(localizationMap.tag_work_type),
