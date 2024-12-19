@@ -1908,7 +1908,8 @@
                         }
 
                         if (node.nodeName !== "#text") return NodeFilter.FILTER_SKIP;
-                        if(node.parentElement.classList.contains(VOICELINK_IGNORED_CLASS)){
+                        if(node.parentElement.classList.contains(VOICELINK_IGNORED_CLASS)
+                            || node.parentElement.hasAttribute(RJCODE_ATTRIBUTE)){
                             return NodeFilter.FILTER_SKIP;
                         }
 
@@ -1948,6 +1949,7 @@
             e.classList = VOICELINK_CLASS;
             e.innerText = content;
             e.classList.add(VOICELINK_IGNORED_CLASS);
+            e.setAttribute(RJCODE_ATTRIBUTE, "");
             return e;
         },
 
@@ -2244,7 +2246,7 @@
             document.body.appendChild(popup);
 
             popup.addEventListener("mouseenter", () => {
-                popup.setAttribute("mouse-in", null);
+                popup.setAttribute("mouse-in", "");
             });
             popup.addEventListener("mouseleave", () => {
                 popup.removeAttribute("mouse-in");
