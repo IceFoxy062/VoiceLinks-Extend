@@ -35,8 +35,10 @@
         _s_show_compatibility_warning: true,
         _s_url_insert_mode: "before_rj",
         _s_url_insert_text: "🔗",
-        _s_nsfw_mode: false,
-        _s_nsfw_blur_level: "medium",
+        _s_sfw_mode: false,
+        _s_sfw_blur_level: "medium",
+        _s_sfw_remove_when_hover: true,
+        _s_sfw_blur_transition: true,
 
         //信息显示设置
         _s_category_preset: "voice",
@@ -457,40 +459,52 @@
             en_US: "Text to insert"
         },
 
-        nsfw_mode: {
-            zh_CN: "NSFW 模式",
-            zh_TW: "NSFW 模式",
-            en_US: "NSFW Mode"
+        sfw_mode: {
+            zh_CN: "SFW 模式",
+            zh_TW: "SFW 模式",
+            en_US: "SFW Mode"
         },
 
-        nsfw_mode_tooltip: {
-            zh_CN: "启用后，所有R18作品封面均会模糊处理",
-            zh_TW: "啟用後，所有R18作品封面均會模糊處理",
-            en_US: "Turn on to blur the cover of all R18 works."
+        sfw_mode_tooltip: {
+            zh_CN: "启用后，所有作品封面均会模糊处理（固定窗口时将鼠标移动到图片上可临时去除模糊）",
+            zh_TW: "啟用後，所有作品封面均會模糊處理（固定視窗時將滑鼠移動到圖片上可暫時去除模糊）",
+            en_US: "Turn on to blur the cover of all works (temporarily remove the blur by moving the mouse over the image when the window is fixed)."
         },
 
-        nsfw_blur_level: {
+        sfw_blur_level: {
             zh_CN: "模糊程度",
             zh_TW: "模糊程度",
             en_US: "Blur level"
         },
 
+        sfw_remove_when_hover: {
+            zh_CN: "鼠标移到图片上时移除模糊",
+            zh_TW: "滑鼠移到圖片上時移除模糊",
+            en_US: "Remove the blur when the mouse moves over the image"
+        },
+
+        sfw_blur_transition: {
+            zh_CN: "模糊动画（卡顿请关闭）",
+            zh_TW: "模糊動畫（卡頓請關閉）",
+            en_US: "Blur animation"
+        },
+
         low: {
-            zh_CN: "低",
-            zh_TW: "低",
-            en_US: "Low"
+            zh_CN: "低 - 仅模糊细节",
+            zh_TW: "低 - 僅模糊細節",
+            en_US: "Low - Only blur details"
         },
 
         medium: {
-            zh_CN: "中",
-            zh_TW: "中",
-            en_US: "Medium"
+            zh_CN: "中 - 依稀可见",
+            zh_TW: "中 - 依稀可見",
+            en_US: "Medium - Hard to see"
         },
 
         high: {
-            zh_CN: "高",
-            zh_TW: "高",
-            en_US: "High"
+            zh_CN: "高 - 完全无法辨认",
+            zh_TW: "高 - 完全無法辨識",
+            en_US: "High - Unrecognizable"
         },
 
         title_info_settings: {
@@ -998,9 +1012,9 @@
         },
 
         save_complete: {
-            zh_CN: "设置已保存，刷新对应页面以生效",
-            zh_TW: "設置已保存，刷新對應頁面以生效",
-            en_US: "Settings saved, refresh the corresponding page to take effect",
+            zh_CN: "设置已保存，部分设置需要刷新对应页面以生效",
+            zh_TW: "設置已保存，部分設置需要刷新對應頁面以生效",
+            en_US: "Settings saved, some settings need to refresh the corresponding page to take effect",
         },
 
         save_failed: {
@@ -1083,12 +1097,28 @@
         pointer-events: none !important;
     }
     
+    .${VOICELINK_CLASS}_voicepopup[pin] *[copy-text] {
+        text-decoration: underline !important;
+        cursor: pointer !important;
+    }
+    .${VOICELINK_CLASS}_voicepopup[pin] *[copy-text]:active {
+        opacity: 0.5 !important;
+    }
+    
     #${VOICELINK_CLASS}_info-container {
         font-size: 1em !important;
     }
     #${VOICELINK_CLASS}_info-container > div {
         margin-bottom: 3px !important;
         font-size: 1em !important;
+    }
+    #${VOICELINK_CLASS}_info-container > div > .info-title {
+        margin-right: 5px !important;
+    }
+    #${VOICELINK_CLASS}_info-container > div > .info-title::after {
+        content: ":" !important;
+        text-decoration: none !important;
+        display: inline-block !important;
     }
     #${VOICELINK_CLASS}_info-container .${VOICELINK_CLASS}_tags {
         margin-top: 12px !important;
@@ -1777,6 +1807,10 @@
                             return NodeFilter.FILTER_REJECT;
                         }
 
+                        if(node.parentElement.isContentEditable){
+                            return NodeFilter.FILTER_SKIP;
+                        }
+
                         if(settings._s_parse_url && node.nodeName === "A"){
                             if(!settings._s_parse_url_in_dl && document.location.hostname.endsWith("dlsite.com")){
                                 return NodeFilter.FILTER_SKIP;
@@ -2057,7 +2091,7 @@
          获得带倒计时的文本HTML
          @param date {Date}
          ***/
-        getCountDownDateText: function(date){
+        getCountDownDateElement: function(date){
             if(!date) return "";
 
             const today = new Date();
@@ -2072,7 +2106,12 @@
 
             if(date.getTime() < today.getTime()) return "";
             let days = (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
-            return `<span style="color:#ffeb3b !important; font-size: 16px !important; font-style: italic !important; margin-left: 16px !important">(Coming in ${days} day${(days > 1 ? "s" : "")})</span>`
+            let element = document.createElement("span");
+            element.innerText = `(Coming in ${days} day${(days > 1 ? "s" : "")})`;
+            element.style.setProperty("color", "#ffeb3b", "important");
+            element.style.setProperty("font-style", "italic", "important");
+            return element;
+            //return `<span style="color:#ffeb3b !important; font-size: 16px !important; font-style: italic !important; margin-left: 16px !important"></span>`
         },
     }
 
@@ -2101,6 +2140,11 @@
             music: null,
             genre: null,
             file_size: null,
+
+            _state: {
+                mouseX: 0,
+                mouseY: 0
+            }
         },
 
         makePopup: function (display) {
@@ -2142,7 +2186,7 @@
             const rightPanel = document.createElement("div");
             ele.right_panel = rightPanel;
 
-            const titleElement = document.createElement("div");
+            const titleElement = Popup.createCopyTag("div", "", false, "单击复制标题，Alt+单击复制为有效文件名");
             ele.title = titleElement;
             titleElement.classList.add(`${VOICELINK_CLASS}_voice-title`);
             rightPanel.appendChild(titleElement);
@@ -2199,6 +2243,7 @@
             popup.style.setProperty("display", "flex", "important");  //= "display: flex";
             popup.setAttribute(RJCODE_ATTRIBUTE, rjCode);
 
+            //------检查作品存在情况------
             let workFound = true;
             Popup.setFoundState(true);
             WorkPromise.getFound(rjCode).then(async found => {
@@ -2233,57 +2278,104 @@
                 workFound = found;
             });
 
+            //------检查是否为女性向------
             WorkPromise.getGirls(rjCode).then(isGirls => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 if(isGirls) popup.className += (` ${VOICELINK_CLASS}_voicepopup-girls`)
             }).catch(e => {});
 
+            //------获取作品封面------
             const imgContainer = ele.img.container;
+
+            //NSFW模糊等级
+            const blur_map = {
+                low: "6px",
+                medium: "12px",
+                high: "24px"
+            };
             let img = ele.img[rjCode];
             if(!img){
                 //由于切换图片src会导致加载延迟，故根据RJ号保留所有图片的img元素并按需显示
                 img = document.createElement("img");
                 ele.img[rjCode] = img;
                 imgContainer.appendChild(img);
+
+                //开启动画
+                if(settings._s_sfw_blur_transition){
+                    img.style.setProperty("transition", "all 0.3s", "important");
+                }
+
+                //鼠标移动上去解除模糊
+                img.addEventListener("mouseenter", e => {
+                    if(!settings._s_sfw_remove_when_hover){
+                        return;
+                    }
+                    img.style.setProperty("filter", "inherit", "important");
+                });
+                img.addEventListener("mouseleave", e => {
+                    if(settings._s_sfw_mode){
+                        img.style.setProperty("filter", `blur(${blur_map[settings._s_sfw_blur_level]})`, "important");
+                    }else{
+                        img.style.setProperty("filter", "inherit", "important");
+                    }
+                });
             }
             for (let i = 0; i < imgContainer.childNodes.length; ++i) {
                 imgContainer.childNodes[i].style.setProperty("display", "none", "important");  //display = "none !important";
             }
             img.style.setProperty("display", "block", "important");  //display = "block"
+
             //设置NSFW模糊
-            const blur_map = {
-                low: "4px",
-                medium: "8px",
-                high: "16px"
-            }
-            if(settings._s_nsfw_mode){
-                img.style.setProperty("filter", `blur(${blur_map[settings._s_nsfw_blur_level]})`, "important");
+            if(settings._s_sfw_mode){
+                img.style.setProperty("filter", `blur(${blur_map[settings._s_sfw_blur_level]})`, "important");
             }else{
-                img.style.setProperty("filter", "unset", "important");
+                img.style.setProperty("filter", "inherit", "important");
             }
             WorkPromise.getImgLink(rjCode).then(link => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 img.src = link;
             }).catch(e => {});
 
-            //设置hint可见
+            //------设置hint可见------
             ele.hint.style.setProperty("display", "block", "important");
 
+            //------设置标题------
             const titleElement = ele.title;
             titleElement.innerText = "Loading...";
+            titleElement.setCopyText(null);
+            titleElement.setSecondaryCopyText(null);
             WorkPromise.getWorkTitle(rjCode).then(title => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                titleElement.innerText = title
+                titleElement.innerText = title;
+                titleElement.setCopyText(title);
+                titleElement.setSecondaryCopyText(convertToValidFileName(title));
             }).catch(_ => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 titleElement.innerHTML = Csp.createHTML("");
-            });
+            })
 
+            //------设置RJ号------
             const rjCodeElement = ele.rj_code;
-            rjCodeElement.innerHTML = Csp.createHTML(`[${isParent ? " ↑ " : ""}<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold !important;text-decoration-line: underline !important;">${rjCode}</span>]`);
+            rjCodeElement.innerHTML = Csp.createHTML(`[ ${isParent ? " ↑ " : ""}<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold !important;text-decoration-line: underline !important;">${rjCode}</span> ]`);
             WorkPromise.getRJChain(rjCode).then(chain => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                rjCodeElement.innerHTML = Csp.createHTML(chain);
+                rjCodeElement.innerText = "[ ";
+                //构造chain
+                for (let i = 0; i < chain.length; i++) {
+                    const rj = chain[i];
+                    let e = Popup.createCopyTag("span", rj);
+                    e.innerText = rj;
+                    e.classList.add(VOICELINK_IGNORED_CLASS);
+                    if(i === 0) {
+                        //第一个元素，也就是当前RJ号
+                        e.style.setProperty("font-weight", "bold", "important");
+                        e.style.setProperty("text-decoration", "underline", "important");
+                    }else{
+                        rjCodeElement.appendChild(document.createTextNode(" → "));
+                    }
+                    rjCodeElement.appendChild(e);
+                }
+                rjCodeElement.appendChild(document.createTextNode(" ]"));
             });
 
             //清除原有信息并展示加载界面
@@ -2308,242 +2400,246 @@
             const ele = Popup.popupElement;
             const popup = ele.popup;
 
-            ele.not_found.style.setProperty("display", found ? "none" : "block", "important");  //display = found ? "none" : "block";
-            ele.img.container.style.setProperty("display", found && !Popup.hideImg ? "block" : "none", "important");  //display = found && !Popup.hideImg ? "block" : "none";
-            ele.right_panel.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            ele.title.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            ele.rj_code.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            //ele.flag.style.display = found ? "block" : "none";
-            ele.circle_name.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            ele.debug.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            //ele.translatable.style.display = found && ele.translatable.innerHTML.trim().length > 0 ? "inline-block" : "none";
-            ele.translator_name.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            ele.release_date.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            ele.update_date.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            ele.age_rating.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            ele.voice_actor.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            ele.music.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            ele.genre.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
-            ele.file_size.style.setProperty("display", found ? "block" : "none", "important");  //display = found ? "block" : "none";
+            ele.not_found.style.setProperty("display", found ? "none" : "block", "important");
+            ele.img.container.style.setProperty("display", found && !Popup.hideImg ? "block" : "none", "important");
+            ele.right_panel.style.setProperty("display", found ? "block" : "none", "important");
+            ele.title.style.setProperty("display", found ? "block" : "none", "important");
+            ele.rj_code.style.setProperty("display", found ? "block" : "none", "important");
+            ele.circle_name.style.setProperty("display", found ? "block" : "none", "important");
+            ele.debug.style.setProperty("display", found ? "block" : "none", "important");
+            ele.translator_name.style.setProperty("display", found ? "block" : "none", "important");
+            ele.release_date.style.setProperty("display", found ? "block" : "none", "important");
+            ele.update_date.style.setProperty("display", found ? "block" : "none", "important");
+            ele.age_rating.style.setProperty("display", found ? "block" : "none", "important");
+            ele.voice_actor.style.setProperty("display", found ? "block" : "none", "important");
+            ele.music.style.setProperty("display", found ? "block" : "none", "important");
+            ele.genre.style.setProperty("display", found ? "block" : "none", "important");
+            ele.file_size.style.setProperty("display", found ? "block" : "none", "important");
         },
 
-        set_circle_name: function (rjCode, category){
-            const id = `${category}__circle_name`;
+        /**
+         * 创建可复制标签
+         * @param tag {string|HTMLElement} 标签名或标签对象（如果为标签对象，则会将对象原地转化成可复制标签）
+         * @param copyText {string} 需要复制的文本
+         * @param isTitle {boolean} 是否为标题元素（使用特殊class）
+         * @param hint {string} 提示栏显示的提示文本
+         * @returns {HTMLElement} 创建/转换后的标签
+         */
+        createCopyTag: function (tag, copyText, isTitle = false, hint = isTitle ? "左键单击以复制内部所有信息" : "左键单击以复制信息") {
+            tag = (typeof tag === "string") ? document.createElement(tag) : tag;
+            if(isTitle) tag.classList.add("info-title");
+
+            //添加自定义方法
+            tag.getCopyText = () => tag.getAttribute("copy-text");
+            tag.setCopyText = text => {
+                if(!text){
+                    tag.removeAttribute("copy-text");
+                    return;
+                }
+                tag.setAttribute("copy-text", text);
+            };
+
+            tag.getSecondaryCopyText = () => tag.getAttribute("sec-copy-text");
+            tag.setSecondaryCopyText = text => {
+                if(!text){
+                    tag.removeAttribute("sec-copy-text");
+                    return;
+                }
+                tag.setAttribute("sec-copy-text", text);
+            };
+
+            tag.getHint = () => tag.getAttribute("hint");
+            tag.setHint = hint => {
+                tag.setAttribute("hint", hint);
+            };
+
+            tag.setCopyText(copyText);
+            tag.setHint(hint);
+            tag.addEventListener("click", e => {
+                const attr = e.altKey ? "sec-copy-text" : "copy-text";
+                if(!tag.hasAttribute(attr)) return;
+                navigator.clipboard.writeText(tag.getAttribute(attr)).finally();
+            });
+            tag.addEventListener("mouseenter", e => {
+                let hint = tag.getHint();
+                Popup.popupElement.hint.innerText = hint ? hint : Popup.popupElement.hint.innerText;
+            })
+            return tag;
+        },
+
+        /**
+         * 显示某行的信息
+         * @param rjCode {string} 信息对应的RJ号
+         * @param id {string} 信息对应的ID
+         * @param rowElement {HTMLElement} 行对应的Element元素
+         * @param title {string} 行信息标题
+         * @param contentProvider {Promise<any|Array|HTMLElement>} 无参内容Provider，返回字符串/字符串列表等用于生成文本
+         * @param suffixProvider {Promise<HTMLElement>} 无参后缀Provider，返回一个Element用于放在Content后面
+         * @param contentSeperator {string, HTMLElement}  Content如果是列表，则该内容为作为分隔符
+         * @param contentSeperatorText {string} 如果采用HTMLElement的分隔符，则在复制的时候需要有一个文本表示
+         */
+        set_info_row: function (rjCode, id, rowElement, title, contentProvider, suffixProvider, contentSeperator = " ", contentSeperatorText = undefined ){
             const settingId = `_s_${id}`;
+            //如果设置了不展示信息，或信息没在设置中定义，则不显示
             if(!settings[settingId]) return;
 
-            const ele = this.popupElement;
+            const ele = Popup.popupElement;
             const popup = ele.popup;
-            const circleElement = ele.circle_name;
-            circleElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.circle_name)}: Loading...`);
-            WorkPromise.getCircle(rjCode).then(circle => {
+            const titleElement = Popup.createCopyTag("span", "", true);
+            titleElement.innerText = title;
+            const contentElement = Popup.createCopyTag("span", null);
+            contentElement.innerText = "Loading...";
+
+            rowElement.innerHTML = Csp.createHTML("");
+            rowElement.appendChild(titleElement);
+            rowElement.appendChild(contentElement);
+
+            contentProvider.then(contents => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                circleElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.circle_name)}: <a>${circle}</a>`);
-            }).catch(_ => {
+                if(!Array.isArray(contents)){
+                    //单个结果转化成列表
+                    contents = [contents];
+                }
+
+                //处理结果列表
+                contentElement.setCopyText(null);
+                contentElement.innerText = "";
+                //以指定的分隔符文本为准，不指定分隔符文本再使用分隔符内的文本
+                let sepText = contentSeperatorText ? contentSeperatorText : contentSeperator.toString();
+                let sep;
+                if(typeof contentSeperator === "string"){
+                    sep = document.createElement("span");
+                    sep.innerText = contentSeperator;
+                }else{
+                    sep = contentSeperator;
+                }
+
+                let contentsText = [];
+                for (let i = 0; i < contents.length; i++) {
+                    let c = contents[i];
+                    if(i > 0) {
+                        //如果Seperator是Element，则直接复制一个出来添加，否则创建一个span然后把内容转换成文本放进去。
+                        contentElement.appendChild(sep.cloneNode(true));
+                    }
+
+                    let element;
+                    if(c instanceof HTMLElement){
+                        element = c;
+                    }else{
+                        element = Popup.createCopyTag("a", c);
+                        element.innerText = c;
+                    }
+
+                    //将复制文本加入复制列表
+                    const copyText = element.getAttribute("copy-text");
+                    if(copyText) contentsText.push(copyText);
+
+                    contentElement.appendChild(element);
+                }
+
+                //为标题添加复制文本
+                titleElement.setCopyText(contentsText.join(sepText));
+            }).catch(e => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                circleElement.innerHTML = Csp.createHTML("");
+                rowElement.innerHTML = Csp.createHTML("");
+                console.error(e);
+            }).finally(() => {
+                Popup.adjustPopup(ele._state.mouseX, ele._state.mouseY, true);
             });
 
-            ele.info_container.appendChild(circleElement);
+            if(suffixProvider){
+                suffixProvider.then((element) => {
+                    if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                    rowElement.appendChild(element);
+                });
+            }
+
+            return rowElement;
+        },
+        set_circle_name: function (rjCode, category){
+            const id = `${category}__circle_name`;
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.circle_name, localizePopup(localizationMap.circle_name),
+                WorkPromise.getCircle(rjCode), null);
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
         set_translator_name: function (rjCode, category){
             const id = `${category}__translator_name`;
-            const settingId = `_s_${id}`;
-            if(!settings[settingId]) return;
-
-            const ele = this.popupElement;
-            const popup = ele.popup;
-            const translatorElement = ele.translator_name;
-            translatorElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.translator_name)}: Loading...`);
-            WorkPromise.getTranslatorName(rjCode).then(name => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                translatorElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.translator_name)}: <a>${name}</a>`);
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                translatorElement.innerHTML = Csp.createHTML("");
-            });
-
-            ele.info_container.appendChild(translatorElement);
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.translator_name,
+                localizePopup(localizationMap.translator_name), WorkPromise.getTranslatorName(rjCode), null);
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
         set_release_date: function (rjCode, category){
             const id = `${category}__release_date`;
-            const settingId = `_s_${id}`;
-            if(!settings[settingId]) return;
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.release_date, localizePopup(localizationMap.release_date),
+                WorkPromise.getReleaseDate(rjCode).then(async (date) => {
+                    const [dateStr, isAnnounce] = date;
+                    const e = Popup.createCopyTag("a", dateStr);
+                    e.innerText = dateStr;
+                    if(isAnnounce) e.style.setProperty("color", "gold", "important");
+                    return e;
+                }), WorkPromise.getReleaseCountDownElement(rjCode).then(element => {
+                    element.style.setProperty("margin-left", "16px", "important");
+                    return element;
+                }));
 
-            const ele = this.popupElement;
-            const popup = ele.popup;
-            const releaseElement = ele.release_date;
-            releaseElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.release_date)}: Loading...`);
-            WorkPromise.getReleaseDate(rjCode).then(date => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                releaseElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.release_date)}: <a>${date}</a>`);
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                releaseElement.innerHTML = Csp.createHTML("");
-            });
-
-            ele.info_container.appendChild(releaseElement);
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
         set_update_date: function (rjCode, category){
             const id = `${category}__update_date`;
-            const settingId = `_s_${id}`;
-            if(!settings[settingId]) return;
-
-            const ele = this.popupElement;
-            const popup = ele.popup;
-            const updateElement = ele.update_date;
-            updateElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.update_date)}: Loading...`);
-            WorkPromise.getUpdateDate(rjCode).then(date => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                updateElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.update_date)}: <a>${date}</a>`);
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                updateElement.innerHTML = Csp.createHTML("");
-            });
-
-            ele.info_container.appendChild(updateElement);
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.update_date, localizePopup(localizationMap.update_date),
+                WorkPromise.getUpdateDate(rjCode));
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
         set_age_rating: function (rjCode, category){
             const id = `${category}__age_rating`;
-            const settingId = `_s_${id}`;
-            if(!settings[settingId]) return;
-
-            const ele = this.popupElement;
-            const popup = ele.popup;
-            const ageElement = ele.age_rating;
-            ageElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.age_rating)}: Loading...`);
-            WorkPromise.getAgeRating(rjCode).then(rating => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                let ratingClass = `${VOICELINK_CLASS}_age-all`;
-                if(rating.includes("18")){
-                    ratingClass = `${VOICELINK_CLASS}_age-18`;
-                }
-                ageElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.age_rating)}: <a class="${ratingClass}">${rating}</a>`);
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                ageElement.innerHTML = Csp.createHTML("");
-            });
-
-            ele.info_container.appendChild(ageElement);
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.age_rating, localizePopup(localizationMap.age_rating),
+                WorkPromise.getAgeRating(rjCode).then(rating => {
+                    let ratingClass = `${VOICELINK_CLASS}_age-all`;
+                    if(rating.includes("18")){
+                        ratingClass = `${VOICELINK_CLASS}_age-18`;
+                    }
+                    let e = Popup.createCopyTag("a", rating);
+                    e.innerText = rating;
+                    e.classList.add(ratingClass);
+                    return e;
+                }));
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
         set_scenario: function (rjCode, category){
             const id = `${category}__scenario`;
-            const settingId = `_s_${id}`;
-            if(!settings[settingId]) return;
-
-            const ele = this.popupElement;
-            const popup = ele.popup;
-            const scenarioElement = ele.scenario;
-            scenarioElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.scenario)}: Loading...`);
-            WorkPromise.getScenario(rjCode).then(name => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                scenarioElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.scenario)}: <a>${name}</a>`);
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                scenarioElement.innerHTML = Csp.createHTML("");
-            });
-
-            ele.info_container.appendChild(scenarioElement);
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.scenario, localizePopup(localizationMap.scenario),
+                WorkPromise.getScenario(rjCode), null, " / ");
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
         set_illustration: function (rjCode, category){
             const id = `${category}__illustration`;
-            const settingId = `_s_${id}`;
-            if(!settings[settingId]) return;
-
-            const ele = this.popupElement;
-            const popup = ele.popup;
-            const illustrationElement = ele.illustration;
-            illustrationElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.illustration)}: Loading...`);
-            WorkPromise.getIllustrator(rjCode).then(name => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                illustrationElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.illustration)}: <a>${name}</a>`);
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                illustrationElement.innerHTML = Csp.createHTML("");
-            });
-
-            ele.info_container.appendChild(illustrationElement);
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.illustration, localizePopup(localizationMap.illustration),
+                WorkPromise.getIllustrator(rjCode), null, " / ");
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
         set_voice_actor: function (rjCode, category){
             const id = `${category}__voice_actor`;
-            const settingId = `_s_${id}`;
-            if(!settings[settingId]) return;
-
-            const ele = this.popupElement;
-            const popup = ele.popup;
-            const voiceActorElement = ele.voice_actor;
-            voiceActorElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.voice_actor)}: Loading...`);
-            WorkPromise.getCV(rjCode).then(name => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                voiceActorElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.voice_actor)}: <a>${name}</a>`);
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                voiceActorElement.innerHTML = Csp.createHTML("");
-            });
-
-            ele.info_container.appendChild(voiceActorElement);
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.voice_actor, localizePopup(localizationMap.voice_actor),
+                WorkPromise.getCV(rjCode), null, " / ");
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
         set_music: function (rjCode, category) {
             const id = `${category}__music`;
-            const settingId = `_s_${id}`;
-            if(!settings[settingId]) return;
-
-            const ele = this.popupElement;
-            const popup = ele.popup;
-            const musicElement = ele.music;
-            musicElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.music)}: Loading...`);
-            WorkPromise.getMusic(rjCode).then(name => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                musicElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.music)}: <a>${name}</a>`);
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                musicElement.innerHTML = Csp.createHTML("");
-            });
-
-            ele.info_container.appendChild(musicElement);
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.music, localizePopup(localizationMap.music),
+                WorkPromise.getMusic(rjCode), null, " / ");
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
         set_genre: function (rjCode, category){
             const id = `${category}__genre`;
-            const settingId = `_s_${id}`;
-            if(!settings[settingId]) return;
-
-            const ele = this.popupElement;
-            const popup = ele.popup;
-            const genreElement = ele.genre;
-            genreElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.genre)}: Loading...`);
-            WorkPromise.getTags(rjCode).then(tags => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                let tagsHtml = `${localizePopup(localizationMap.genre)}: <a>`;
-                tags.forEach(tag => {
-                    tagsHtml += tag + "\u3000";
-                });
-                tagsHtml += "</a>";
-                genreElement.innerHTML = Csp.createHTML(tagsHtml);
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                genreElement.innerHTML = Csp.createHTML("");
-            });
-
-            ele.info_container.appendChild(genreElement);
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.genre, localizePopup(localizationMap.genre),
+                WorkPromise.getTags(rjCode), null, "\u3000");
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
         set_file_size: function (rjCode, category){
             const id = `${category}__file_size`;
-            const settingId = `_s_${id}`;
-            if(!settings[settingId]) return;
-
-            const ele = this.popupElement;
-            const popup = ele.popup;
-            const fileSizeElement = ele.file_size;
-            fileSizeElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.file_size)}: Loading...`);
-            WorkPromise.getFileSize(rjCode).then(filesize => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                fileSizeElement.innerHTML = Csp.createHTML(`${localizePopup(localizationMap.file_size)}: ${filesize}`);
-            }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                fileSizeElement.innerHTML = Csp.createHTML("");
-            });
-
-            ele.info_container.appendChild(fileSizeElement);
+            const element = Popup.set_info_row(rjCode, id, Popup.popupElement.file_size, localizePopup(localizationMap.file_size),
+                WorkPromise.getFileSize(rjCode));
+            if(element) Popup.popupElement.info_container.appendChild(element);
         },
 
         get_tag: function (text, tagClass) {
@@ -2772,6 +2868,50 @@
             });
         },
 
+        //调整弹框位置
+        adjustPopup: function (mouseX, mouseY, force = false){
+            // console.log("定位修正")
+
+            //定位修正
+            const popup = Popup.popupElement.popup;
+            if(!Popup.pinRJ || force){
+                if (popup.offsetWidth + mouseX + 10 < window.innerWidth - 10) {
+                    popup.style.setProperty("left", (mouseX + 10) + "px", "important");
+                }
+                else {
+                    popup.style.setProperty("left", (window.innerWidth - popup.offsetWidth - 10) + "px", "important");
+                }
+            }
+
+            let rect = popup.getBoundingClientRect();
+            if(!Popup.pinRJ || force || rect.top < 0 || rect.bottom > window.innerHeight){
+                if (mouseY > window.innerHeight / 2) {
+                    let top = Math.max(mouseY - popup.offsetHeight - 8, 0);
+                    popup.style.setProperty("top", top + "px", "important");
+                }
+                else {
+                    let top = Math.min(mouseY + 20, window.innerHeight - popup.offsetHeight);
+                    popup.style.setProperty("top", top + "px", "important");
+                }
+            }
+
+            //大小修正
+            let currentFontSize = popup.computedStyleMap().get("font-size").toString();
+            currentFontSize = parseFloat(currentFontSize.substring(0, Math.max(currentFontSize.indexOf("px"), 1)));
+            const sizeLevel = [15, 14.5, 14, 13.5, 13, 12.5, 12];
+            let size = sizeLevel[sizeLevel.length - 1];
+            if(popup.offsetHeight > window.innerHeight){
+                //计算popup的高度与window高度的比值，找到离它最相近且更大的当前字体大小和sizeLevel的比值
+                for (const s of sizeLevel) {
+                    if(popup.offsetHeight / window.innerHeight < currentFontSize / s){
+                        size = s;
+                        break;
+                    }
+                }
+                popup.style.setProperty("font-size", size + "px", "important");
+            }
+        },
+
         pinRJ: undefined,
         setPinState: function (rjCode, pin, close = true){
             const ele = Popup.popupElement;
@@ -2780,15 +2920,26 @@
                 //关闭弹框
                 popup.style.setProperty("pointer-events", "none", "important");
                 Popup.pinRJ = undefined;
+                popup.removeAttribute("pin");
 
                 if(close) popup.style.setProperty("display", "none", "important");
 
+                //取消注册自动关闭监听
+                document.removeEventListener("keyup", Popup.keyup);
+                document.removeEventListener("mousemove", Popup.domMove);
                 return
             }
 
             popup.style.setProperty("pointer-events", "auto", "important");
             Popup.pinRJ = rjCode;
-            console.log(`固定 ${rjCode}`)
+            popup.setAttribute("pin", "");
+
+            //添加监听器
+            document.addEventListener("keyup", Popup.keyup);
+            document.addEventListener("mousemove", Popup.domMove);
+        },
+        hasPinned: function (){
+            return Popup.popupElement.popup.hasAttribute("pin");
         },
         /**
          * @param e {KeyboardEvent}
@@ -2810,6 +2961,26 @@
         },
 
         /**
+         * 鼠标离开固定弹窗时，如果没有按住pin键则消失
+         * @param e {MouseEvent}
+         */
+        /*pinLeave: function (e) {
+            if(Popup.isHoldPinKey(e)){
+                return;
+            }
+            Popup.setPinState(null, false, true);
+        },*/
+        /**
+         * 监听网页内的鼠标移动事件，来保证弹框正常移除
+         * @param e {MouseEvent}
+         */
+        domMove: function (e) {
+            if(!Popup.hasPinned() || Popup.isHoldPinKey(e)){
+                return;
+            }
+            Popup.setPinState(null, false);
+        },
+        /**
          * 鼠标移动到链接上触发
          * @param e {MouseEvent}
          */
@@ -2820,14 +2991,19 @@
             const rjCode = target.getAttribute(RJCODE_ATTRIBUTE);
             if(rjCode === null) return;
 
-            //如果用户固定了弹框，则提示用户必须ctrl关闭弹框才能解析
+            //记录鼠标位置
             let ele = Popup.popupElement;
+            ele._state.mouseX = e.clientX;
+            ele._state.mouseY = e.clientY;
+
+            //如果用户固定了弹框，则提示用户必须ctrl关闭弹框才能解析
             if(Popup.isHoldPinKey(e) && Popup.pinRJ){
                 ele.hint.innerText = "抬起CTRL以关闭弹框 & 查看其它作品RJ信息"
                 return;
             }else{
                 //没有固定弹框的话清理pinRJ，因为有时候pinRJ没办法被keyup清理（如keyup未触发）
                 Popup.pinRJ = undefined
+                ele.hint.innerText = "按住CTRL以固定弹框，固定时可复制信息"
             }
 
             //修正链接
@@ -2852,14 +3028,17 @@
             Popup.updatePopup(e, rjCode);
 
             //如果按住了CTRL，则将popup可被点击，否则设置穿透
+            //并设置Copy显示情况
             if(Popup.isHoldPinKey(e)){
                 Popup.setPinState(rjCode, true)
+                ele.hint.innerText = "抬起CTRL以关闭弹框 & 查看其它作品RJ信息"
             }else{
                 Popup.setPinState(rjCode, false, false)
             }
 
             //设置焦点至链接上
             target.focus();
+            target.style.setProperty("outline", "none", "important");
         },
 
         /**
@@ -2878,15 +3057,18 @@
             const rjCode = target.getAttribute(RJCODE_ATTRIBUTE);
             if(rjCode === null) return;
 
-            const popup = document.querySelector(`div#${VOICELINK_CLASS}-voice-popup`);  // + rjCode);
-            if (popup) {
-                popup.style.setProperty("display", "none", "important");  //display = "none !important";
-            }
+            //取消固定并关闭
+            Popup.setPinState(rjCode, false)
 
             //取消focus
             target.blur();
+            target.style.setProperty("outline", null);
         },
 
+        /**
+         * 鼠标移动时触发
+         * @param e {MouseEvent}
+         */
         move: function (e) {
             const target = isInDLSite() ? e.target : getVoiceLinkTarget(e.target);
             if(!target || !target.classList.contains(VOICELINK_CLASS)) return;
@@ -2897,50 +3079,22 @@
             const rjCode = e.target.getAttribute(RJCODE_ATTRIBUTE);
             if(rjCode === null) return;
 
+            let ele = Popup.popupElement;
+            ele._state.mouseX = e.clientX;
+            ele._state.mouseY = e.clientY;
+
+            //焦点不在浏览器上的时候无法触发keydown，因此需要用move来辅助激活pin
+            if(Popup.isHoldPinKey(e) && !Popup.pinRJ){
+                //按下pin键但没激活pin模式的时候手动激活
+                Popup.setPinState(rjCode, true);
+            }
+
             //如果弹框已固定且固定的并非当前所选链接RJ号，则不进行定位修正
             if(Popup.pinRJ && rjCode !== Popup.pinRJ){
                 return;
             }
 
-            //定位修正
-            //TODO: 对于已固定弹框，只修正宽高和字体大小，不修正位置（top过大/过小除外）
-            if(!Popup.pinRJ){
-                if (popup.offsetWidth + e.clientX + 10 < window.innerWidth - 10) {
-                    popup.style.setProperty("left", (e.clientX + 10) + "px", "important");
-                }
-                else {
-                    popup.style.setProperty("left", (window.innerWidth - popup.offsetWidth - 10) + "px", "important");
-                }
-            }
-
-            let rect = popup.getBoundingClientRect();
-            if(!Popup.pinRJ || rect.top < 0 || rect.bottom > window.innerHeight){
-                if (e.clientY > window.innerHeight / 2) {
-                    let top = Math.max(e.clientY - popup.offsetHeight - 8, 0);
-                    popup.style.setProperty("top", top + "px", "important");
-                }
-                else {
-                    let top = Math.min(e.clientY + 20, window.innerHeight - popup.offsetHeight);
-                    popup.style.setProperty("top", top + "px", "important");
-                }
-
-            }
-
-            //大小修正
-            let currentFontSize = popup.computedStyleMap().get("font-size").toString();
-            currentFontSize = parseFloat(currentFontSize.substring(0, Math.max(currentFontSize.indexOf("px"), 1)));
-            const sizeLevel = [15, 14.5, 14, 13.5, 13, 12.5, 12];
-            let size = sizeLevel[sizeLevel.length - 1];
-            if(popup.offsetHeight > window.innerHeight){
-                //计算popup的高度与window高度的比值，找到离它最相近且更大的当前字体大小和sizeLevel的比值
-                for (const s of sizeLevel) {
-                    if(popup.offsetHeight / window.innerHeight < currentFontSize / s){
-                        size = s;
-                        break;
-                    }
-                }
-                popup.style.setProperty("font-size", size + "px", "important");
-            }
+            Popup.adjustPopup(e.clientX, e.clientY);
 
         },
 
@@ -3020,14 +3174,16 @@
         getRJChain: async function(rjCode) {
             //RJxxx → RJxxx → RJxxx，这样从子级指向父级
             const trans = await WorkPromise.getTranslationInfo(rjCode);
-            let chain = `<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold !important;text-decoration-line: underline !important;">${rjCode}</span>`;
+            //let chain = `<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold !important;text-decoration-line: underline !important;">${rjCode}</span>`;
+            let chain = [rjCode];
             if(trans.is_child){
-                chain += ` → ${trans.parent_workno} → ${trans.original_workno}`;
+                //chain += ` → <span>${trans.parent_workno}</span> → <span>${trans.original_workno}</span>`;
+                chain.push(trans.parent_workno, trans.original_workno);
             }else if(trans.is_parent){
-                chain += ` → ${trans.original_workno}`;
+                //chain += ` → <span>${trans.original_workno}</span>`;
+                chain.push(trans.original_workno);
             }
-
-            return `[ ${chain} ]`;
+            return chain;
         },
 
         getParentRJ: async function(rjCode){
@@ -3337,16 +3493,24 @@
         getReleaseDate: async function(rjCode){
             const p = WorkPromise.getWorkPromise(rjCode);
             const info = await p.info;
-            if(info && !info.is_announce && info.date) return info.date;
-            if(info && info.is_announce && info.dateAnnounce) {
-                return `<span style="color: gold !important;">${info.dateAnnounce}</span>${DateParser.getCountDownDateText(DateParser.parseDateStr(info.dateAnnounce, info.lang))}`
-            }
+            if(info && !info.is_announce && info.date) return [info.date.trim(), false];
+            if(info && info.is_announce && info.dateAnnounce) return [info.dateAnnounce.trim(), true];
 
             //从api中查找发售时间
             let api = await p.api2;
             api = api.regist_date ? api : await p.api;
             WorkPromise.checkNotNull(api.regist_date)
-            return api.regist_date;
+
+            return [api.regist_date, api.is_announce];
+        },
+
+        getReleaseCountDownElement: async function(rjCode) {
+            const p = WorkPromise.getWorkPromise(rjCode);
+            const info = await p.info;
+            if(info && info.is_announce && info.dateAnnounce) {
+                return DateParser.getCountDownDateElement(DateParser.parseDateStr(info.dateAnnounce, info.lang));
+            }
+            return null;
         },
 
         getUpdateDate: async function(rjCode) {
@@ -3361,13 +3525,7 @@
             const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
             if(api2.creaters && api2.creaters.scenario_by && api2.creaters.scenario_by.length > 0){
-                let list = api2.creaters.scenario_by;
-                let text = "";
-                for (let s of list) {
-                    text += " / " + s.name;
-                }
-                text = text.substring(3);
-                return text;
+                return api2.creaters.scenario_by.map(v => v.name);
             }
 
             //无法获取api2则直接通过html获取
@@ -3380,13 +3538,7 @@
             const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
             if(api2.creaters && api2.creaters.illust_by && api2.creaters.illust_by.length > 0){
-                let list = api2.creaters.illust_by;
-                let text = "";
-                for (let s of list) {
-                    text += " / " + s.name;
-                }
-                text = text.substring(3);
-                return text;
+                return api2.creaters.illust_by.map(v => v.name);
             }
 
             //无法获取api2则直接通过html获取
@@ -3399,13 +3551,7 @@
             const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
             if(api2.creaters && api2.creaters.voice_by && api2.creaters.voice_by.length > 0){
-                let cvs = api2.creaters.voice_by;
-                let text = "";
-                for (let cv of cvs){
-                    text += " / " + cv.name;
-                }
-                text = text.substring(3);
-                return text;
+                return api2.creaters.voice_by.map(v => v.name);
             }
 
             //无法获取api2则直接通过html获取
@@ -3418,13 +3564,7 @@
             const p = WorkPromise.getWorkPromise(rjCode);
             const api2 = await p.api2;
             if(api2.creaters && api2.creaters.music_by && api2.creaters.music_by.length > 0){
-                let ms = api2.creaters.music_by;
-                let text = "";
-                for (let m of ms){
-                    text += " / " + m.name;
-                }
-                text = text.substring(3);
-                return text;
+                return api2.creaters.music_by.map(v => v.name);
             }
 
             //无法获取api2则直接通过html获取
@@ -3606,10 +3746,27 @@
                 apiData.regist_timestamp = releaseDate.getTime();
                 apiData.regist_date = `${releaseDate.getFullYear()} / ${releaseDate.getMonth() + 1} / ${releaseDate.getDate()}`;
                 if(apiData.regist_timestamp > Date.now()){
-                    apiData.is_coming_soon = true;
+                    apiData.is_announce = true;
                 }
             }
             return apiData;
+        },
+
+        parseApi2Data: function (rjCode, data) {
+            const translation_info = data.translation_info ? data.translation_info : {};
+            data.lang = DLsite.getLangCode(translation_info.lang);
+
+            if(data.regist_date){
+                let reg_date = data.regist_date.replace(/-/g, '/');
+                let releaseDate = new Date(reg_date);
+                data.regist_timestamp = releaseDate.getTime();
+                data.regist_date = `${releaseDate.getFullYear()} / ${releaseDate.getMonth() + 1} / ${releaseDate.getDate()}`;
+                if(data.regist_timestamp > Date.now()){
+                    data.is_announce = true;
+                }
+            }
+
+            return data;
         },
 
         getHttpAsync: async function (url, anonymous = false){
@@ -3680,10 +3837,7 @@
                 throw new Error(`无法通过API2获取${rjCode}的信息：${resp.status} ${resp.statusText}`);
             }
 
-            const translation_info = data.translation_info ? data.translation_info : {};
-            data.lang = DLsite.getLangCode(translation_info.lang);
-
-            return data;
+            return DLsite.parseApi2Data(rjCode, data);
         },
 
         getApiPromise: async function (rjCode, locale = undefined) {
@@ -4093,20 +4247,20 @@
                                 {
                                     //NSFW模式
                                     type: "checkbox",
-                                    title: localize(localizationMap.nsfw_mode),
-                                    id: "nsfw_mode",
-                                    tooltip: localize(localizationMap.nsfw_mode_tooltip)
+                                    title: localize(localizationMap.sfw_mode),
+                                    id: "sfw_mode",
+                                    tooltip: localize(localizationMap.sfw_mode_tooltip)
                                 },
                                 {
                                     //模糊程度
                                     binding: {
-                                        target: "nsfw_mode",
+                                        target: "sfw_mode",
                                         value: true
                                     },
 
                                     type: "dropdown",
-                                    title: localize(localizationMap.nsfw_blur_level),
-                                    id: "nsfw_blur_level",
+                                    title: localize(localizationMap.sfw_blur_level),
+                                    id: "sfw_blur_level",
                                     indent: 1,
                                     options: [
                                         {
@@ -4122,6 +4276,28 @@
                                             value: "high"
                                         }
                                     ]
+                                },
+                                {
+                                    //鼠标移至图片上方移除模糊
+                                    binding: {
+                                        target: "sfw_mode",
+                                        value: true
+                                    },
+
+                                    type: "checkbox",
+                                    title: localize(localizationMap.sfw_remove_when_hover),
+                                    id: "sfw_remove_when_hover",
+                                },
+                                {
+                                    //是否开启模糊动画
+                                    binding: {
+                                        target: "sfw_mode",
+                                        value: true
+                                    },
+
+                                    type: "checkbox",
+                                    title: localize(localizationMap.sfw_blur_transition),
+                                    id: "sfw_blur_transition",
                                 }
                             ]
                         }
@@ -5639,9 +5815,6 @@
                     }
                 }
             });
-
-            //全局监听弹框关闭
-            document.addEventListener("keyup", Popup.keyup);
 
             isInit = true;
         }
