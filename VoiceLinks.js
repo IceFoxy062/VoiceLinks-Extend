@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.8.2
+// @version     4.8.3
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -1182,11 +1182,11 @@
         pointer-events: none !important;
     }
     
-    .${VOICELINK_CLASS}_voicepopup[pin] *[copy-text] {
+    .${VOICELINK_CLASS}_voicepopup[pin][mouse-in] *[copy-text] {
         text-decoration: underline !important;
         cursor: pointer !important;
     }
-    .${VOICELINK_CLASS}_voicepopup[pin] *[copy-text]:active {
+    .${VOICELINK_CLASS}_voicepopup[pin][mouse-in] *[copy-text]:active {
         opacity: 0.5 !important;
     }
     
@@ -2242,6 +2242,13 @@
             popup.id = `${VOICELINK_CLASS}-voice-popup`;  // + rjCode;
             popup.style.setProperty("display", display === false ? "none" : "flex", "important");  //display = display === false ? "none" : "flex";
             document.body.appendChild(popup);
+
+            popup.addEventListener("mouseenter", () => {
+                popup.setAttribute("mouse-in", null);
+            });
+            popup.addEventListener("mouseleave", () => {
+                popup.removeAttribute("mouse-in");
+            })
 
             const notFoundElement = document.createElement("div");
             ele.not_found = notFoundElement;
