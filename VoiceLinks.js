@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.8.1
+// @version     4.8.2
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -225,6 +225,8 @@
         _s_tag_file_format: false,
         _s_tag_no_longer_available: true,
         _s_tag_ai: true,
+
+        _s_show_rate_count: false,
 
         _s_tag_translation_request: true,
         _s_tag_translation_request_display_order: [
@@ -555,9 +557,9 @@
         },
 
         rate_tooltip: {
-            zh_CN: "星数★ (评分人数)",
-            zh_TW: "星數★ (評分人數)",
-            en_US: "Star★ (number of ratings)"
+            zh_CN: "星数★ (评分人数 (设置开启))",
+            zh_TW: "星數★ (評分人數 (設置開啟))",
+            en_US: "Star★ (number of ratings (enable in settings))"
         },
 
         dl_count: {
@@ -948,6 +950,12 @@
             zh_CN: "越",
             zh_TW: "越",
             en_US: "VN"
+        },
+
+        show_rate_count: {
+            zh_CN: "显示评分人数",
+            zh_TW: "顯示評分人數",
+            en_US: "Show Rate Count"
         },
 
         tag_translation_request: {
@@ -2743,7 +2751,7 @@
         get_tag_rate: async function (rjCode) {
             let rate = await WorkPromise.getRateAvg(rjCode);
             let cot = await WorkPromise.getRateCount(rjCode);
-            return Popup.get_tag(`${rate}★ (${cot})`, "tag-yellow");
+            return Popup.get_tag(`${rate}★` + (settings._s_show_rate_count ? ` (${cot})` : ""), "tag-yellow");
         },
         get_tag_no_longer_available: async function (rjCode) {
             let sale = await WorkPromise.getSale(rjCode);
@@ -4989,6 +4997,13 @@
                                     title: localize(localizationMap.tag_main_switch),
                                     tooltip: localize(localizationMap.tag_main_switch_tooltip),
                                     id: "tag_main_switch"
+                                },
+                                {
+                                    //显示评分人数
+                                    type: "checkbox",
+                                    title: localize(localizationMap.show_rate_count),
+                                    id: "show_rate_count",
+                                    indent: 1
                                 }
                             ]
                         },
