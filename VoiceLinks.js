@@ -4,12 +4,13 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.8.3
+// @version     4.8.5
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
 // @grant       GM_setValue
 // @grant       GM_getValue
+// @grant       GM_addElement
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -2388,12 +2389,41 @@
                 medium: "12px",
                 high: "24px"
             };
-            let img = ele.img[rjCode];
-            if(!img){
-                //由于切换图片src会导致加载延迟，故根据RJ号保留所有图片的img元素并按需显示
-                img = document.createElement("img");
-                ele.img[rjCode] = img;
+
+            //先对Container内的所有img进行隐藏
+            for (let i = 0; i < imgContainer.childNodes.length; ++i) {
+                imgContainer.childNodes[i].style.setProperty("display", "none", "important");  //display = "none !important";
+            }
+
+            //NOTE: 注意这里可能因为快速的多次获取导致同时加载两个图片，可使用占位符来预先占用图片位置
+            new Promise((resolve, reject) => {
+                let img = ele.img[rjCode];
+                if(img) resolve(img);
+                else throw Error("首次加载图片");
+            }).catch(_ => {
+                //首次加载图片，对图片添加占位
+                ele.img[rjCode] = 1;
+                return WorkPromise.getImgLink(rjCode);
+            }).then(link => {
+                if(typeof link !== "string"){
+                    //图片已经加载过，传递的是img，不通过当前then
+                    return link;  //实际上是img
+                }
+
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return null;
+                let img;
+                try{
+                    img = GM_addElement("img", {
+                        src: link,
+                    });
+                }catch (e) {
+                    img = document.createElement("img");
+                    img.src = link;
+                }
+
                 imgContainer.appendChild(img);
+                console.warn("添加封面！")
+                ele.img[rjCode] = img;
 
                 //开启动画
                 if(settings._s_sfw_blur_transition){
@@ -2414,22 +2444,19 @@
                         img.style.setProperty("filter", "inherit", "important");
                     }
                 });
-            }
-            for (let i = 0; i < imgContainer.childNodes.length; ++i) {
-                imgContainer.childNodes[i].style.setProperty("display", "none", "important");  //display = "none !important";
-            }
-            img.style.setProperty("display", "block", "important");  //display = "block"
 
-            //设置NSFW模糊
-            if(settings._s_sfw_mode){
-                img.style.setProperty("filter", `blur(${blur_map[settings._s_sfw_blur_level]})`, "important");
-            }else{
-                img.style.setProperty("filter", "inherit", "important");
-            }
-            WorkPromise.getImgLink(rjCode).then(link => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
-                img.src = link;
-            }).catch(e => {});
+                return img;
+            }).then(img => {
+                if(!(img instanceof HTMLElement)) return;
+                img.style.setProperty("display", "block", "important");  //display = "block"
+
+                //设置NSFW模糊
+                if(settings._s_sfw_mode){
+                    img.style.setProperty("filter", `blur(${blur_map[settings._s_sfw_blur_level]})`, "important");
+                }else{
+                    img.style.setProperty("filter", "inherit", "important");
+                }
+            }).catch(e => console.error(e));
 
             //------设置hint可见------
             ele.hint.style.setProperty("display", "block", "important");
@@ -2641,7 +2668,7 @@
             }).catch(e => {
                 if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                 rowElement.innerHTML = Csp.createHTML("");
-                console.error(e);
+                //console.error(e);
             }).finally(() => {
                 Popup.adjustPopup(ele._state.mouseX, ele._state.mouseY, true);
             });
@@ -2650,7 +2677,7 @@
                 suffixProvider.then((element) => {
                     if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
                     rowElement.appendChild(element);
-                });
+                }).catch(_ => {});
             }
 
             return rowElement;
