@@ -3627,7 +3627,7 @@
             if(circleInfo && circleInfo.name) return circleInfo.name;
 
             let info = await work.info;
-            if(info.circle) return info.circle;
+            if(info.circle) return info.circle.trim();
 
             throw new Error("无法获取社团信息");
         },
@@ -3664,7 +3664,7 @@
         getUpdateDate: async function(rjCode) {
             const p = WorkPromise.getWorkPromise(rjCode);
             const info = await p.info;
-            if(info["update"]) return info["update"];
+            if(info["update"]) return info["update"].trim();
 
             throw new Error();
         },
@@ -3809,38 +3809,38 @@
                     case (["販売日", "贩卖日", "販賣日", "Release date", "판매일", "Lanzamiento", "Veröffentlicht",
                         "Date de sortie", "Tanggal rilis", "Data di rilascio", "Lançamento", "Utgivningsdatum",
                         "วันที่ขาย", "Ngày phát hành"].some(lambda)):
-                        workInfo.date = row_data.innerText;
+                        workInfo.date = row_data.innerText.trim();
                         break;
                     case (["更新情報", "更新信息", "更新資訊", "Update information", "갱신 정보", "Actualizar información",
                         "Aktualisierungen", "Mise à jour des informations", "Perbarui informasi", "Aggiorna informazioni",
                         "Atualizar informações", "Uppdatera information", "ข้อมูลอัปเดต", "Thông tin cập nhật"].some(lambda)):
-                        workInfo.update = row_data.firstChild.data;
+                        workInfo.update = row_data.firstChild.data.trim();
                         break;
                     case (["年齢指定", "年龄指定", "年齡指定", "Age", "연령 지정", "Edad", "Altersfreigabe", "Âge", "Batas usia",
                         "Età", "Idade", "Ålder", "การกำหนดอายุ", "Độ tuổi chỉ định"].some(lambda)):
-                        workInfo.rating = row_data.innerText;
+                        workInfo.rating = row_data.innerText.trim();
                         break;
                     case (["ジャンル", "分类", "分類", "Genre", "장르", "Género", "Genre", "Genre", "Genre", "Genere", "Gênero",
                         "Genre", "ประเภท", "Thể loại"].some(lambda)):
                         const tag_nodes = row_data.querySelectorAll("a");
-                        workInfo.tags = [...tag_nodes].map(a => { return a.innerText });
+                        workInfo.tags = [...tag_nodes].map(a => { return a.innerText.trim() });
                         break;
                     case (["シナリオ", "Scenario", "剧情", "劇本", "시나리오", "Guión", "Szenario", "Scénario", "Skenario",
                         "Scenario", "Cenário", "Scenario", "บทละคร", "Kịch bản"].some(lambda)):
-                        workInfo.scenario = row_data.innerText;
+                        workInfo.scenario = row_data.innerText.trim();
                         break;
                     case (["イラスト", "Illustration", "插画", "插畫", "일러스트", "Ilustración", "AbbilDung", "Illustration",
                         "Ilustrasi", "Illustrazione", "Ilustração", "Illustration", "ภาพประกอบ", "Tranh minh họa"].some(lambda)):
-                        workInfo.illustration = row_data.innerText;
+                        workInfo.illustration = row_data.innerText.trim();
                         break;
                     case (["声優", "声优", "聲優", "Voice Actor", "성우", "Doblador", "Synchronsprecher", "Doubleur",
                         "Pengisi suara", "Doppiatore/Doppiatrice", "Ator de voz", "Röstskådespelare", "นักพากย์",
                         "Diễn viên lồng tiếng"].some(lambda)):
-                        workInfo.cv = row_data.innerText;
+                        workInfo.cv = row_data.innerText.trim();
                         break;
                     case (["音楽", "Music", "音乐", "音樂", "음악", "Música", "Musik", "Musique", "Musik", "Musica.",
                         "Música", "musik", "ดนตรี", "Âm nhạc"].some(lambda)):
-                        workInfo.music = row_data.innerText;
+                        workInfo.music = row_data.innerText.trim();
                         break;
                     case (["ファイル容量", "文件容量", "檔案容量", "File size", "파일 용량", "Tamaño del Archivo", "Dateigröße",
                         "Taille du fichier", "Ukuran file", "Dimensione del file", "Tamanho do arquivo", "Filstorlek",
@@ -4435,6 +4435,7 @@
                                     type: "checkbox",
                                     title: localize(localizationMap.sfw_remove_when_hover),
                                     id: "sfw_remove_when_hover",
+                                    indent: 1,
                                 },
                                 {
                                     //是否开启模糊动画
@@ -4446,6 +4447,7 @@
                                     type: "checkbox",
                                     title: localize(localizationMap.sfw_blur_transition),
                                     id: "sfw_blur_transition",
+                                    indent: 1,
                                 }
                             ]
                         }
