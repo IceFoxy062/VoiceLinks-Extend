@@ -2410,12 +2410,19 @@
                     return link;  //实际上是img
                 }
 
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return null;
+                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) {
+                    //清除占位
+                    ele.img[rjCode] = null;
+                    return null;
+                }
                 let img;
                 try{
                     img = GM_addElement("img", {
                         src: link,
                     });
+                    if(!img) { // noinspection ExceptionCaughtLocallyJS
+                        throw new Error("API调用生成失败");
+                    }
                 }catch (e) {
                     img = document.createElement("img");
                     img.src = link;
@@ -2456,7 +2463,12 @@
                 }else{
                     img.style.setProperty("filter", "inherit", "important");
                 }
-            }).catch(e => console.error(e));
+            }).catch(e => {
+                //清理并在下次重试
+                if(ele.img[rjCode] instanceof HTMLElement) img.remove();
+                ele.img[rjCode] = null;
+                console.error(e)
+            });
 
             //------设置hint可见------
             ele.hint.style.setProperty("display", "block", "important");
