@@ -6115,7 +6115,7 @@
     document.addEventListener("DOMContentLoaded", init);
 
     function showUpdateNotice(force = false) {
-        const firstTimeToken = 104;
+        const firstTimeToken = 105;
         if(GM_getValue("first_token", undefined) === firstTimeToken && !force){
             return;
         }
