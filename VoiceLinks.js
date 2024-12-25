@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.8.5
+// @version     4.8.6
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_registerMenuCommand
@@ -3383,8 +3383,20 @@
         getRateAvg: async function (rjCode) {
             const p = WorkPromise.getWorkPromise(rjCode);
             let data = await p.api;
-            WorkPromise.checkNotNull(data.rate_average_2dp);
-            return data.rate_average_2dp;
+            if(data.rate_average_2dp) return data.rate_average_2dp;
+
+            //还可以累加api2的结果获得
+            data = await p.api2;
+            this.checkNotNull(data.rate_count_detail);
+            let sum = 0;
+            let count = 0;
+            for (const key in data.rate_count_detail) {
+                let rate = parseInt(key);
+                let cot = parseInt(data.rate_count_detail[key]);
+                count += cot
+                sum += rate * cot;
+            }
+            return sum / count;
         },
 
         getRateCount: async function (rjCode) {
