@@ -7,6 +7,7 @@
 // @version     4.8.6
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
+// @grant       GM_openInTab
 // @grant       GM_registerMenuCommand
 // @grant       GM_setValue
 // @grant       GM_getValue
@@ -21,6 +22,8 @@
 
 (function () {
     'use strict';
+
+    const IS_PREVIEW = false;
 
     //------持久化设置项------
     let settings = {
@@ -353,6 +356,12 @@
 
     //------本地化-----------
     const localizationMap = {
+        notice_update: {
+            zh_CN: "VoiceLinks公告更新，可能包含重要的新功能说明，是否跳转至说明页面？",
+            zh_TW: "VoiceLinks公告更新，可能包含重要的新功能説明，是否跳轉至説明頁面？",
+            en_US: "VoiceLinks Notice Update, may contain important new features, do you want to jump to the notice page?"
+        },
+
         title_settings: {
             zh_CN: "VoiceLinks 设置",
             zh_TW: "VoiceLinks 設定",
@@ -6051,8 +6060,10 @@
             style.innerHTML = Csp.createHTML(POPUP_CSS + SETTINGS_CSS);
             document.head.appendChild(style);
             // SettingsPopup.getPopup()
-            GM_registerMenuCommand("Settings", () => SettingsPopup.showPopup())
-            GM_registerMenuCommand("Notice", () => showUpdateNotice(true))
+            GM_registerMenuCommand("Settings - 设置", () => SettingsPopup.showPopup())
+            GM_registerMenuCommand("Notice - 公告", () => showUpdateNotice(true));
+            GM_registerMenuCommand("Home / Update - 主页 / 更新", () =>
+                GM_openInTab(IS_PREVIEW ? "https://sleazyfork.org/zh-CN/scripts/521128-voicelinks-preview" : "https://sleazyfork.org/zh-CN/scripts/456775-voicelinks", {active: true}));
 
             document.addEventListener("securitypolicyviolation", function (e) {
                 if (e.blockedURI.includes("img.dlsite.jp")) {
@@ -6108,21 +6119,30 @@
         if(GM_getValue("first_token", undefined) === firstTimeToken && !force){
             return;
         }
+        GM_setValue("first_token", firstTimeToken);
 
-        let popup = document.createElement("div");
+        if(!force && window.confirm(localize(localizationMap.notice_update)) === false) {
+            return;
+        }
+
+        GM_openInTab(
+            IS_PREVIEW ? `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.8.6/v4.8.6-${settings._s_lang}.md` : `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.8.6/v4.8.6-${settings._s_lang}.md`,
+            {active: true});
+
+        /*let popup = document.createElement("div");
         popup.style = `
-        position: fixed; 
+        position: fixed;
         width: 60%;
-        max-width: 800px; 
+        max-width: 800px;
         height: auto;
-        margin: 20px auto; 
+        margin: 20px auto;
         padding: 10px;
-        left: 0; 
-        right: 0; 
-        top: 0;  
-        background: rgba(255, 255, 255, 0.9); 
+        left: 0;
+        right: 0;
+        top: 0;
+        background: rgba(255, 255, 255, 0.9);
         z-index: 999;
-        
+
         border-radius: 10px;
         border: 2px solid gray`;
         popup.innerHTML = Csp.createHTML(`
@@ -6163,7 +6183,7 @@
             GM_setValue("first_token", firstTimeToken);
         })
 
-        document.body.appendChild(popup);
+        document.body.appendChild(popup);*/
     }
 
     //Deal with Trusted Types
