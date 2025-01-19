@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.8.6
+// @version     4.8.8
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_setClipboard
