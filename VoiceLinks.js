@@ -7,6 +7,7 @@
 // @version     4.8.6
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
+// @grant       GM_setClipboard
 // @grant       GM_openInTab
 // @grant       GM_registerMenuCommand
 // @grant       GM_setValue
@@ -1789,21 +1790,21 @@
      * @param {String} original
      */
     function convertToValidFileName(original){
-        const charMap = {
-            "/": "／",
-            "\\": "＼",
-            ":": "：",
-            "*": "＊",
-            "?": "？",
+        const charMapRegs = {
+            "\\/": "／",
+            "\\\\": "＼",
+            "\\:": "：",
+            "\\*": "＊",
+            "\\?": "？",
             "\"": "＂",
-            "<": "＜",
-            ">": "＞",
-            "|": "｜"
+            "\\<": "＜",
+            "\\>": "＞",
+            "\\|": "｜"
         }
 
         let fileName = original;
-        for (let key in charMap){
-            fileName = fileName.replaceAll(key, charMap[key]);
+        for (let key in charMapRegs){
+            fileName = fileName.replaceAll(new RegExp(key, "g"), charMapRegs[key]);
         }
         return fileName;
     }
@@ -1835,7 +1836,8 @@
         });
         button.addEventListener("click", function(){
             const fileName = convertToValidFileName(titleStr);
-            const promise = navigator.clipboard.writeText(fileName);
+            // const promise = navigator.clipboard.writeText(fileName);
+            const promise = GM_setClipboard(fileName, "text");
             promise.then(() => {
                 button.innerText = "✔ 复制成功";
             });
@@ -2605,7 +2607,8 @@
             tag.addEventListener("click", e => {
                 const attr = e.altKey ? "sec-copy-text" : "copy-text";
                 if(!tag.hasAttribute(attr)) return;
-                navigator.clipboard.writeText(tag.getAttribute(attr)).finally();
+                GM_setClipboard(tag.getAttribute(attr), "text").finally();
+                // navigator.clipboard.writeText(tag.getAttribute(attr)).finally();
             });
             tag.addEventListener("mouseenter", e => {
                 let hint = tag.getHint();
@@ -2808,7 +2811,7 @@
         get_tag_rate: async function (rjCode) {
             let rate = await WorkPromise.getRateAvg(rjCode);
             let cot = await WorkPromise.getRateCount(rjCode);
-            return Popup.get_tag(`${rate}★` + (settings._s_show_rate_count ? ` (${cot})` : ""), "tag-yellow");
+            return Popup.get_tag(`${rate.toFixed(2)}★` + (settings._s_show_rate_count ? ` (${cot})` : ""), "tag-yellow");
         },
         get_tag_no_longer_available: async function (rjCode) {
             let sale = await WorkPromise.getSale(rjCode);
@@ -6086,7 +6089,7 @@
         }
 
         Parser.walkNodes(document.body);
-        Popup.makePopup(false);
+        if(!document.getElementById(`${VOICELINK_CLASS}-voice-popup`)) Popup.makePopup(false);
 
         const observer = new MutationObserver(function (m) {
             for (let i = 0; i < m.length; ++i) {
