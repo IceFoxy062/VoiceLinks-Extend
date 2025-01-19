@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.8.8
+// @version     4.8.9
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_setClipboard
@@ -1838,10 +1838,10 @@
             const fileName = convertToValidFileName(titleStr);
             // const promise = navigator.clipboard.writeText(fileName);
             const promise = GM_setClipboard(fileName, "text");
-            promise.then(() => {
+            promise?.then(() => {
                 button.innerText = "✔ 复制成功";
             });
-            promise.catch(e => {
+            promise?.catch(e => {
                 window.prompt("复制失败，请手动复制", fileName);
                 button.innerText = "📃";
             });
@@ -2607,7 +2607,7 @@
             tag.addEventListener("click", e => {
                 const attr = e.altKey ? "sec-copy-text" : "copy-text";
                 if(!tag.hasAttribute(attr)) return;
-                GM_setClipboard(tag.getAttribute(attr), "text").finally();
+                GM_setClipboard(tag.getAttribute(attr), "text")?.finally();
                 // navigator.clipboard.writeText(tag.getAttribute(attr)).finally();
             });
             tag.addEventListener("mouseenter", e => {
@@ -3296,7 +3296,7 @@
          */
 
         checkNotNull: function (obj){
-            if(!obj) throw new Error();
+            if(obj === null || obj === undefined) throw new Error();
             return obj;
         },
 
@@ -3441,7 +3441,7 @@
         getBonus: async function(rjCode) {
             const p = WorkPromise.getWorkPromise(rjCode);
             let data = await p.api;
-            return !data.is_sale && data.is_free && data.is_oly && data.wishlist_count === false;
+            return !data.is_sale && data.is_free && data.is_oly && data.wishlist_count === 0;
             // return data.is_bonus;
         },
 
