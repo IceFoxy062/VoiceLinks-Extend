@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.8.9
+// @version     4.8.10
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @grant       GM_setClipboard
@@ -1208,8 +1208,12 @@
         margin-bottom: 3px !important;
         font-size: 1em !important;
     }
+    #${VOICELINK_CLASS}_info-container > div > a {
+        display: inline;
+    }
     #${VOICELINK_CLASS}_info-container > div > .info-title {
         margin-right: 5px !important;
+        display: inline-block;
     }
     #${VOICELINK_CLASS}_info-container > div > .info-title::after {
         content: ":" !important;
@@ -1282,6 +1286,7 @@
     .${VOICELINK_CLASS}_voicepopup .${VOICELINK_CLASS}_img_container{
         width: 100% !important;
         padding: 3px !important;
+        position: relative;
     }
 
     .${VOICELINK_CLASS}_img_container img {
@@ -3035,6 +3040,7 @@
 
             //定位修正
             const popup = Popup.popupElement.popup;
+            const ele = Popup.popupElement;
             if(!Popup.pinRJ || force){
                 if (popup.offsetWidth + mouseX + 10 < window.innerWidth - 10) {
                     popup.style.setProperty("left", (mouseX + 10) + "px", "important");
@@ -3071,6 +3077,9 @@
                 }
                 popup.style.setProperty("font-size", size + "px", "important");
             }
+
+            //封面图位置修正
+            ele.img.container.style.top = `${Math.max(0, -popup.offsetTop)}px`;
         },
 
         pinRJ: undefined,
@@ -3200,6 +3209,7 @@
             //设置焦点至链接上
             target.focus();
             target.style.setProperty("outline", "none", "important");
+
         },
 
         /**
@@ -6131,66 +6141,9 @@
         GM_openInTab(
             IS_PREVIEW ? `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.8.6/v4.8.6-${settings._s_lang}.md` : `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.8.6/v4.8.6-${settings._s_lang}.md`,
             {active: true});
-
-        /*let popup = document.createElement("div");
-        popup.style = `
-        position: fixed;
-        width: 60%;
-        max-width: 800px;
-        height: auto;
-        margin: 20px auto;
-        padding: 10px;
-        left: 0;
-        right: 0;
-        top: 0;
-        background: rgba(255, 255, 255, 0.9);
-        z-index: 999;
-
-        border-radius: 10px;
-        border: 2px solid gray`;
-        popup.innerHTML = Csp.createHTML(`
-        <h1 style="text-indent: 0; color: black;">Notice from VoiceLinks</h1>
-        <p>
-        <strong><span style="font-size:14px;">重大更新，添加大量自定义设置，部分原有设置被重置，请打开<a data-link="settings">设置</a>界面重新设置。</span></strong>
-        </p>
-        <p>
-        <strong><span style="font-size:14px;">A large number of custom settings have been added, and some original settings have been reset. Please open the <a data-link="settings">settings</a> interface to set up.</span></strong>
-        </p>
-        <p>
-        <br />
-        </p>
-        <p>
-        具体更新：
-        </p>
-        <p>
-        - <strong>设置界面完全重构</strong>，并增加大量可设置项，包括<strong>自定义信息的显示情况与显示顺序</strong>
-        </p>
-        <p>
-        - 使用<strong>标签</strong>来标记额外的作品信息
-        </p>
-        <p>
-        - 现在可以查看<strong>翻译申请情况</strong>了
-        </p>
-        <input style="font-size: 16px; text-align: center; width: 100%; padding: 5px 10px" type="button" value="OK">
-        `);
-        popup.querySelectorAll("a[data-link=settings]").forEach(link => {
-            link.style.color = "blue !important";
-            link.style.cursor = "pointer !important";
-            link.style.textDecoration = "underline !important";
-            link.addEventListener("click", function () {
-                SettingsPopup.showPopup();
-            })
-        })
-        popup.querySelector("input[type=button][value=OK]").addEventListener("click", function(){
-            popup.remove();
-            GM_setValue("first_token", firstTimeToken);
-        })
-
-        document.body.appendChild(popup);*/
     }
 
     //Deal with Trusted Types
-
     let Csp = {
         createHTML: (str) => str
     };
