@@ -18,7 +18,7 @@
 // @run-at      document-start
 // @homepage    https://sleazyfork.org/zh-CN/scripts/456775-voicelinks
 // @downloadURL https://update.sleazyfork.org/scripts/456775/VoiceLinks.user.js
-// @updateURL https://update.sleazyfork.org/scripts/456775/VoiceLinks.meta.js
+// @updateURL   https://update.sleazyfork.org/scripts/456775/VoiceLinks.meta.js
 // ==/UserScript==
 
 (function () {
@@ -26,7 +26,7 @@
 
     const IS_PREVIEW = false;
 
-    //------持久化设置项------
+    //region 持久化设置项
     let settings = {
         //语言设置
         _s_lang: "zh_CN",
@@ -263,6 +263,14 @@
         _s_tag_translation_request_thai: false,
         _s_tag_translation_request_vietnamese: false,
 
+        //搜索相关
+        _s_search_profiles: [
+            new SearchProfile(
+                "https://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s",
+                "kikoeru"),
+        ],
+        _s_cue_lang: ["simplified_chinese", "traditional_chinese"],  //每多一种语言意味着多一次查询
+
         backup: function() {
             let backup = {};
             for (let key in this) {
@@ -353,9 +361,9 @@
     }
     settings.backup();
     settings.load();
-    //----------------------
+    //endregion
 
-    //------本地化-----------
+    //region 本地化选项
     const localizationMap = {
         notice_update: {
             zh_CN: "VoiceLinks公告更新，可能包含重要的新功能说明，是否跳转至说明页面？",
@@ -1167,9 +1175,9 @@
     function localizePopup(key) {
         return localizationMap.get(key, "_s_popup_lang");
     }
-    //----------------------
+    //endregion
 
-
+    //region 常量
     const RJ_REGEX = new RegExp("(R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6})", "gi");
     const URL_REGEX = new RegExp("dlsite.com/.*/product_id/((R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6}))", "g");
     const VOICELINK_CLASS = 'voicelink-' + Math.random().toString(36).slice(2);
@@ -1749,6 +1757,9 @@
             display: inline-block !important;
         }
     `
+    //endregion
+
+    //region Utilities
 
     /**
      * Work promise cache
@@ -1813,6 +1824,31 @@
         }
         return fileName;
     }
+
+    function getXmlHttpRequest() {
+        return (typeof GM !== "undefined" && GM !== null ? GM.xmlHttpRequest : GM_xmlhttpRequest);
+    }
+
+    function getHttpAsync (url, anonymous = false){
+        return new Promise((resolve, reject) => {
+            getXmlHttpRequest()({
+                method: "GET",
+                url,
+                headers: {
+                    "Accept": "text/xml",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)",
+                    "Cache-Control": "no-cache"
+                },
+                onload: resolve,
+                onerror: reject,
+                anonymous: anonymous
+            });
+        })
+    }
+
+    //endregion
+
+    //region DLSite页面覆盖
 
     function setUserSelectTitle(){
         // Make title selectable
@@ -1894,9 +1930,9 @@
             "注意：如果不想看到该警告，可以同时关闭“显示兼容性警告”设置项。")
     }
 
-    function getXmlHttpRequest() {
-        return (typeof GM !== "undefined" && GM !== null ? GM.xmlHttpRequest : GM_xmlhttpRequest);
-    }
+    //endregion
+
+    //region 解析器
 
     const Parser = {
         walkNodes: function (elem) {
@@ -2218,6 +2254,36 @@
             //return `<span style="color:#ffeb3b !important; font-size: 16px !important; font-style: italic !important; margin-left: 16px !important"></span>`
         },
     }
+
+    //endregion
+
+    //region 搜索支持
+
+    class SearchProfile {
+        /**
+         * @param searchUrlTemplate {string}
+         * @param apiType {string}
+         */
+        constructor(searchUrlTemplate, apiType) {
+            this.searchUrlTemplate = searchUrlTemplate;
+            this.apiType = apiType;
+            this.enabled = true;
+        }
+    }
+
+    class SearchResult {
+        constructor(searchUrl, searchProfile, hasOriginal = false, hasTranslation = false) {
+            this.searchUrl = searchUrl;
+            this.searchProfile = searchProfile;
+            this.rjCodes = [];
+            this.hasOriginal = hasOriginal;
+            this.hasTranslation = hasTranslation;
+        }
+    }
+
+    //endregion
+
+    //region 弹框生成 & 更新
 
     const Popup = {
         popupElement: {
@@ -3131,16 +3197,6 @@
         },
 
         /**
-         * 鼠标离开固定弹窗时，如果没有按住pin键则消失
-         * @param e {MouseEvent}
-         */
-        /*pinLeave: function (e) {
-            if(Popup.isHoldPinKey(e)){
-                return;
-            }
-            Popup.setPinState(null, false, true);
-        },*/
-        /**
          * 监听网页内的鼠标移动事件，来保证弹框正常移除
          * @param e {MouseEvent}
          */
@@ -3299,11 +3355,11 @@
         }
     }
 
+    //endregion
+
+    //region 作品信息爬取
+
     const WorkPromise = {
-        /**
-         * 标题、社团、发行日期、更新日期、年龄指定
-         * CV、标签、文件大小、封面地址
-         */
 
         checkNotNull: function (obj){
             if(obj === null || obj === undefined) throw new Error();
@@ -3838,6 +3894,104 @@
 
             throw new Error("无法获取文件大小信息");
         },
+
+        mergeLinkage: function(l1, l2) {
+            let linkage = {}
+            for (const work of l1) {
+                if(!work.workno) continue;
+                linkage[work.workno] = work;
+            }
+            for (const work of l2) {
+                if(!work.workno) continue;
+                linkage[work.workno] = work;
+            }
+            return Object.values(linkage);
+        },
+
+        cacheLinkage: function(originalWorkno, linkage) {
+            //缓存与rjCode相关的关联作品信息，任意一个关联作品RJ均能找到此关联信息
+            let maxLinkMapSize = 128;
+            let linkMap = GM_getValue("linkage", {
+                link_order: []
+            });
+
+            //存入Linkage
+            if(linkMap[originalWorkno] && Array.isArray(linkMap[originalWorkno].linkage)){
+                //已存在部分Linkage则合并它们
+                linkMap[originalWorkno].linkage = WorkPromise.mergeLinkage(linkMap[originalWorkno].linkage, linkage);
+            }
+            linkMap.link_order.push(originalWorkno);  //TODO: 需要一个可以按时间排序且随时支持刷新某元素更新时间的数据结构，让我每次pop都能弹出最早的那个方便清理缓存
+
+            //清理超出限额的缓存
+            if (linkMap.link_order.length > maxLinkMapSize) {
+                let deleteWorks = linkMap.link_order.splice(0, linkMap.link_order.length - maxLinkMapSize);
+                //清除所有相关子作品的链接
+                for(workno of deleteWorks){
+                    let lk = linkMap[workno];
+                    for (wn of lk) {
+                        delete linkMap[wn.workno];
+                    }
+                }
+            }
+        },
+
+        getLinkedWorks: async function(rjCode) {
+            let trans = await WorkPromise.getTranslationInfo(rjCode);
+            let p = await WorkPromise.getWorkPromise(rjCode);
+            let api = await p.api2;
+            let result = [];
+            if(trans.is_original){
+                let languageEditions = api.language_editions;
+
+            }else if(trans.is_parent) {
+                //parent作品可以获取当前语言下所有的作品关联，但无法获取其它语言作品关联，作品数更新时也无法注意到
+                /* 可以通过翻译申请查询API来获取已上架翻译数量信息，但是如果一个翻译作品下架后另一个上架了，数量显示会保持不变，
+                导致仅依赖数量显示来决定是否更新的方法无法正常运作，所以还是正常限定缓存时间比较好 */
+                result.push({workno: trans.original_workno, type: "original", lang: "JPN"});
+                result.push({workno: rjCode, type: "parent", lang: trans.lang});
+                result.push(...(trans.child_worknos.map(
+                    v => {
+                        return {workno: v, type: "child", lang: trans.lang}
+                    })));
+            }else if(trans.is_child){
+
+            }
+
+            WorkPromise.cacheLinkage(linkage);
+            return result;
+        },
+
+        //仓库搜索
+
+        /**
+         * 获取来自Kikoeru API的搜索结果
+         * @param rjCode {string}
+         * @param searchProfile {SearchProfile}
+         * @returns {Promise<void>}
+         */
+        getKikoeruSearchResult: async function(rjCode, searchProfile) {
+            let url = searchProfile.searchUrlTemplate?.replaceAll("%s", rjCode);
+            let resp = await getHttpAsync(url);
+            if (resp.readyState === 4 && resp.status === 200) {
+                let data = JSON.parse(resp.responseText);
+                if (!Array.isArray(data.works)){
+                    throw new Error("Invalid Response.");
+                } else if(data.works.length <= 0) {
+                    return null;
+                }
+
+                //遍历搜索结果（仅第一页）
+                let result = new SearchResult(url, searchProfile)
+                for (const work of data.works) {
+                    let rj = work.id > 999999 ? `RJ0${work.id}` : `RJ${work.id}`;
+
+                }
+            }
+        },
+
+        getWorkExistence: async function(rjCode, includeLinkedWorks = false) {
+
+        }
     }
 
     const DLsite = {
@@ -3990,26 +4144,9 @@
             return data;
         },
 
-        getHttpAsync: async function (url, anonymous = false){
-            return new Promise((resolve, reject) => {
-                getXmlHttpRequest()({
-                    method: "GET",
-                    url,
-                    headers: {
-                        "Accept": "text/xml",
-                        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)",
-                        "Cache-Control": "no-cache"
-                    },
-                    onload: resolve,
-                    onerror: reject,
-                    anonymous: anonymous
-                });
-            })
-        },
-
         getAnnouncePromise: async function (rjCode, parentRJ) {
             const url = `https://www.dlsite.com/maniax/announce/=/product_id/${rjCode}.html`;
-            let resp = await DLsite.getHttpAsync(url);
+            let resp = await getHttpAsync(url);
             if (resp.readyState === 4 && resp.status === 200) {
                 const dom = new DOMParser().parseFromString(Csp.createHTML(resp.responseText), "text/html");
                 const workInfo = DLsite.parseWorkDOM(dom, rjCode);
@@ -4028,7 +4165,7 @@
 
         getHtmlPromise: async function (rjCode) {
             const url = `https://www.dlsite.com/maniax/work/=/product_id/${rjCode}.html`;
-            let resp = await DLsite.getHttpAsync(url);
+            let resp = await getHttpAsync(url);
             if (resp.readyState === 4 && resp.status === 200) {
                 const dom = new DOMParser().parseFromString(Csp.createHTML(resp.responseText), "text/html");
                 const workInfo = DLsite.parseWorkDOM(dom, rjCode);
@@ -4044,7 +4181,7 @@
 
         getApi2Promise: async function (rjCode, locale = undefined) {
             let url = `https://www.dlsite.com/maniax/api/=/product.json?workno=${rjCode}` + (locale ? `&locale=${locale}` : "");
-            let resp = await DLsite.getHttpAsync(url);
+            let resp = await getHttpAsync(url);
             let data;
             if (resp.readyState === 4 && resp.status === 200) {
                 data = JSON.parse(resp.responseText);
@@ -4094,7 +4231,7 @@
             let data;
             try {
                 url = `https://media.ci-en.jp/dlsite/lookup/${maker_id}.json`;
-                resp = await DLsite.getHttpAsync(url);
+                resp = await getHttpAsync(url);
                 data = undefined;
                 if (resp.readyState === 4 && resp.status === 200) {
                     data = JSON.parse(resp.responseText);
@@ -4107,7 +4244,7 @@
             if(!data || !data.name){
                 //未获取到社团名称则使用html解析获取
                 url = `https://www.dlsite.com/maniax/circle/profile/=/maker_id/${maker_id}.html`;
-                resp = await DLsite.getHttpAsync(url);
+                resp = await getHttpAsync(url);
                 data = data ? data : {};
                 if(resp.readyState === 4 && resp.status === 200){
                     let doc = new DOMParser().parseFromString(Csp.createHTML(resp.responseText), "text/html");
@@ -4228,7 +4365,7 @@
             //新的可用api，用于搜索作品翻译情况，但也可以获得其它信息。
             rjCode = rjCode.toUpperCase();
             let url = `https://www.dlsite.com/${site}/api/=/translatableProducts.json?keyword=${rjCode}`;    //可以使用locale参数指定语言，但这里不需要
-            let resp = await DLsite.getHttpAsync(url, true);
+            let resp = await getHttpAsync(url, true);
             let data;
             if (resp.readyState === 4 && resp.status === 200) {
                 data = JSON.parse(resp.responseText);
@@ -4328,6 +4465,13 @@
         }
     }
 
+    //endregion
+
+    //region 设置页面构造
+
+    /**
+     * 设置页面模板对象
+     */
     function getSettingsUi() {
         return {
             //这一层是设置界面最顶层，编辑大标题信息
@@ -5338,6 +5482,7 @@
             ]
         };
     }
+
     class SettingPageBuilder {
         constructor(structure, settings) {
             this.structure = structure;
@@ -5990,6 +6135,7 @@
         };
 
     }
+
     class Sortable {
         constructor(element, sort_id, settings, options) {
             this.element = element;
@@ -6050,6 +6196,7 @@
             }
         }
     }
+
     const SettingsPopup = {
         showPopup(useTemp = false) {
             let uiBuilder = new SettingPageBuilder(getSettingsUi(), settings);
@@ -6064,6 +6211,10 @@
             document.body.appendChild(ui);
         }
     };
+
+    //endregion
+
+    //region 初始化加载
 
     let isInit = false;
     let observing = false;
@@ -6127,6 +6278,10 @@
 
     document.addEventListener("DOMContentLoaded", init);
 
+    //endregion
+
+    //region 公告显示
+
     function showUpdateNotice(force = false) {
         const firstTimeToken = 105;
         if(GM_getValue("first_token", undefined) === firstTimeToken && !force){
@@ -6143,6 +6298,10 @@
             {active: true});
     }
 
+    //endregion
+
+    //region CSP绕过
+
     //Deal with Trusted Types
     let Csp = {
         createHTML: (str) => str
@@ -6152,6 +6311,8 @@
             trustedTypes.defaultPolicy ? "VoiceLinkTrustedTypes" : "VoiceLinkTrustedTypes",
             Csp);
     }
+
+    //endregion
 
     init();
 })();
