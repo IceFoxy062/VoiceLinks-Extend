@@ -269,7 +269,7 @@
                 "https://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s",
                 "kikoeru"),
         ],
-        _s_cue_lang: ["simplified_chinese", "traditional_chinese"],  //每多一种语言意味着多一次查询
+        _s_cue_lang: ["CHI_HANS", "CHI_HANT"],  //每多一种语言意味着多一次查询
 
         backup: function() {
             let backup = {};
@@ -2283,6 +2283,139 @@
 
     //endregion
 
+    //region 缓存系统
+
+    class DataCache {
+        #data;
+        #timeAdd;
+        #timeUpdate;
+        #timeAccess;
+        constructor(data) {
+            this.#data = data;
+            this.#timeAdd = Date.now();
+            this.#timeUpdate = undefined;
+            this.#timeAccess = undefined;
+        }
+
+        get data() {
+            this.#timeAccess = Date.now();
+            return this.#data;
+        }
+        get timeAdd() { return this.#timeAdd; }
+        get timeUpdate() { return this.#timeUpdate; }
+        get timeAccess() { return this.#timeAccess; }
+
+        update(data) {
+            this.#data = data;
+            this.#timeUpdate = Date.now();
+        }
+    }
+
+    class CacheStorage {
+        static #activeStorages = {}
+        name;
+        maxSize;
+        maxAge;
+        #head;
+        #tail;
+        #dataMap;
+
+        /**
+         * 不要在外部调用该构造器，请使用CacheStorage.open()
+         */
+        constructor(name, maxSize = 128, maxAge = 24*60*60*1000) {
+            this.name = name;
+            this.#head = {next: "#tail", prev: null};
+            this.#tail = {next: null, prev: "#head"};
+            this.#dataMap = {};
+            this.maxSize = maxSize;
+            this.maxAge = maxAge;
+            //TODO: 添加过期检测和大小检测，进行缓存清理
+        }
+
+        static open(storageName) {
+            if (!(storageName in this.#activeStorages)) {
+                this.#activeStorages[storageName] = GM_GetValue(`cache_${storageName}`, new CacheStorage());
+            }
+            return this.#activeStorages[storageName];
+        }
+
+        static dropStorage(storageName) {
+            if(storageName in this.#activeStorages){
+                delete this.#activeStorages[storageName];
+            }
+            GM_SetValue(`cache_${storageName}`, undefined);
+        }
+
+        save() {
+            GM_SetValue(`cache_${this.name}`, this);
+        }
+
+        #disconnectNode(key, node) {
+            key = "_" + key;
+            if(node.next) this.#dataMap[node.next].prev = node.prev;
+            if(node.prev) this.#dataMap[node.prev].next = node.next;
+
+            node.next = null;
+            node.prev = null;
+        }
+
+        #moveNodeNextTo(key, node, prevKey) {
+            key = "_" + key;
+            prevKey = prevKey ? "_" + prevKey : "#head";
+            this.#disconnectNode(key, node);
+
+            node.prev = prevKey;
+            node.next = this.#dataMap[prevKey].next;
+            this.#dataMap[prevKey].next = key;
+            this.#dataMap[node.next].prev = key;
+        }
+
+        #moveNodeBefore(key, node, nextKey) {
+            key = "_" + key;
+            nextKey = nextKey ? "_" + nextKey : "#tail";
+            this.#disconnectNode(key, node);
+
+            node.next = nextKey;
+            node.prev = this.#dataMap[nextKey].prev;
+            this.#dataMap[nextKey].prev = key;
+            this.#dataMap[node.prev].next = key;
+        }
+
+        commit(key, data) {
+            key = "_" + key;
+            let node = this.#dataMap[key];
+            if (node) {
+                node.cache.update(data);
+            } else {
+                node = {
+                    cache: new DataCache(data),
+                    next: null,
+                    prev: null
+                };
+                this.#dataMap[key] = node;
+            }
+            this.#moveNodeBefore(key, node, null);
+        }
+
+        drop(key) {
+            key = "_" + key;
+            if (!(key in this.#dataMap)) return;
+            this.#disconnectNode(key, this.#dataMap[key])
+            delete this.#dataMap[key];
+        }
+
+        get(key) {
+            key = "_" + key;
+            if(key in this.#dataMap) {
+                return this.#dataMap[key].cache.data;
+            }
+            throw new Error(`缓存Key "${key}" 不存在`);
+        }
+    }
+
+    //endregion
+
     //region 弹框生成 & 更新
 
     const Popup = {
@@ -3911,14 +4044,22 @@
         cacheLinkage: function(originalWorkno, linkage) {
             //缓存与rjCode相关的关联作品信息，任意一个关联作品RJ均能找到此关联信息
             let maxLinkMapSize = 128;
-            let linkMap = GM_getValue("linkage", {
+            let linkMap = GM_getValue("linkages", {
                 link_order: []
             });
 
             //存入Linkage
-            if(linkMap[originalWorkno] && Array.isArray(linkMap[originalWorkno].linkage)){
+            let cache = linkMap[originalWorkno];
+            if(cache && Array.isArray(cache.data)){
                 //已存在部分Linkage则合并它们
-                linkMap[originalWorkno].linkage = WorkPromise.mergeLinkage(linkMap[originalWorkno].linkage, linkage);
+                cache.data = WorkPromise.mergeLinkage(cache.data, linkage);
+            } else {
+                cache = {
+                    data: undefined,
+                    addTime: undefined,
+                    updateTime: undefined,
+                    accessTime: undefined
+                }
             }
             linkMap.link_order.push(originalWorkno);  //TODO: 需要一个可以按时间排序且随时支持刷新某元素更新时间的数据结构，让我每次pop都能弹出最早的那个方便清理缓存
 
@@ -3926,23 +4067,34 @@
             if (linkMap.link_order.length > maxLinkMapSize) {
                 let deleteWorks = linkMap.link_order.splice(0, linkMap.link_order.length - maxLinkMapSize);
                 //清除所有相关子作品的链接
-                for(workno of deleteWorks){
+                for(let workno of deleteWorks){
                     let lk = linkMap[workno];
-                    for (wn of lk) {
+                    for (let wn of lk) {
                         delete linkMap[wn.workno];
                     }
                 }
             }
         },
 
-        getLinkedWorks: async function(rjCode) {
+        /**
+         * 查找指定作品的所有语言版本作品关联
+         * @param rjCode 查找关联的RJ号（若非递归调用请使用<b>原版RJ号</b>）
+         * @param useCache 是否使用缓存中的记录
+         * @param saveCache 是否记录/更新至缓存
+         * @returns {Promise<*[]>}
+         */
+        getLinkedWorks: async function(rjCode, useCache = true, saveCache = true) {
             let trans = await WorkPromise.getTranslationInfo(rjCode);
             let p = await WorkPromise.getWorkPromise(rjCode);
             let api = await p.api2;
             let result = [];
             if(trans.is_original){
                 let languageEditions = api.language_editions;
-
+                for (let edition of languageEditions) {
+                    if (!settings._s_cue_lang.includes(edition.lang)) continue;
+                    //是需要的查询语言，进行Link递归查询
+                    result = WorkPromise.mergeLinkage(result, WorkPromise.getLinkedWorks(edition.workno, useCache, false));
+                }
             }else if(trans.is_parent) {
                 //parent作品可以获取当前语言下所有的作品关联，但无法获取其它语言作品关联，作品数更新时也无法注意到
                 /* 可以通过翻译申请查询API来获取已上架翻译数量信息，但是如果一个翻译作品下架后另一个上架了，数量显示会保持不变，
@@ -3954,10 +4106,10 @@
                         return {workno: v, type: "child", lang: trans.lang}
                     })));
             }else if(trans.is_child){
-
+                result = WorkPromise.getLinkedWorks(trans.original_workno, useCache, false);
             }
 
-            WorkPromise.cacheLinkage(linkage);
+            if (saveCache) WorkPromise.cacheLinkage(linkage);
             return result;
         },
 
