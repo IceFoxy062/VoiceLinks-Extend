@@ -2357,17 +2357,13 @@
          */
 
         /**
-         * @param baseName {string}
-         * @param searchUrl {string}
-         * @param searchProfile {SearchProfile}
+         * @param searchProfileName {string}
          * @param searchWorkInfo {SearchWorkInfo}
          * @param resultList {[SearchWorkInfo]}
          */
-        constructor(baseName, searchUrl, searchProfile, searchWorkInfo, resultList) {
-            this.baseName = baseName;
-            this.searchUrl = searchUrl;
-            this.searchProfile = searchProfile;
-            this.searchWorkInfo = searchWorkInfo;
+        constructor(searchProfileName, searchWorkInfo, resultList) {
+            this.profileName = searchProfileName;
+            this.workInfo = searchWorkInfo;
             this.result = {};
 
             for (let res of resultList) {
@@ -2376,7 +2372,7 @@
         }
 
         analyze() {
-            let work = this.searchWorkInfo;
+            let work = this.workInfo;
             let result = this.result;
             let info = {
                 hasCurrent: false,
@@ -2408,7 +2404,7 @@
         getStatusText() {
             //TODO: 本地化
             let etc = !settings._s_full_linkage || !settings._s_search_linkage;
-            let work = this.searchWorkInfo;
+            let work = this.workInfo;
             let info = this.analyze();
             let text = info.hasCurrent ?
                 `✔ ${work.type === "parent" ? "该语言" : "本作"}` :
@@ -4365,9 +4361,9 @@
 
             let p = await WorkPromise.getWorkPromise(rjCode);
             let api = await p.api2;
-            let result = [];
+            let result = {};
 
-            result.push({workno: rjCode, type: "original", lang: "JPN"})
+            result[rjCode] = {workno: rjCode, type: "original", lang: "JPN"};
             let languageEditions = api.language_editions;
             for (let edition of languageEditions) {
                 if (!settings._s_cue_lang.includes(edition.lang)) continue;
@@ -4375,7 +4371,7 @@
                 result = WorkPromise.mergeLinkage(result, WorkPromise.getLinkedWorks(edition.workno));
             }
 
-            if (saveCache) WorkPromise.cacheLinkage(linkage);
+            if (saveCache) WorkPromise.cacheLinkage(result);
             return result;
         },
 
@@ -4385,9 +4381,10 @@
          * 获取来自Kikoeru API的搜索结果
          * @param rjCode {string}
          * @param searchProfile {SearchProfile}
-         * @returns {Promise<void>}
+         * @param linkages {{}}
+         * @returns {[SearchWorkInfo]}
          */
-        getKikoeruSearchResult: async function(rjCode, searchProfile) {
+        getKikoeruSearchResult: async function(rjCode, searchProfile, linkages) {
             let url = searchProfile.searchUrlTemplate?.replaceAll("%s", rjCode);
             let resp = await getHttpAsync(url, false, searchProfile.customHeaders);
             if (!(resp.readyState === 4 && resp.status === 200)) {
@@ -4401,15 +4398,67 @@
                 return null;
             }
 
-            let result = new SearchResult(url, searchProfile)
+            let result = [];
             for (const work of data.works) {
                 let rj = work.id > 999999 ? `RJ0${work.id}` : `RJ${work.id}`;
+                let link = linkages[rj];
+                if(!link) continue;
 
+                result.push(new SearchWorkInfo(link.workno, link.type, link.lang));
             }
+
+            return result;
         },
 
-        getWorkExistence: async function(rjCode, includeLinkedWorks = false) {
+        /**
+         * 获取指定仓库的搜索结果
+         * @param rjCode {string}
+         * @param searchProfile {SearchProfile}
+         * @returns {SearchResult}
+         */
+        getSearchResult: async function(rjCode, searchProfile) {
+            let searchFunction = null;
+            switch (searchProfile.apiType.toLowerCase()) {
+                case "kikoeru":
+                    searchFunction = WorkPromise.getKikoeruSearchResult;
+                    break;
+                default:
+                    throw new Error(`Invalid API Type: ${searchProfile.apiType.toLowerCase()}`);
+            }
 
+            let work = linkages[rjCode];
+            work = new SearchWorkInfo(work.workno, work.type, work.lang);
+            let linkages = settings._s_full_linkage ?
+                await WorkPromise.getLinkedWorksFull(rjCode) : await WorkPromise.getLinkedWorks(rjCode);
+            let searchSet = new Set(Object.keys(linkages));
+
+            let result = searchFunction(rjCode, searchProfile, linkages);
+
+            searchSet.delete(rjCode);
+            for (const work of result) {
+                searchSet.delete(work.workno);
+            }
+
+            if(!settings._s_search_linkage) return new SearchResult(searchProfile.name, work, result);
+
+            while(searchSet.size > 0) {
+                let target = searchSet.values().next().value;
+                let res = searchFunction(target, searchProfile, linkages);
+                result.push(...res);
+
+                searchSet.delete(target);
+                for(const work of res) {
+                    searchSet.delete(work.workno);
+                }
+
+                //TODO: 每个循环分阶段提交当前搜索结果（加快展示速度，再由fallback函数决定是否继续搜索，这样在中途换作品后可以及时中断不必要的搜索）
+            }
+
+            return new SearchResult(searchProfile.name, work, result);
+        },
+
+        getWorkExistenceInBase: async function(rjCode, includeLinkedWorks = false) {
+            //TODO: 感觉这个用不着了，让tag在显示时再按tag对应的仓库名触发对应的搜索操作
         }
     }
 
