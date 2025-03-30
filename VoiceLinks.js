@@ -12,6 +12,7 @@
 // @grant       GM_registerMenuCommand
 // @grant       GM_setValue
 // @grant       GM_getValue
+// @grant       GM_deleteValue
 // @grant       GM_addElement
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
@@ -266,10 +267,15 @@
         //搜索相关
         _s_search_profiles: [
             new SearchProfile(
+                "kikoeru",
                 "https://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s",
-                "kikoeru"),
+                "kikoeru", {
+                    authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8va2lrb2VydSIsInN1YiI6ImFkbWluIiwiYXVkIjoiaHR0cDovL2tpa29lcnUvYXBpIiwibmFtZSI6ImFkbWluIiwiZ3JvdXAiOiJhZG1pbmlzdHJhdG9yIiwiaWF0IjoxNzQyODMzNDI2LCJleHAiOjE3NDU0MjU0MjZ9.qzh6RSPjB88qkw04pJ_h410ZlObbR66b9AA9zHEu7lU",
+                }),
         ],
-        _s_cue_lang: ["CHI_HANS", "CHI_HANT"],  //每多一种语言意味着多一次查询
+        _s_cue_lang: ["CHI_HANS", "CHI_HANT"],  //限制关联搜索的语言范围，每多一种语言意味着多一次查询请求
+        _s_full_linkage: true,  //开启后，会从DLSite上获取作品的所有关联情况。关闭则会尽力在不进行额外请求的情况下，找到部分作品关联。
+        _s_search_linkage: true,  //开启后，会到仓库中查找所有关联作品，可能会产生多次网络请求（如果你的仓库搜索自带该功能，则可关闭此项）。
 
         backup: function() {
             let backup = {};
@@ -1183,6 +1189,24 @@
     const VOICELINK_CLASS = 'voicelink-' + Math.random().toString(36).slice(2);
     const VOICELINK_IGNORED_CLASS = `${VOICELINK_CLASS}_ignored`;
     const RJCODE_ATTRIBUTE = 'rjcode';
+    const LANG_MAP = {
+        JPN: localizePopup(localizationMap.language_japanese),
+        ENG: localizePopup(localizationMap.language_english),
+        CHI_HANS: localizePopup(localizationMap.language_simplified_chinese),
+        CHI_HANT: localizePopup(localizationMap.language_traditional_chinese),
+        KO_KR: localizePopup(localizationMap.language_korean),
+        SPA: localizePopup(localizationMap.language_spanish),
+        FRE: localizePopup(localizationMap.language_french),
+        RUS: localizePopup(localizationMap.language_russian),
+        THA: localizePopup(localizationMap.language_thai),
+        GER: localizePopup(localizationMap.language_german),
+        FIN: localizePopup(localizationMap.language_finnish),
+        POR: localizePopup(localizationMap.language_portuguese),
+        VIE: localizePopup(localizationMap.language_vietnamese),
+        ITA: localizePopup(localizationMap.language_italian),
+        ARA: localizePopup(localizationMap.language_arabic),
+        POL: localizePopup(localizationMap.language_polish),
+    };
     const POPUP_CSS = `
     .${VOICELINK_CLASS}_voicepopup {
         min-width: 630px !important;
@@ -1829,7 +1853,11 @@
         return (typeof GM !== "undefined" && GM !== null ? GM.xmlHttpRequest : GM_xmlhttpRequest);
     }
 
-    function getHttpAsync (url, anonymous = false){
+    function getHttpAsync (url, anonymous = false, customHeaders = {}){
+        let headers = customHeaders;
+        headers["Accept"] = "text/xml";
+        headers["User-Agent"] = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)";
+        headers["Cache-Control"] = "no-cache";
         return new Promise((resolve, reject) => {
             getXmlHttpRequest()({
                 method: "GET",
@@ -2261,23 +2289,153 @@
 
     class SearchProfile {
         /**
+         * @param name {string}
          * @param searchUrlTemplate {string}
          * @param apiType {string}
+         * @param customHeaders {{}}
          */
-        constructor(searchUrlTemplate, apiType) {
+        constructor(name, searchUrlTemplate, apiType, customHeaders) {
+            this.name = name;
             this.searchUrlTemplate = searchUrlTemplate;
             this.apiType = apiType;
+            this.customHeaders = customHeaders;
             this.enabled = true;
         }
     }
 
+    class SearchWorkInfo {
+        constructor(workno, type, lang) {
+            this.workno = workno;
+            this.type = type;
+            this.lang = lang;
+        }
+    }
+
     class SearchResult {
-        constructor(searchUrl, searchProfile, hasOriginal = false, hasTranslation = false) {
+
+        /*
+        一共有以下几种情况：
+        1. 有/无本作
+        2. 有原版
+        3. 有翻译版（未知子版本）
+        4. 有翻译版（其它子版本）
+        5. 有翻译版（其它语言）
+
+        各种组合方案预览（极端情况）：
+        对原版来说：
+        ---
+        已存：本作、翻译（简中-2/繁中-1/英-1）
+        未存本作｜已存：翻译（简中-2/繁中-1/英-1）
+        ---
+        ✔ 本作 翻译 (简中-2/繁中-1/英-1)
+        ✔ 本作 翻译(简中/繁中/英...
+
+        ✘本作｜✔ 翻译 (简中-2/繁中-1/英-1)
+        ✘本作｜✔ 翻译(简中/繁中/英...  [只有用父作品当rj时会显示这些翻译结果]
+
+        对翻译版父RJ来说：
+        ---
+        已存：此语言、原版、翻译 (简中-2/繁中-1/英-1)
+        未存此语言｜已存：原版、翻译 (繁中-1/英-1)
+        ---
+        ✔ 此语言 原版 翻译(简中-2/繁中-1/英-1)     ✔ This Lang, Orig, 🌐(SC-2/TC-1/EN-1)
+        ✔ 此语言(简中-2) 原版...
+
+        ✘此语言｜✔ 原版 翻译(繁中-1/英-1)
+        ✘此语言｜✔ 原版...
+
+        对子RJ来说：
+        ---
+        已存：本作、原版、翻译 (简中-2/繁中-1/英-1)
+        未存本作｜已存：原版、翻译 (简中-1/繁中-1/英-1)
+        ---
+        ✔ 本作 原版 翻译(简中-2/繁中-1/英-1)     ✔ This, Orig, 🌐(SC-2/TC-1/EN-1)
+        ✔ 本作 原版...
+
+        ✘本作｜✔ 原版 翻译(简中-1/繁中-1/英-1)       ✘This｜✔ This, 🌐(SC-1/TC-1/EN-1)
+        ✘本作｜✔ 原版...
+         */
+
+        /**
+         * @param baseName {string}
+         * @param searchUrl {string}
+         * @param searchProfile {SearchProfile}
+         * @param searchWorkInfo {SearchWorkInfo}
+         * @param resultList {[SearchWorkInfo]}
+         */
+        constructor(baseName, searchUrl, searchProfile, searchWorkInfo, resultList) {
+            this.baseName = baseName;
             this.searchUrl = searchUrl;
             this.searchProfile = searchProfile;
-            this.rjCodes = [];
-            this.hasOriginal = hasOriginal;
-            this.hasTranslation = hasTranslation;
+            this.searchWorkInfo = searchWorkInfo;
+            this.result = {};
+
+            for (let res of resultList) {
+                this.result[res.workno] = res;
+            }
+        }
+
+        analyze() {
+            let work = this.searchWorkInfo;
+            let result = this.result;
+            let info = {
+                hasCurrent: false,
+                hasOriginal: false,
+                hasTranslation: false,
+                langList: {},
+            }
+
+            for (const res of Object.values(result)) {
+                if (res.workno === work.workno) {
+                    info.hasCurrent = true;
+                }
+
+                if(work.type !== "original" && res.type === "original") {
+                    info.hasOriginal = true;
+                }
+
+                if (res.type !== "original") {
+                    info.hasTranslation = true;
+
+                    let ll = info.langList;
+                    ll[res.lang] = ll[res.lang] ? ll[res.lang] : 0;
+                    ll[res.lang] += res.type === "child" ? 1 : 11;
+                }
+            }
+            return info;
+        }
+
+        getStatusText() {
+            //TODO: 本地化
+            let etc = !settings._s_full_linkage || !settings._s_search_linkage;
+            let work = this.searchWorkInfo;
+            let info = this.analyze();
+            let text = info.hasCurrent ?
+                `✔ ${work.type === "parent" ? "该语言" : "本作"}` :
+                `✘${work.type === "parent" ? "该语言" : "本作"}`;
+            if (info.hasOriginal || info.hasTranslation){
+                text += info.hasCurrent ? ` ` : `｜`;
+            }
+            if (info.hasOriginal){
+                text += `${"原版"}${info.hasTranslation ? " " : ""}`;
+            }
+            if (info.hasTranslation){
+                text += `${"翻译"}`
+            } else {
+                return `${text}${etc ? "..." : ""}`;
+            }
+
+            let str = "";
+            for (let lang of settings._s_cue_lang) {
+                let langStr = LANG_MAP[lang];
+                let langCot = info.langList[lang];
+                if(!langCot || langCot % 10 === 0) continue;
+
+                str += `${langStr}-${langCot % 10}${langCot > 11 ? "?" : ""}/`
+            }
+            str = str.substring(0, str.length - 1);
+
+            return `${text}(${str}${etc ? "..." : ""})`;
         }
     }
 
@@ -2290,6 +2448,7 @@
         #timeAdd;
         #timeUpdate;
         #timeAccess;
+        #timeExpire;
         constructor(data) {
             this.#data = data;
             this.#timeAdd = Date.now();
@@ -2304,39 +2463,101 @@
         get timeAdd() { return this.#timeAdd; }
         get timeUpdate() { return this.#timeUpdate; }
         get timeAccess() { return this.#timeAccess; }
+        get timeExpire() { return this.#timeExpire }
 
-        update(data) {
+        set timeExpire(value) {
+            if(typeof value !== "number" || value < 0) return;
+            this.#timeExpire = value;
+        }
+
+        update(data, expTime = -1) {
             this.#data = data;
             this.#timeUpdate = Date.now();
+
+            if(expTime > -1) {
+                this.#timeExpire = expTime;
+            }
         }
     }
 
     class CacheStorage {
         static #activeStorages = {}
-        name;
-        maxSize;
-        maxAge;
-        #head;
-        #tail;
+        #name;
+        #maxSize;
+        #autoSave;
+        #dropExpired;
         #dataMap;
+
+        get #head() { return this.#dataMap["-head"]; }
+        get #tail() { return this.#dataMap["-tail"]; }
+
+        get name() { return this.#name; }
+        get maxSize() { return this.#maxSize; }
+        get autoSave() { return this.#autoSave; }
+        get dropExpired() { return this.#dropExpired; }
+
+        /**
+         * @param value {string}
+         */
+        set name(value) {
+            if(typeof value !== "string") throw new Error("Invalid Storage Name");
+            this.#name = value;
+        }
+
+        /**
+         * @param value {number}
+         */
+        set maxSize(value) {
+            if(typeof value !== "number" || value <= 0) return;
+            this.#maxSize = value;
+        }
+
+        /**
+         * @param value {boolean}
+         */
+        set autoSave(value) {
+            if(typeof value !== "boolean") return;
+            this.#autoSave = value;
+        }
+
+        /**
+         * @param value {boolean}
+         */
+        set dropExpired(value) {
+            if(typeof value !== "boolean") return;
+            this.#dropExpired = value;
+        }
 
         /**
          * 不要在外部调用该构造器，请使用CacheStorage.open()
          */
-        constructor(name, maxSize = 128, maxAge = 24*60*60*1000) {
+        constructor(name, maxSize = 128, dropExpired = false, autoSave = true) {
             this.name = name;
-            this.#head = {next: "#tail", prev: null};
-            this.#tail = {next: null, prev: "#head"};
-            this.#dataMap = {};
+            this.#dataMap = {
+                "-head": {next: "-tail", prev: null},
+                "-tail": {next: null, prev: "-head"}
+            };
             this.maxSize = maxSize;
-            this.maxAge = maxAge;
-            //TODO: 添加过期检测和大小检测，进行缓存清理
+            this.dropExpired = dropExpired;
+            this.autoSave = autoSave;
         }
 
-        static open(storageName) {
+        /**
+         * 打开指定的缓存库，若库不存在则会新建。可通过额外参数指定或覆盖缓存库设置
+         * @param storageName {string} 库名称
+         * @param maxSize {number} 最大缓存记录条数
+         * @param dropExpired {boolean} 是否删除过期记录
+         * @param autoSave {boolean} 是否自动保存
+         * @returns {CacheStorage} 名称对应的存储库
+         */
+        static open(storageName, maxSize = undefined, dropExpired = undefined, autoSave = undefined) {
             if (!(storageName in this.#activeStorages)) {
-                this.#activeStorages[storageName] = GM_GetValue(`cache_${storageName}`, new CacheStorage());
+                this.#activeStorages[storageName] = GM_getValue(`cache_${storageName}`, new CacheStorage(storageName));
             }
+            let storage = this.#activeStorages[storageName];
+            storage.maxSize = maxSize;
+            storage.dropExpired = dropExpired;
+            storage.autoSave = autoSave;
             return this.#activeStorages[storageName];
         }
 
@@ -2344,15 +2565,17 @@
             if(storageName in this.#activeStorages){
                 delete this.#activeStorages[storageName];
             }
-            GM_SetValue(`cache_${storageName}`, undefined);
+            GM_deleteValue(`cache_${storageName}`);
         }
 
+        /**
+         * 保存缓存库至持久化存储
+         */
         save() {
-            GM_SetValue(`cache_${this.name}`, this);
+            GM_setValue(`cache_${this.name}`, this);
         }
 
-        #disconnectNode(key, node) {
-            key = "_" + key;
+        #disconnectNode(node) {
             if(node.next) this.#dataMap[node.next].prev = node.prev;
             if(node.prev) this.#dataMap[node.prev].next = node.next;
 
@@ -2361,30 +2584,55 @@
         }
 
         #moveNodeNextTo(key, node, prevKey) {
-            key = "_" + key;
-            prevKey = prevKey ? "_" + prevKey : "#head";
-            this.#disconnectNode(key, node);
+            let keyX = "_" + key;
+            let prevKeyX = prevKey ? "_" + prevKey : "-head";
+            this.#disconnectNode(node);
 
-            node.prev = prevKey;
-            node.next = this.#dataMap[prevKey].next;
-            this.#dataMap[prevKey].next = key;
-            this.#dataMap[node.next].prev = key;
+            node.prev = prevKeyX;
+            node.next = this.#dataMap[prevKeyX].next;
+            this.#dataMap[prevKeyX].next = keyX;
+            this.#dataMap[node.next].prev = keyX;
         }
 
         #moveNodeBefore(key, node, nextKey) {
-            key = "_" + key;
-            nextKey = nextKey ? "_" + nextKey : "#tail";
-            this.#disconnectNode(key, node);
+            let keyX = "_" + key;
+            let nextKeyX = nextKey ? "_" + nextKey : "-tail";
+            this.#disconnectNode(node);
 
-            node.next = nextKey;
-            node.prev = this.#dataMap[nextKey].prev;
-            this.#dataMap[nextKey].prev = key;
-            this.#dataMap[node.prev].next = key;
+            node.next = nextKeyX;
+            node.prev = this.#dataMap[nextKeyX].prev;
+            this.#dataMap[nextKeyX].prev = keyX;
+            this.#dataMap[node.prev].next = keyX;
         }
 
-        commit(key, data) {
-            key = "_" + key;
-            let node = this.#dataMap[key];
+        #sizeLimitCheck() {
+            let overflow = Object.keys(this.#dataMap).length - 2 - this.maxSize;
+            for (let i = 0; i < overflow; i++) {
+                if(this.#head.next === "-tail") break;
+                this.drop(this.#head.next);
+            }
+        }
+
+        #isExpired(key) {
+            let keyX = "_" + key;
+            if(!(keyX in this.#dataMap)) return true;
+            let now = Date.now();
+            let cache = this.#dataMap[keyX].cache;
+            let expired = now > cache.timeExpire;
+
+            if (expired && this.dropExpired) this.drop(key);
+            return expired;
+        }
+
+        /**
+         * 提交或新增对缓存记录的更改
+         * @param key {string}
+         * @param data {*}
+         * @param expTime {number} 过期时间（毫秒数），为-1则不修改
+         */
+        commit(key, data, expTime = -1) {
+            let keyX = "_" + key;
+            let node = this.#dataMap[keyX];
             if (node) {
                 node.cache.update(data);
             } else {
@@ -2393,24 +2641,60 @@
                     next: null,
                     prev: null
                 };
-                this.#dataMap[key] = node;
+                this.#dataMap[keyX] = node;
+                this.#sizeLimitCheck();
             }
             this.#moveNodeBefore(key, node, null);
+
+            if(this.autoSave) this.save();
         }
 
+        /**
+         * 删除指定key对应的缓存记录
+         * @param key {string}
+         */
         drop(key) {
-            key = "_" + key;
-            if (!(key in this.#dataMap)) return;
-            this.#disconnectNode(key, this.#dataMap[key])
-            delete this.#dataMap[key];
+            let keyX = "_" + key;
+            if (!(keyX in this.#dataMap)) return;
+            this.#disconnectNode(this.#dataMap[keyX])
+            delete this.#dataMap[keyX];
+
+            if(this.autoSave) this.save();
         }
 
+        /**
+         * 获取指定缓存记录的数据
+         * @param key {string}
+         * @returns {*}
+         */
         get(key) {
-            key = "_" + key;
-            if(key in this.#dataMap) {
-                return this.#dataMap[key].cache.data;
+            let keyX = "_" + key;
+            let value;
+            if(keyX in this.#dataMap && !this.#isExpired(key)) {
+                this.#moveNodeBefore(key, this.#dataMap[keyX], null);
+                value = this.#dataMap[keyX].cache.data;
             }
-            throw new Error(`缓存Key "${key}" 不存在`);
+
+            if(this.autoSave) this.save();
+            return value;
+        }
+
+        /**
+         * 获取key对应的缓存对象（包含添加、修改、访问时间信息），注意该方法不会触发自动保存。
+         * @param key {string}
+         * @param keepExpired {boolean} 是否返回已过期的缓存记录？（如果缓存已删除，如设置了dropExpired为true，则无法获取到对象）
+         * @returns {DataCache}
+         */
+        getCache(key, keepExpired) {
+            let keyX = "_" + key;
+            let value;
+            if(keyX in this.#dataMap && (keepExpired || !this.#isExpired(key))) {
+                this.#moveNodeBefore(key, this.#dataMap[keyX], null);
+                value = this.#dataMap[keyX].cache;
+            }
+
+            //if(this.autoSave) this.save();
+            return value;
         }
     }
 
@@ -3662,31 +3946,13 @@
 
         getLanguages: async function(rjCode){
             //返回字符串数组，根据popup设置的语言返回支持的语言列表
-            const map = {
-                JPN: localizePopup(localizationMap.language_japanese),
-                ENG: localizePopup(localizationMap.language_english),
-                CHI_HANS: localizePopup(localizationMap.language_simplified_chinese),
-                CHI_HANT: localizePopup(localizationMap.language_traditional_chinese),
-                KO_KR: localizePopup(localizationMap.language_korean),
-                SPA: localizePopup(localizationMap.language_spanish),
-                FRE: localizePopup(localizationMap.language_french),
-                RUS: localizePopup(localizationMap.language_russian),
-                THA: localizePopup(localizationMap.language_thai),
-                GER: localizePopup(localizationMap.language_german),
-                FIN: localizePopup(localizationMap.language_finnish),
-                POR: localizePopup(localizationMap.language_portuguese),
-                VIE: localizePopup(localizationMap.language_vietnamese),
-                ITA: localizePopup(localizationMap.language_italian),
-                ARA: localizePopup(localizationMap.language_arabic),
-                POL: localizePopup(localizationMap.language_polish),
-            }
             const p = WorkPromise.getWorkPromise(rjCode);
             let api = await p.api2;
             api = api.options ? api : await p.api;
             const options = api.options?.split("#");
             const result = [];
-            for (const key in map) {
-                const lang = map[key];
+            for (const key in LANG_MAP) {
+                const lang = LANG_MAP[key];
                 if(options?.includes(key)) result.push(lang);
             }
             return result;
@@ -4030,83 +4296,83 @@
 
         mergeLinkage: function(l1, l2) {
             let linkage = {}
-            for (const work of l1) {
+            for (const work in Object.values(l1)) {
                 if(!work.workno) continue;
                 linkage[work.workno] = work;
             }
-            for (const work of l2) {
+            for (const work in Object.values(l2)) {
                 if(!work.workno) continue;
                 linkage[work.workno] = work;
             }
-            return Object.values(linkage);
+            return linkage;
         },
 
         cacheLinkage: function(originalWorkno, linkage) {
             //缓存与rjCode相关的关联作品信息，任意一个关联作品RJ均能找到此关联信息
             let maxLinkMapSize = 128;
-            let linkMap = GM_getValue("linkages", {
-                link_order: []
-            });
+            let linkCache = CacheStorage.open(
+                "work-linkages", maxLinkMapSize, false, true);
 
             //存入Linkage
-            let cache = linkMap[originalWorkno];
-            if(cache && Array.isArray(cache.data)){
+            let data = linkCache.get(originalWorkno);
+            if(Array.isArray(data)){
                 //已存在部分Linkage则合并它们
-                cache.data = WorkPromise.mergeLinkage(cache.data, linkage);
+                data = WorkPromise.mergeLinkage(data, linkage);
             } else {
-                cache = {
-                    data: undefined,
-                    addTime: undefined,
-                    updateTime: undefined,
-                    accessTime: undefined
-                }
+                data = linkage;
             }
-            linkMap.link_order.push(originalWorkno);  //TODO: 需要一个可以按时间排序且随时支持刷新某元素更新时间的数据结构，让我每次pop都能弹出最早的那个方便清理缓存
+            linkCache.commit(originalWorkno, data);
+        },
 
-            //清理超出限额的缓存
-            if (linkMap.link_order.length > maxLinkMapSize) {
-                let deleteWorks = linkMap.link_order.splice(0, linkMap.link_order.length - maxLinkMapSize);
-                //清除所有相关子作品的链接
-                for(let workno of deleteWorks){
-                    let lk = linkMap[workno];
-                    for (let wn of lk) {
-                        delete linkMap[wn.workno];
-                    }
+        getLinkedWorks: async function(rjCode) {
+            let trans = await WorkPromise.getTranslationInfo(rjCode);
+            let p = await WorkPromise.getWorkPromise(rjCode);
+            let api = await p.api2;
+            let result = {};
+            if(trans.is_original){
+                result[rjCode] = {workno: rjCode, type: "original", lang: "JPN"};
+                let languageEditions = api.language_editions;
+                for (let edition of languageEditions) {
+                    result[edition.workno] = {workno: edition.workno, type: "parent", lang: edition.lang};
                 }
+            }else if(trans.is_parent) {
+                //parent作品可以获取当前语言下所有的作品关联，但无法获取其它语言作品关联，作品数更新时也无法注意到
+                result[trans.original_workno] = {workno: trans.original_workno, type: "original", lang: "JPN"};
+                result[rjCode] = {workno: rjCode, type: "parent", lang: trans.lang};
+                for (let workno of trans.child_worknos) {
+                    result[workno] = {workno: workno, type: "child", lang: trans.lang}
+                }
+            }else if(trans.is_child){
+                result[trans.original_workno] = {workno: trans.original_workno, type: "original", lang: "JPN"};
+                result[trans.parent_workno] = {workno: trans.parent_workno, type: "parent", lang: trans.lang};
+                result[rjCode] = {workno: rjCode, type: "child", lang: trans.lang};
             }
+
+            return result;
         },
 
         /**
          * 查找指定作品的所有语言版本作品关联
-         * @param rjCode 查找关联的RJ号（若非递归调用请使用<b>原版RJ号</b>）
+         * @param rjCode 查找关联的RJ号
          * @param useCache 是否使用缓存中的记录
          * @param saveCache 是否记录/更新至缓存
-         * @returns {Promise<*[]>}
          */
-        getLinkedWorks: async function(rjCode, useCache = true, saveCache = true) {
+        getLinkedWorksFull: async function(rjCode, useCache = true, saveCache = true) {
             let trans = await WorkPromise.getTranslationInfo(rjCode);
+            if(!trans.is_original) {
+                return WorkPromise.getLinkedWorksFull(trans.original_workno, useCache, saveCache);
+            }
+
             let p = await WorkPromise.getWorkPromise(rjCode);
             let api = await p.api2;
             let result = [];
-            if(trans.is_original){
-                let languageEditions = api.language_editions;
-                for (let edition of languageEditions) {
-                    if (!settings._s_cue_lang.includes(edition.lang)) continue;
-                    //是需要的查询语言，进行Link递归查询
-                    result = WorkPromise.mergeLinkage(result, WorkPromise.getLinkedWorks(edition.workno, useCache, false));
-                }
-            }else if(trans.is_parent) {
-                //parent作品可以获取当前语言下所有的作品关联，但无法获取其它语言作品关联，作品数更新时也无法注意到
-                /* 可以通过翻译申请查询API来获取已上架翻译数量信息，但是如果一个翻译作品下架后另一个上架了，数量显示会保持不变，
-                导致仅依赖数量显示来决定是否更新的方法无法正常运作，所以还是正常限定缓存时间比较好 */
-                result.push({workno: trans.original_workno, type: "original", lang: "JPN"});
-                result.push({workno: rjCode, type: "parent", lang: trans.lang});
-                result.push(...(trans.child_worknos.map(
-                    v => {
-                        return {workno: v, type: "child", lang: trans.lang}
-                    })));
-            }else if(trans.is_child){
-                result = WorkPromise.getLinkedWorks(trans.original_workno, useCache, false);
+
+            result.push({workno: rjCode, type: "original", lang: "JPN"})
+            let languageEditions = api.language_editions;
+            for (let edition of languageEditions) {
+                if (!settings._s_cue_lang.includes(edition.lang)) continue;
+                //是需要的查询语言，进行Link递归查询
+                result = WorkPromise.mergeLinkage(result, WorkPromise.getLinkedWorks(edition.workno));
             }
 
             if (saveCache) WorkPromise.cacheLinkage(linkage);
@@ -4123,21 +4389,22 @@
          */
         getKikoeruSearchResult: async function(rjCode, searchProfile) {
             let url = searchProfile.searchUrlTemplate?.replaceAll("%s", rjCode);
-            let resp = await getHttpAsync(url);
-            if (resp.readyState === 4 && resp.status === 200) {
-                let data = JSON.parse(resp.responseText);
-                if (!Array.isArray(data.works)){
-                    throw new Error("Invalid Response.");
-                } else if(data.works.length <= 0) {
-                    return null;
-                }
+            let resp = await getHttpAsync(url, false, searchProfile.customHeaders);
+            if (!(resp.readyState === 4 && resp.status === 200)) {
+                return;
+            }
 
-                //遍历搜索结果（仅第一页）
-                let result = new SearchResult(url, searchProfile)
-                for (const work of data.works) {
-                    let rj = work.id > 999999 ? `RJ0${work.id}` : `RJ${work.id}`;
+            let data = JSON.parse(resp.responseText);
+            if (!Array.isArray(data.works)) {
+                throw new Error("Invalid Response.");
+            } else if (data.works.length <= 0) {
+                return null;
+            }
 
-                }
+            let result = new SearchResult(url, searchProfile)
+            for (const work of data.works) {
+                let rj = work.id > 999999 ? `RJ0${work.id}` : `RJ${work.id}`;
+
             }
         },
 
@@ -6458,9 +6725,9 @@
     let Csp = {
         createHTML: (str) => str
     };
-    if(window.isSecureContext === true && trustedTypes){
-        Csp = trustedTypes.createPolicy(
-            trustedTypes.defaultPolicy ? "VoiceLinkTrustedTypes" : "VoiceLinkTrustedTypes",
+    if(window.isSecureContext === true && window.trustedTypes){
+        Csp = window.trustedTypes.createPolicy(
+            window.trustedTypes.defaultPolicy ? "VoiceLinkTrustedTypes" : "VoiceLinkTrustedTypes",
             Csp);
     }
 
