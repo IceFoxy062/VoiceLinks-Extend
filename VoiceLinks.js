@@ -2726,9 +2726,22 @@
             file_size: null,
 
             _state: {
+                workno: undefined,
                 mouseX: 0,
                 mouseY: 0
             }
+        },
+
+        get currentWorkno() {
+            return Popup.popupElement._state.workno;
+        },
+
+        isCurrentWork(workno) {
+            return Popup.popupElement._state.workno === workno;
+        },
+
+        setCurrentWork(workno) {
+            Popup.popupElement._state.workno = workno;
         },
 
         makePopup: function (display) {
@@ -2833,12 +2846,13 @@
             // popup.id = "voice-" + rjCode;
             popup.style.setProperty("display", "flex", "important");  //= "display: flex";
             popup.setAttribute(RJCODE_ATTRIBUTE, rjCode);
+            Popup.setCurrentWork(rjCode);
 
             //------检查作品存在情况------
             let workFound = true;
             Popup.setFoundState(true);
             WorkPromise.getFound(rjCode).then(async found => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(Popup.isCurrentWork(rjCode)) return;
 
                 if(found){
                     //找到则直接返回交给下一级处理
@@ -2854,7 +2868,7 @@
                 return {found: found, parentRJ: parentRJ};
 
             }).then((state) => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(Popup.isCurrentWork(rjCode)) return;
 
                 const found = state.found;
                 const rj = state.parentRJ;
@@ -2871,7 +2885,7 @@
 
             //------检查是否为女性向------
             WorkPromise.getGirls(rjCode).then(isGirls => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(Popup.isCurrentWork(rjCode)) return;
                 if(isGirls) popup.className += (` ${VOICELINK_CLASS}_voicepopup-girls`)
             }).catch(e => {});
 
@@ -2905,7 +2919,7 @@
                     return link;  //实际上是img
                 }
 
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) {
+                if(Popup.isCurrentWork(rjCode)) {
                     //清除占位
                     ele.img[rjCode] = null;
                     return null;
@@ -2975,12 +2989,12 @@
             titleElement.setCopyText(null);
             titleElement.setSecondaryCopyText(null);
             WorkPromise.getWorkTitle(rjCode).then(title => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(Popup.isCurrentWork(rjCode)) return;
                 titleElement.innerText = title;
                 titleElement.setCopyText(title);
                 titleElement.setSecondaryCopyText(convertToValidFileName(title));
             }).catch(_ => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(Popup.isCurrentWork(rjCode)) return;
                 titleElement.innerHTML = Csp.createHTML("");
             })
 
@@ -2988,7 +3002,7 @@
             const rjCodeElement = ele.rj_code;
             rjCodeElement.innerHTML = Csp.createHTML(`[ ${isParent ? " ↑ " : ""}<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold !important;text-decoration-line: underline !important;">${rjCode}</span> ]`);
             WorkPromise.getRJChain(rjCode).then(chain => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(Popup.isCurrentWork(rjCode)) return;
                 rjCodeElement.innerText = "[ ";
                 //构造chain
                 for (let i = 0; i < chain.length; i++) {
@@ -3015,10 +3029,10 @@
             }
             ele.loader.style.setProperty("display", "flex", "important");  //display = "flex !important";
             WorkPromise.getWorkCategory(rjCode).then(category => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(Popup.isCurrentWork(rjCode)) return;
                 this.set_info_container(rjCode, category);
             }).catch(e => {
-                if (rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if (Popup.isCurrentWork(rjCode)) return;
                 //默认other
                 this.set_info_container(rjCode, "other");
             });
@@ -3129,7 +3143,7 @@
             rowElement.appendChild(contentElement);
 
             contentProvider.then(contents => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(Popup.isCurrentWork(rjCode)) return;
                 if(!Array.isArray(contents)){
                     //单个结果转化成列表
                     contents = [contents];
@@ -3174,7 +3188,7 @@
                 //为标题添加复制文本
                 titleElement.setCopyText(contentsText.join(sepText));
             }).catch(e => {
-                if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(Popup.isCurrentWork(rjCode)) return;
                 rowElement.innerHTML = Csp.createHTML("");
                 //console.error(e);
             }).finally(() => {
@@ -3183,7 +3197,7 @@
 
             if(suffixProvider){
                 suffixProvider.then((element) => {
-                    if(rjCode !== popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                    if(Popup.isCurrentWork(rjCode)) return;
                     rowElement.appendChild(element);
                 }).catch(_ => {});
             }
@@ -3418,6 +3432,21 @@
             tag.classList.add(`${VOICELINK_CLASS}_tag_small`);
             return tag;
         },
+        get_tag_base_search: async function(rjCode, searchProfile) {
+            //TODO: 设置样式后返回，返回前获取信息设置callback更新信息（搜索方法用then不是await）
+            const textPrefix = `${searchProfile.name}: `;
+            const tag = Popup.get_tag(`${textPrefix}⏳`, "tag-gray");
+
+            const updateTag = (result) => {
+
+            }
+            try{
+                WorkPromise.getSearchResult(rjCode, searchProfile, result => {
+
+                })
+            }
+
+        },
 
         get_tag_container: function (rjCode, tag_list) {
             const container = document.createElement("div");
@@ -3486,7 +3515,7 @@
             shadowContainer.style.setProperty("display", "none", "important");  //display = "none !important";
             infoContainer.appendChild(shadowContainer);
             WorkPromise.getTranslatable(rjCode).then(able => {
-                if(rjCode !== Popup.popupElement.popup.getAttribute(RJCODE_ATTRIBUTE)) return;
+                if(Popup.isCurrentWork(rjCode)) return;
                 if(able && settings._s_tag_translation_request === true){
                     const translatableContainer = this.get_translatable_tag_container(rjCode,
                         settings._s_tag_translation_request_display_order);
@@ -4414,9 +4443,10 @@
          * 获取指定仓库的搜索结果
          * @param rjCode {string}
          * @param searchProfile {SearchProfile}
+         * @param progressCallback {function (result: SearchResult): boolean} 搜索的阶段性成果，如果返回false则停止搜索
          * @returns {SearchResult}
          */
-        getSearchResult: async function(rjCode, searchProfile) {
+        getSearchResult: async function(rjCode, searchProfile, progressCallback) {
             let searchFunction = null;
             switch (searchProfile.apiType.toLowerCase()) {
                 case "kikoeru":
@@ -4426,11 +4456,11 @@
                     throw new Error(`Invalid API Type: ${searchProfile.apiType.toLowerCase()}`);
             }
 
-            let work = linkages[rjCode];
-            work = new SearchWorkInfo(work.workno, work.type, work.lang);
             let linkages = settings._s_full_linkage ?
                 await WorkPromise.getLinkedWorksFull(rjCode) : await WorkPromise.getLinkedWorks(rjCode);
             let searchSet = new Set(Object.keys(linkages));
+            let work = linkages[rjCode];
+            work = new SearchWorkInfo(work.workno, work.type, work.lang);
 
             let result = searchFunction(rjCode, searchProfile, linkages);
 
@@ -4442,6 +4472,12 @@
             if(!settings._s_search_linkage) return new SearchResult(searchProfile.name, work, result);
 
             while(searchSet.size > 0) {
+
+                //提交当前搜索到的部分结果（最后一次的完整结果通过返回值提交，故这段放在while开头
+                if(!progressCallback(new SearchResult(searchProfile.name, work, result))) {
+                    return new SearchResult(searchProfile.name, work, result);
+                }
+
                 let target = searchSet.values().next().value;
                 let res = searchFunction(target, searchProfile, linkages);
                 result.push(...res);
@@ -4450,16 +4486,10 @@
                 for(const work of res) {
                     searchSet.delete(work.workno);
                 }
-
-                //TODO: 每个循环分阶段提交当前搜索结果（加快展示速度，再由fallback函数决定是否继续搜索，这样在中途换作品后可以及时中断不必要的搜索）
             }
 
             return new SearchResult(searchProfile.name, work, result);
         },
-
-        getWorkExistenceInBase: async function(rjCode, includeLinkedWorks = false) {
-            //TODO: 感觉这个用不着了，让tag在显示时再按tag对应的仓库名触发对应的搜索操作
-        }
     }
 
     const DLsite = {
