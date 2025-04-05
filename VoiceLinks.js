@@ -265,14 +265,7 @@
         _s_tag_translation_request_vietnamese: false,
 
         //搜索相关
-        _s_search_profiles: [
-            new SearchProfile(
-                "kikoeru",
-                "https://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s",
-                "kikoeru", {
-                    authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8va2lrb2VydSIsInN1YiI6ImFkbWluIiwiYXVkIjoiaHR0cDovL2tpa29lcnUvYXBpIiwibmFtZSI6ImFkbWluIiwiZ3JvdXAiOiJhZG1pbmlzdHJhdG9yIiwiaWF0IjoxNzQyODMzNDI2LCJleHAiOjE3NDU0MjU0MjZ9.qzh6RSPjB88qkw04pJ_h410ZlObbR66b9AA9zHEu7lU",
-                }),
-        ],
+        _s_search_profiles: [],
         _s_cue_lang: ["CHI_HANS", "CHI_HANT"],  //限制关联搜索的语言范围，每多一种语言意味着多一次查询请求
         _s_full_linkage: true,  //开启后，会从DLSite上获取作品的所有关联情况。关闭则会尽力在不进行额外请求的情况下，找到部分作品关联。
         _s_search_linkage: true,  //开启后，会到仓库中查找所有关联作品，可能会产生多次网络请求（如果你的仓库搜索自带该功能，则可关闭此项）。
@@ -1854,7 +1847,7 @@
     }
 
     function getHttpAsync (url, anonymous = false, customHeaders = {}){
-        let headers = customHeaders;
+        let headers = {...customHeaders};
         headers["Accept"] = "text/xml";
         headers["User-Agent"] = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)";
         headers["Cache-Control"] = "no-cache";
@@ -1862,11 +1855,7 @@
             getXmlHttpRequest()({
                 method: "GET",
                 url,
-                headers: {
-                    "Accept": "text/xml",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)",
-                    "Cache-Control": "no-cache"
-                },
+                headers: headers,
                 onload: resolve,
                 onerror: reject,
                 anonymous: anonymous
@@ -2356,6 +2345,8 @@
         ✘本作｜✔ 原版...
          */
 
+        #analyzeInfo = null;
+
         /**
          * @param searchProfileName {string}
          * @param searchWorkInfo {SearchWorkInfo}
@@ -2372,6 +2363,9 @@
         }
 
         analyze() {
+            if (this.#analyzeInfo) {
+                return this.#analyzeInfo;
+            }
             let work = this.workInfo;
             let result = this.result;
             let info = {
@@ -2398,6 +2392,8 @@
                     ll[res.lang] += res.type === "child" ? 1 : 11;
                 }
             }
+
+            this.#analyzeInfo = info;
             return info;
         }
 
@@ -2440,64 +2436,64 @@
     //region 缓存系统
 
     class DataCache {
-        #data;
-        #timeAdd;
-        #timeUpdate;
-        #timeAccess;
-        #timeExpire;
+        _data;
+        _timeAdd;
+        _timeUpdate;
+        _timeAccess;
+        _timeExpire;
         constructor(data) {
-            this.#data = data;
-            this.#timeAdd = Date.now();
-            this.#timeUpdate = undefined;
-            this.#timeAccess = undefined;
+            this._data = data;
+            this._timeAdd = Date.now();
+            this._timeUpdate = undefined;
+            this._timeAccess = undefined;
         }
 
         get data() {
-            this.#timeAccess = Date.now();
-            return this.#data;
+            this._timeAccess = Date.now();
+            return this._data;
         }
-        get timeAdd() { return this.#timeAdd; }
-        get timeUpdate() { return this.#timeUpdate; }
-        get timeAccess() { return this.#timeAccess; }
-        get timeExpire() { return this.#timeExpire }
+        get timeAdd() { return this._timeAdd; }
+        get timeUpdate() { return this._timeUpdate; }
+        get timeAccess() { return this._timeAccess; }
+        get timeExpire() { return this._timeExpire }
 
         set timeExpire(value) {
             if(typeof value !== "number" || value < 0) return;
-            this.#timeExpire = value;
+            this._timeExpire = value;
         }
 
         update(data, expTime = -1) {
-            this.#data = data;
-            this.#timeUpdate = Date.now();
+            this._data = data;
+            this._timeUpdate = Date.now();
 
             if(expTime > -1) {
-                this.#timeExpire = expTime;
+                this._timeExpire = expTime;
             }
         }
     }
 
-    class CacheStorage {
+    class DataCacheStorage {
         static #activeStorages = {}
-        #name;
-        #maxSize;
-        #autoSave;
-        #dropExpired;
-        #dataMap;
+        _name;
+        _maxSize;
+        _autoSave;
+        _dropExpired;
+        _dataMap;
 
-        get #head() { return this.#dataMap["-head"]; }
-        get #tail() { return this.#dataMap["-tail"]; }
+        get #head() { return this._dataMap["-head"]; }
+        get #tail() { return this._dataMap["-tail"]; }
 
-        get name() { return this.#name; }
-        get maxSize() { return this.#maxSize; }
-        get autoSave() { return this.#autoSave; }
-        get dropExpired() { return this.#dropExpired; }
+        get name() { return this._name; }
+        get maxSize() { return this._maxSize; }
+        get autoSave() { return this._autoSave; }
+        get dropExpired() { return this._dropExpired; }
 
         /**
          * @param value {string}
          */
         set name(value) {
             if(typeof value !== "string") throw new Error("Invalid Storage Name");
-            this.#name = value;
+            this._name = value;
         }
 
         /**
@@ -2505,7 +2501,7 @@
          */
         set maxSize(value) {
             if(typeof value !== "number" || value <= 0) return;
-            this.#maxSize = value;
+            this._maxSize = value;
         }
 
         /**
@@ -2513,7 +2509,7 @@
          */
         set autoSave(value) {
             if(typeof value !== "boolean") return;
-            this.#autoSave = value;
+            this._autoSave = value;
         }
 
         /**
@@ -2521,7 +2517,7 @@
          */
         set dropExpired(value) {
             if(typeof value !== "boolean") return;
-            this.#dropExpired = value;
+            this._dropExpired = value;
         }
 
         /**
@@ -2529,7 +2525,7 @@
          */
         constructor(name, maxSize = 128, dropExpired = false, autoSave = true) {
             this.name = name;
-            this.#dataMap = {
+            this._dataMap = {
                 "-head": {next: "-tail", prev: null},
                 "-tail": {next: null, prev: "-head"}
             };
@@ -2538,17 +2534,22 @@
             this.autoSave = autoSave;
         }
 
+        static fromObject(obj, name) {
+            if(!obj.name) return new DataCacheStorage(name);
+            return new DataCacheStorage(obj.name, obj.maxSize, obj.dropExpired, obj.autoSave);
+        }
+
         /**
          * 打开指定的缓存库，若库不存在则会新建。可通过额外参数指定或覆盖缓存库设置
          * @param storageName {string} 库名称
          * @param maxSize {number} 最大缓存记录条数
          * @param dropExpired {boolean} 是否删除过期记录
          * @param autoSave {boolean} 是否自动保存
-         * @returns {CacheStorage} 名称对应的存储库
+         * @returns {DataCacheStorage} 名称对应的存储库
          */
         static open(storageName, maxSize = undefined, dropExpired = undefined, autoSave = undefined) {
             if (!(storageName in this.#activeStorages)) {
-                this.#activeStorages[storageName] = GM_getValue(`cache_${storageName}`, new CacheStorage(storageName));
+                this.#activeStorages[storageName] = DataCacheStorage.fromObject(GM_getValue(`cache_${storageName}`, new DataCacheStorage(storageName)), storageName);
             }
             let storage = this.#activeStorages[storageName];
             storage.maxSize = maxSize;
@@ -2572,8 +2573,8 @@
         }
 
         #disconnectNode(node) {
-            if(node.next) this.#dataMap[node.next].prev = node.prev;
-            if(node.prev) this.#dataMap[node.prev].next = node.next;
+            if(node.next) this._dataMap[node.next].prev = node.prev;
+            if(node.prev) this._dataMap[node.prev].next = node.next;
 
             node.next = null;
             node.prev = null;
@@ -2585,9 +2586,9 @@
             this.#disconnectNode(node);
 
             node.prev = prevKeyX;
-            node.next = this.#dataMap[prevKeyX].next;
-            this.#dataMap[prevKeyX].next = keyX;
-            this.#dataMap[node.next].prev = keyX;
+            node.next = this._dataMap[prevKeyX].next;
+            this._dataMap[prevKeyX].next = keyX;
+            this._dataMap[node.next].prev = keyX;
         }
 
         #moveNodeBefore(key, node, nextKey) {
@@ -2596,13 +2597,13 @@
             this.#disconnectNode(node);
 
             node.next = nextKeyX;
-            node.prev = this.#dataMap[nextKeyX].prev;
-            this.#dataMap[nextKeyX].prev = keyX;
-            this.#dataMap[node.prev].next = keyX;
+            node.prev = this._dataMap[nextKeyX].prev;
+            this._dataMap[nextKeyX].prev = keyX;
+            this._dataMap[node.prev].next = keyX;
         }
 
         #sizeLimitCheck() {
-            let overflow = Object.keys(this.#dataMap).length - 2 - this.maxSize;
+            let overflow = Object.keys(this._dataMap).length - 2 - this.maxSize;
             for (let i = 0; i < overflow; i++) {
                 if(this.#head.next === "-tail") break;
                 this.drop(this.#head.next);
@@ -2611,9 +2612,9 @@
 
         #isExpired(key) {
             let keyX = "_" + key;
-            if(!(keyX in this.#dataMap)) return true;
+            if(!(keyX in this._dataMap)) return true;
             let now = Date.now();
-            let cache = this.#dataMap[keyX].cache;
+            let cache = this._dataMap[keyX].cache;
             let expired = now > cache.timeExpire;
 
             if (expired && this.dropExpired) this.drop(key);
@@ -2628,7 +2629,7 @@
          */
         commit(key, data, expTime = -1) {
             let keyX = "_" + key;
-            let node = this.#dataMap[keyX];
+            let node = this._dataMap[keyX];
             if (node) {
                 node.cache.update(data);
             } else {
@@ -2637,7 +2638,7 @@
                     next: null,
                     prev: null
                 };
-                this.#dataMap[keyX] = node;
+                this._dataMap[keyX] = node;
                 this.#sizeLimitCheck();
             }
             this.#moveNodeBefore(key, node, null);
@@ -2651,9 +2652,9 @@
          */
         drop(key) {
             let keyX = "_" + key;
-            if (!(keyX in this.#dataMap)) return;
-            this.#disconnectNode(this.#dataMap[keyX])
-            delete this.#dataMap[keyX];
+            if (!(keyX in this._dataMap)) return;
+            this.#disconnectNode(this._dataMap[keyX])
+            delete this._dataMap[keyX];
 
             if(this.autoSave) this.save();
         }
@@ -2666,9 +2667,9 @@
         get(key) {
             let keyX = "_" + key;
             let value;
-            if(keyX in this.#dataMap && !this.#isExpired(key)) {
-                this.#moveNodeBefore(key, this.#dataMap[keyX], null);
-                value = this.#dataMap[keyX].cache.data;
+            if(keyX in this._dataMap && !this.#isExpired(key)) {
+                this.#moveNodeBefore(key, this._dataMap[keyX], null);
+                value = this._dataMap[keyX].cache.data;
             }
 
             if(this.autoSave) this.save();
@@ -2684,9 +2685,9 @@
         getCache(key, keepExpired) {
             let keyX = "_" + key;
             let value;
-            if(keyX in this.#dataMap && (keepExpired || !this.#isExpired(key))) {
-                this.#moveNodeBefore(key, this.#dataMap[keyX], null);
-                value = this.#dataMap[keyX].cache;
+            if(keyX in this._dataMap && (keepExpired || !this.#isExpired(key))) {
+                this.#moveNodeBefore(key, this._dataMap[keyX], null);
+                value = this._dataMap[keyX].cache;
             }
 
             //if(this.autoSave) this.save();
@@ -2852,7 +2853,7 @@
             let workFound = true;
             Popup.setFoundState(true);
             WorkPromise.getFound(rjCode).then(async found => {
-                if(Popup.isCurrentWork(rjCode)) return;
+                if(!Popup.isCurrentWork(rjCode)) return;
 
                 if(found){
                     //找到则直接返回交给下一级处理
@@ -2868,7 +2869,7 @@
                 return {found: found, parentRJ: parentRJ};
 
             }).then((state) => {
-                if(Popup.isCurrentWork(rjCode)) return;
+                if(!Popup.isCurrentWork(rjCode)) return;
 
                 const found = state.found;
                 const rj = state.parentRJ;
@@ -2885,7 +2886,7 @@
 
             //------检查是否为女性向------
             WorkPromise.getGirls(rjCode).then(isGirls => {
-                if(Popup.isCurrentWork(rjCode)) return;
+                if(!Popup.isCurrentWork(rjCode)) return;
                 if(isGirls) popup.className += (` ${VOICELINK_CLASS}_voicepopup-girls`)
             }).catch(e => {});
 
@@ -2919,7 +2920,7 @@
                     return link;  //实际上是img
                 }
 
-                if(Popup.isCurrentWork(rjCode)) {
+                if(!Popup.isCurrentWork(rjCode)) {
                     //清除占位
                     ele.img[rjCode] = null;
                     return null;
@@ -2989,12 +2990,12 @@
             titleElement.setCopyText(null);
             titleElement.setSecondaryCopyText(null);
             WorkPromise.getWorkTitle(rjCode).then(title => {
-                if(Popup.isCurrentWork(rjCode)) return;
+                if(!Popup.isCurrentWork(rjCode)) return;
                 titleElement.innerText = title;
                 titleElement.setCopyText(title);
                 titleElement.setSecondaryCopyText(convertToValidFileName(title));
             }).catch(_ => {
-                if(Popup.isCurrentWork(rjCode)) return;
+                if(!Popup.isCurrentWork(rjCode)) return;
                 titleElement.innerHTML = Csp.createHTML("");
             })
 
@@ -3002,7 +3003,7 @@
             const rjCodeElement = ele.rj_code;
             rjCodeElement.innerHTML = Csp.createHTML(`[ ${isParent ? " ↑ " : ""}<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold !important;text-decoration-line: underline !important;">${rjCode}</span> ]`);
             WorkPromise.getRJChain(rjCode).then(chain => {
-                if(Popup.isCurrentWork(rjCode)) return;
+                if(!Popup.isCurrentWork(rjCode)) return;
                 rjCodeElement.innerText = "[ ";
                 //构造chain
                 for (let i = 0; i < chain.length; i++) {
@@ -3029,10 +3030,10 @@
             }
             ele.loader.style.setProperty("display", "flex", "important");  //display = "flex !important";
             WorkPromise.getWorkCategory(rjCode).then(category => {
-                if(Popup.isCurrentWork(rjCode)) return;
+                if(!Popup.isCurrentWork(rjCode)) return;
                 this.set_info_container(rjCode, category);
             }).catch(e => {
-                if (Popup.isCurrentWork(rjCode)) return;
+                if (!Popup.isCurrentWork(rjCode)) return;
                 //默认other
                 this.set_info_container(rjCode, "other");
             });
@@ -3143,7 +3144,7 @@
             rowElement.appendChild(contentElement);
 
             contentProvider.then(contents => {
-                if(Popup.isCurrentWork(rjCode)) return;
+                if(!Popup.isCurrentWork(rjCode)) return;
                 if(!Array.isArray(contents)){
                     //单个结果转化成列表
                     contents = [contents];
@@ -3188,7 +3189,7 @@
                 //为标题添加复制文本
                 titleElement.setCopyText(contentsText.join(sepText));
             }).catch(e => {
-                if(Popup.isCurrentWork(rjCode)) return;
+                if(!Popup.isCurrentWork(rjCode)) return;
                 rowElement.innerHTML = Csp.createHTML("");
                 //console.error(e);
             }).finally(() => {
@@ -3197,7 +3198,7 @@
 
             if(suffixProvider){
                 suffixProvider.then((element) => {
-                    if(Popup.isCurrentWork(rjCode)) return;
+                    if(!Popup.isCurrentWork(rjCode)) return;
                     rowElement.appendChild(element);
                 }).catch(_ => {});
             }
@@ -3433,19 +3434,41 @@
             return tag;
         },
         get_tag_base_search: async function(rjCode, searchProfile) {
-            //TODO: 设置样式后返回，返回前获取信息设置callback更新信息（搜索方法用then不是await）
             const textPrefix = `${searchProfile.name}: `;
             const tag = Popup.get_tag(`${textPrefix}⏳`, "tag-gray");
+            const updateTag = (result, done, error = false) => {
+                if(error) {
+                    tag.classList.remove("tag-gray", "tag-orange", "tag-green", "tag-blue");
+                    tag.classList.add("tag-gray");
+                    tag.innerText = `${textPrefix}❌`;
+                    return;
+                }
 
-            const updateTag = (result) => {
+                let info = result.analyze();
+                let tagClass = `${VOICELINK_CLASS}_tag-gray`;
+                tag.innerText = `${textPrefix}${result.getStatusText()}${done ? "" : "⏳"}`;
+                tag.classList.remove(`${VOICELINK_CLASS}_tag-gray`,
+                    `${VOICELINK_CLASS}_tag-orange`, `${VOICELINK_CLASS}_tag-green`, `${VOICELINK_CLASS}_tag-blue`);
+                if(info.hasCurrent) {
+                    tagClass = `${VOICELINK_CLASS}_tag-green`;
+                } else if (info.hasTranslation) {
+                    tagClass = `${VOICELINK_CLASS}_tag-blue`;
+                } else if (info.hasOriginal) {
+                    tagClass = `${VOICELINK_CLASS}_tag-orange`;
+                }
+                tag.classList.add(tagClass);
 
+                return Popup.isCurrentWork(rjCode);
             }
-            try{
-                WorkPromise.getSearchResult(rjCode, searchProfile, result => {
 
-                })
-            }
-
+            WorkPromise.getSearchResult(rjCode, searchProfile, result => {
+                return updateTag(result, false);
+            }).then(result => {
+                return updateTag(result, true);
+            }).catch(e => {
+                return updateTag(null, false, true);
+            });
+            return tag;
         },
 
         get_tag_container: function (rjCode, tag_list) {
@@ -3488,6 +3511,17 @@
             }
             return container;
         },
+        get_search_tag_container: function (rjCode) {
+            const container = document.createElement("div");
+            container.classList.add(`${VOICELINK_CLASS}_tags`);
+            container.style.setProperty("margin-top", "0", "important");  //marginTop = "0 !important";
+            Popup.get_tag_base_search(rjCode, settings._s_search_profiles[0]).then(tag => {
+                if(tag){
+                    container.appendChild(tag);
+                }
+            }).catch(e => {});
+            return container;
+        },
 
         //整合顺序
         set_info_container: function (rjCode, category) {
@@ -3502,6 +3536,7 @@
 
             //TAG部分
             const infoContainer = this.popupElement.info_container;
+
             let tagContainer = null;
             if(settings._s_tag_main_switch === true){
                 const container = this.get_tag_container(rjCode,
@@ -3515,7 +3550,7 @@
             shadowContainer.style.setProperty("display", "none", "important");  //display = "none !important";
             infoContainer.appendChild(shadowContainer);
             WorkPromise.getTranslatable(rjCode).then(able => {
-                if(Popup.isCurrentWork(rjCode)) return;
+                if(!Popup.isCurrentWork(rjCode)) return;
                 if(able && settings._s_tag_translation_request === true){
                     const translatableContainer = this.get_translatable_tag_container(rjCode,
                         settings._s_tag_translation_request_display_order);
@@ -3523,6 +3558,10 @@
                     shadowContainer.remove();
                 }
             }).catch(e => {});
+
+            //仓库搜索情况
+            const searchContainer = Popup.get_search_tag_container(rjCode);
+            infoContainer.appendChild(searchContainer);
 
             //信息部分
             const order = settings[`_s_${category}__info_display_order`];
@@ -4321,11 +4360,11 @@
 
         mergeLinkage: function(l1, l2) {
             let linkage = {}
-            for (const work in Object.values(l1)) {
+            for (const work of Object.values(l1)) {
                 if(!work.workno) continue;
                 linkage[work.workno] = work;
             }
-            for (const work in Object.values(l2)) {
+            for (const work of Object.values(l2)) {
                 if(!work.workno) continue;
                 linkage[work.workno] = work;
             }
@@ -4335,7 +4374,7 @@
         cacheLinkage: function(originalWorkno, linkage) {
             //缓存与rjCode相关的关联作品信息，任意一个关联作品RJ均能找到此关联信息
             let maxLinkMapSize = 128;
-            let linkCache = CacheStorage.open(
+            let linkCache = DataCacheStorage.open(
                 "work-linkages", maxLinkMapSize, false, true);
 
             //存入Linkage
@@ -4350,30 +4389,36 @@
         },
 
         getLinkedWorks: async function(rjCode) {
-            let trans = await WorkPromise.getTranslationInfo(rjCode);
-            let p = await WorkPromise.getWorkPromise(rjCode);
-            let api = await p.api2;
-            let result = {};
-            if(trans.is_original){
-                result[rjCode] = {workno: rjCode, type: "original", lang: "JPN"};
-                let languageEditions = api.language_editions;
-                for (let edition of languageEditions) {
-                    result[edition.workno] = {workno: edition.workno, type: "parent", lang: edition.lang};
+            try {
+                let trans = await WorkPromise.getTranslationInfo(rjCode);
+                let p = await WorkPromise.getWorkPromise(rjCode);
+                let api = await p.api2;
+                let result = {};
+                if(trans.is_original){
+                    result[rjCode] = {workno: rjCode, type: "original", lang: "JPN"};
+                    let languageEditions = api.language_editions;
+                    for (let edition of languageEditions) {
+                        result[edition.workno] = {workno: edition.workno, type: "parent", lang: edition.lang};
+                    }
+                }else if(trans.is_parent) {
+                    //parent作品可以获取当前语言下所有的作品关联，但无法获取其它语言作品关联，作品数更新时也无法注意到
+                    result[trans.original_workno] = {workno: trans.original_workno, type: "original", lang: "JPN"};
+                    result[rjCode] = {workno: rjCode, type: "parent", lang: trans.lang};
+                    for (let workno of trans.child_worknos) {
+                        result[workno] = {workno: workno, type: "child", lang: trans.lang}
+                    }
+                }else if(trans.is_child){
+                    result[trans.original_workno] = {workno: trans.original_workno, type: "original", lang: "JPN"};
+                    result[trans.parent_workno] = {workno: trans.parent_workno, type: "parent", lang: trans.lang};
+                    result[rjCode] = {workno: rjCode, type: "child", lang: trans.lang};
                 }
-            }else if(trans.is_parent) {
-                //parent作品可以获取当前语言下所有的作品关联，但无法获取其它语言作品关联，作品数更新时也无法注意到
-                result[trans.original_workno] = {workno: trans.original_workno, type: "original", lang: "JPN"};
-                result[rjCode] = {workno: rjCode, type: "parent", lang: trans.lang};
-                for (let workno of trans.child_worknos) {
-                    result[workno] = {workno: workno, type: "child", lang: trans.lang}
-                }
-            }else if(trans.is_child){
-                result[trans.original_workno] = {workno: trans.original_workno, type: "original", lang: "JPN"};
-                result[trans.parent_workno] = {workno: trans.parent_workno, type: "parent", lang: trans.lang};
-                result[rjCode] = {workno: rjCode, type: "child", lang: trans.lang};
+
+                return result;
+            } catch (e) {
+                console.error(e);
+                return {};
             }
 
-            return result;
         },
 
         /**
@@ -4388,6 +4433,8 @@
                 return WorkPromise.getLinkedWorksFull(trans.original_workno, useCache, saveCache);
             }
 
+            //TODO: 先尝试从缓存获取
+
             let p = await WorkPromise.getWorkPromise(rjCode);
             let api = await p.api2;
             let result = {};
@@ -4397,10 +4444,10 @@
             for (let edition of languageEditions) {
                 if (!settings._s_cue_lang.includes(edition.lang)) continue;
                 //是需要的查询语言，进行Link递归查询
-                result = WorkPromise.mergeLinkage(result, WorkPromise.getLinkedWorks(edition.workno));
+                result = WorkPromise.mergeLinkage(result, await WorkPromise.getLinkedWorks(edition.workno));
             }
 
-            if (saveCache) WorkPromise.cacheLinkage(result);
+            if (saveCache) WorkPromise.cacheLinkage(rjCode, result);
             return result;
         },
 
@@ -4415,28 +4462,39 @@
          */
         getKikoeruSearchResult: async function(rjCode, searchProfile, linkages) {
             let url = searchProfile.searchUrlTemplate?.replaceAll("%s", rjCode);
-            let resp = await getHttpAsync(url, false, searchProfile.customHeaders);
-            if (!(resp.readyState === 4 && resp.status === 200)) {
-                return;
-            }
 
-            let data = JSON.parse(resp.responseText);
-            if (!Array.isArray(data.works)) {
-                throw new Error("Invalid Response.");
-            } else if (data.works.length <= 0) {
+            //TODO: 通过URL获取缓存结果
+
+            try{
+                let resp = await getHttpAsync(url, false, searchProfile.customHeaders);
+                if (!(resp.readyState === 4 && resp.status === 200)) {
+                    return;
+                }
+
+                let data = JSON.parse(resp.responseText);
+                if (!Array.isArray(data.works)) {
+                    throw new Error("Invalid Response.");
+                } else if (data.works.length <= 0) {
+                    return [];
+                }
+
+                let result = [];
+                for (const work of data.works) {
+                    let rj = work.id > 999999 ? `RJ0${work.id}` : `RJ${work.id}`;
+                    let link = linkages[rj];
+                    if(!link) continue;
+
+                    result.push(new SearchWorkInfo(link.workno, link.type, link.lang));
+                }
+
+                //TODO: 存储结果列表到缓存（url为key）
+
+                return result;
+            } catch (e) {
+                console.error(e);
                 return null;
             }
 
-            let result = [];
-            for (const work of data.works) {
-                let rj = work.id > 999999 ? `RJ0${work.id}` : `RJ${work.id}`;
-                let link = linkages[rj];
-                if(!link) continue;
-
-                result.push(new SearchWorkInfo(link.workno, link.type, link.lang));
-            }
-
-            return result;
         },
 
         /**
@@ -4444,7 +4502,6 @@
          * @param rjCode {string}
          * @param searchProfile {SearchProfile}
          * @param progressCallback {function (result: SearchResult): boolean} 搜索的阶段性成果，如果返回false则停止搜索
-         * @returns {SearchResult}
          */
         getSearchResult: async function(rjCode, searchProfile, progressCallback) {
             let searchFunction = null;
@@ -4462,7 +4519,7 @@
             let work = linkages[rjCode];
             work = new SearchWorkInfo(work.workno, work.type, work.lang);
 
-            let result = searchFunction(rjCode, searchProfile, linkages);
+            let result = await searchFunction(rjCode, searchProfile, linkages);
 
             searchSet.delete(rjCode);
             for (const work of result) {
@@ -4479,7 +4536,7 @@
                 }
 
                 let target = searchSet.values().next().value;
-                let res = searchFunction(target, searchProfile, linkages);
+                let res = await searchFunction(target, searchProfile, linkages);
                 result.push(...res);
 
                 searchSet.delete(target);
@@ -4699,7 +4756,7 @@
         getApiPromise: async function (rjCode, locale = undefined) {
             //获取对应语言下的实际信息
             let url = `https://www.dlsite.com/maniax/product/info/ajax?product_id=${rjCode}&cdn_cache_min=1` + (locale ? `&locale=${locale}` : "");
-            let resp = await DLsite.getHttpAsync(url);
+            let resp = await getHttpAsync(url);
             let data;
             if (resp.readyState === 4 && resp.status === 200) {
                 data = JSON.parse(resp.responseText);
@@ -6742,6 +6799,15 @@
 
             isInit = true;
         }
+
+        settings._s_search_profiles = [
+            new SearchProfile(
+                "kikoeru",
+                "https://kikoeru.air-mix.top/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s",
+                "kikoeru", {
+                    Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8va2lrb2VydSIsInN1YiI6ImFkbWluIiwiYXVkIjoiaHR0cDovL2tpa29lcnUvYXBpIiwibmFtZSI6ImFkbWluIiwiZ3JvdXAiOiJhZG1pbmlzdHJhdG9yIiwiaWF0IjoxNzQyODMzNDI2LCJleHAiOjE3NDU0MjU0MjZ9.qzh6RSPjB88qkw04pJ_h410ZlObbR66b9AA9zHEu7lU",
+                }),
+        ];
 
         if(!document.body || observing){
             return;
