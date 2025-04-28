@@ -7,6 +7,7 @@
 // @version     4.8.10
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
+// @connect     *
 // @grant       GM_setClipboard
 // @grant       GM_openInTab
 // @grant       GM_registerMenuCommand
@@ -265,6 +266,7 @@
         _s_tag_translation_request_vietnamese: false,
 
         //搜索相关
+        _s_base_search: true,
         _s_search_profiles: [],
         _s_cue_lang: ["CHI_HANS", "CHI_HANT"],  //限制关联搜索的语言范围，每多一种语言意味着多一次查询请求
         _s_full_linkage: true,  //开启后，会从DLSite上获取作品的所有关联情况。关闭则会尽力在不进行额外请求的情况下，找到部分作品关联。
@@ -1162,6 +1164,32 @@
             en_US: "Click to copy title, Alt+click to copy as valid filename.",
         },
 
+        search_result_this: {
+            zh_CN: "本作",
+            zh_TW: "本作",
+            en_US: "This"
+        },
+
+        search_result_this_lang: {
+            zh_CN: "该语言",
+            zh_TW: "该语言",
+            en_US: "Lang"
+        },
+
+        search_result_orig: {
+            zh_CN: "原版",
+            zh_TW: "原版",
+            en_US: "Orig"
+        },
+
+        search_result_translation: {
+            zh_CN: "翻译",
+            zh_TW: "翻译",
+            en_US: "🌐"
+        },
+
+
+
         get: function (key, langKey = "_s_lang") {
             return typeof key === "string" ? localizationMap[key][settings[langKey]] : key[settings[langKey]];
         }
@@ -1860,11 +1888,11 @@
         return (typeof GM !== "undefined" && GM !== null ? GM.xmlHttpRequest : GM_xmlhttpRequest);
     }
 
-    function getHttpAsync (url, anonymous = false, customHeaders = {}){
+    function getHttpAsync (url, anonymous = false, cacheAge = 0, customHeaders = {}){
         let headers = {...customHeaders};
         headers["Accept"] = "text/xml";
         headers["User-Agent"] = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)";
-        headers["Cache-Control"] = "no-cache";
+        headers["Cache-Control"] = cacheAge <= 0 ? "no-cache" : "max-age=" + cacheAge;
         return new Promise((resolve, reject) => {
             getXmlHttpRequest()({
                 method: "GET",
@@ -1875,6 +1903,19 @@
                 anonymous: anonymous
             });
         })
+    }
+
+    /**
+     * 将文本转化成 'SHA-256|原文本长度' 格式的哈希字符串
+     * @param text {string} 待转换的文本
+     * @returns {Promise<string>}
+     */
+    async function hash(text) {
+        const enc = new TextEncoder();
+        const data = enc.encode(text);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('') + `|${text.length.toString(16)}`;
     }
 
     //endregion
@@ -2341,7 +2382,7 @@
         已存：此语言、原版、翻译 (简中-2/繁中-1/英-1)
         未存此语言｜已存：原版、翻译 (繁中-1/英-1)
         ---
-        ✔ 此语言 原版 翻译(简中-2/繁中-1/英-1)     ✔ This Lang, Orig, 🌐(SC-2/TC-1/EN-1)
+        ✔ 此语言 原版 翻译(简中-2/繁中-1/英-1)     ✔ Lang, Orig, 🌐(SC-2/TC-1/EN-1)
         ✔ 此语言(简中-2) 原版...
 
         ✘此语言｜✔ 原版 翻译(繁中-1/英-1)
@@ -2369,6 +2410,10 @@
         constructor(searchProfileName, searchWorkInfo, resultList) {
             this.profileName = searchProfileName;
             this.workInfo = searchWorkInfo;
+
+            /**
+             * @type {{String: SearchWorkInfo}}
+             */
             this.result = {};
 
             for (let res of resultList) {
@@ -2394,6 +2439,10 @@
                     info.hasCurrent = true;
                 }
 
+                if(work.type === "parent" && res.type === "child" && work.lang === res.lang){
+                    info.hasCurrent = true;
+                }
+
                 if(work.type !== "original" && res.type === "original") {
                     info.hasOriginal = true;
                 }
@@ -2412,21 +2461,20 @@
         }
 
         getStatusText() {
-            //TODO: 本地化
             let etc = !settings._s_full_linkage || !settings._s_search_linkage;
             let work = this.workInfo;
             let info = this.analyze();
             let text = info.hasCurrent ?
-                `✔ ${work.type === "parent" ? "该语言" : "本作"}` :
-                `✘ ${work.type === "parent" ? "该语言" : "本作"}`;
+                `✔ ${work.type === "parent" ? localizePopup(localizationMap.search_result_this_lang) : localizePopup(localizationMap.search_result_this)}` :
+                `✘ ${work.type === "parent" ? localizePopup(localizationMap.search_result_this_lang) : localizePopup(localizationMap.search_result_this)}`;
             if (info.hasOriginal || info.hasTranslation){
                 text += info.hasCurrent ? ` ` : `｜✔ `;
             }
             if (info.hasOriginal){
-                text += `${"原版"}${info.hasTranslation ? " " : ""}`;
+                text += `${localizePopup(localizationMap.search_result_orig)}${info.hasTranslation ? " " : ""}`;
             }
             if (info.hasTranslation){
-                text += `${"翻译"}`
+                text += `${localizePopup(localizationMap.search_result_translation)}`
             } else {
                 return `${text}${etc ? "..." : ""}`;
             }
@@ -2454,12 +2502,13 @@
         _timeAdd;
         _timeUpdate;
         _timeAccess;
-        _timeExpire;
-        constructor(data) {
+        _timeExpire = 0;
+        constructor(data, timeExp = 0) {
             this._data = data;
             this._timeAdd = Date.now();
             this._timeUpdate = undefined;
             this._timeAccess = undefined;
+            this._timeExpire = timeExp;
         }
 
         get data() {
@@ -2469,7 +2518,8 @@
         get timeAdd() { return this._timeAdd; }
         get timeUpdate() { return this._timeUpdate; }
         get timeAccess() { return this._timeAccess; }
-        get timeExpire() { return this._timeExpire }
+        get timeExpire() { return this._timeExpire; }
+        get hasExpired() { return this._timeExpire > 0 && this._timeExpire < Date.now()}  //0代表无过期时间
 
         set timeExpire(value) {
             if(typeof value !== "number" || value < 0) return;
@@ -2479,10 +2529,7 @@
         update(data, expTime = -1) {
             this._data = data;
             this._timeUpdate = Date.now();
-
-            if(expTime > -1) {
-                this._timeExpire = expTime;
-            }
+            this.timeExpire = expTime;
         }
     }
 
@@ -2549,8 +2596,17 @@
         }
 
         static fromObject(obj, name) {
-            if(!obj.name) return new DataCacheStorage(name);
-            return new DataCacheStorage(obj.name, obj.maxSize, obj.dropExpired, obj.autoSave);
+            if(!obj._name) return new DataCacheStorage(name);
+            let storage = Object.assign(new DataCacheStorage(name), obj);
+            for (const keyX in storage._dataMap) {
+                let node = storage._dataMap[keyX];
+                let cache = node.cache;
+                if(cache) {
+                    cache = Object.assign(new DataCache(null, -1), cache);
+                    node.cache = cache;
+                }
+            }
+            return storage;
         }
 
         /**
@@ -2559,16 +2615,25 @@
          * @param maxSize {number} 最大缓存记录条数
          * @param dropExpired {boolean} 是否删除过期记录
          * @param autoSave {boolean} 是否自动保存
+         * @param replaceProp {boolean} 如果库已存在，是否使用设置的值替换原有设置
          * @returns {DataCacheStorage} 名称对应的存储库
          */
-        static open(storageName, maxSize = undefined, dropExpired = undefined, autoSave = undefined) {
+        static open(storageName, maxSize = undefined, dropExpired = undefined, autoSave = undefined, replaceProp = false) {
             if (!(storageName in this.#activeStorages)) {
-                this.#activeStorages[storageName] = DataCacheStorage.fromObject(GM_getValue(`cache_${storageName}`, new DataCacheStorage(storageName)), storageName);
+                this.#activeStorages[storageName] = DataCacheStorage.fromObject(GM_getValue(`cache_${storageName}`, new DataCacheStorage(storageName, maxSize, dropExpired, autoSave)), storageName);
             }
             let storage = this.#activeStorages[storageName];
-            storage.maxSize = maxSize;
-            storage.dropExpired = dropExpired;
-            storage.autoSave = autoSave;
+
+            if(replaceProp){
+                storage.maxSize = maxSize;
+                storage.dropExpired = dropExpired;
+                storage.autoSave = autoSave;
+            }
+
+            if(storage.dropExpired) {
+                storage.dropExpiredCache();
+            }
+
             return this.#activeStorages[storageName];
         }
 
@@ -2627,9 +2692,8 @@
         #isExpired(key) {
             let keyX = "_" + key;
             if(!(keyX in this._dataMap)) return true;
-            let now = Date.now();
             let cache = this._dataMap[keyX].cache;
-            let expired = now > cache.timeExpire;
+            let expired = cache.hasExpired;
 
             if (expired && this.dropExpired) this.drop(key);
             return expired;
@@ -2645,10 +2709,10 @@
             let keyX = "_" + key;
             let node = this._dataMap[keyX];
             if (node) {
-                node.cache.update(data);
+                node.cache.update(data, expTime);
             } else {
                 node = {
-                    cache: new DataCache(data),
+                    cache: new DataCache(data, expTime),
                     next: null,
                     prev: null
                 };
@@ -2671,6 +2735,19 @@
             delete this._dataMap[keyX];
 
             if(this.autoSave) this.save();
+        }
+
+        /**
+         * 删除所有过期的缓存记录
+         */
+        dropExpiredCache() {
+            for (let keyX in this._dataMap){
+                if(keyX.startsWith("-")) continue;
+                let node = this._dataMap[keyX];
+                if(!node.cache.hasExpired) continue;
+
+                this.drop(keyX.substring(1));
+            }
         }
 
         /**
@@ -3454,7 +3531,7 @@
                 if(error) {
                     tag.classList.remove("tag-gray", "tag-orange", "tag-green", "tag-blue");
                     tag.classList.add("tag-gray");
-                    tag.innerText = `${textPrefix}❌`;
+                    tag.innerText = `${textPrefix}❌error`;
                     return;
                 }
 
@@ -4389,6 +4466,18 @@
 
         cacheLinkage: function(originalWorkno, linkage) {
             //缓存与rjCode相关的关联作品信息，任意一个关联作品RJ均能找到此关联信息
+
+            function getExpireTime() {
+                //UTC+9第二天的0点
+                const now = new Date();
+                const nowMs = now.getTime();
+                const utc9Ms = nowMs + now.getTimezoneOffset() * 60000 + 9 * 3600 * 1000;
+                const localeOffset = utc9Ms - nowMs;
+                const dayMs = 24 * 3600 * 1000;
+                const nextDayUtc9 = utc9Ms - (utc9Ms % dayMs) + dayMs;
+                return nextDayUtc9 - localeOffset;
+            }
+
             let maxLinkMapSize = 128;
             let linkCache = DataCacheStorage.open(
                 "work-linkages", maxLinkMapSize, false, true);
@@ -4401,7 +4490,7 @@
             } else {
                 data = linkage;
             }
-            linkCache.commit(originalWorkno, data);
+            linkCache.commit(originalWorkno, data, getExpireTime());
         },
 
         getLinkedWorks: async function(rjCode) {
@@ -4445,11 +4534,17 @@
          */
         getLinkedWorksFull: async function(rjCode, useCache = true, saveCache = true) {
             let trans = await WorkPromise.getTranslationInfo(rjCode);
+            if(trans.is_original === undefined || trans.is_original === null) return {};
             if(!trans.is_original) {
                 return WorkPromise.getLinkedWorksFull(trans.original_workno, useCache, saveCache);
             }
 
-            //TODO: 先尝试从缓存获取
+            //先尝试从缓存获取
+            let storage = DataCacheStorage.open("work-linkages", 128, false, true);
+            let cache = storage.get(rjCode);
+            if(cache) {
+                return cache;
+            }
 
             let p = await WorkPromise.getWorkPromise(rjCode);
             let api = await p.api2;
@@ -4469,6 +4564,18 @@
 
         //仓库搜索
 
+        cacheSearchResult(rjCode, searchProfileName, fullSearch, data) {
+            const hashKey = `${rjCode}|${searchProfileName}|${fullSearch}`;
+            const storage = DataCacheStorage.open("search-results", 128, false, true)
+            storage.commit(hashKey, data, Date.now() + 3 * 60 * 1000)
+        },
+
+        getSearchResultFromCache(rjCode, searchProfileName, fullSearch) {
+            const hashKey = `${rjCode}|${searchProfileName}|${fullSearch}`;
+            const storage = DataCacheStorage.open("search-results", 128, false, true)
+            return storage.get(hashKey);
+        },
+
         /**
          * 获取来自Kikoeru API的搜索结果
          * @param rjCode {string}
@@ -4479,10 +4586,8 @@
         getKikoeruSearchResult: async function(rjCode, searchProfile, linkages) {
             let url = searchProfile.searchUrlTemplate?.replaceAll("%s", rjCode);
 
-            //TODO: 通过URL获取缓存结果
-
             try{
-                let resp = await getHttpAsync(url, false, searchProfile.customHeaders);
+                let resp = await getHttpAsync(url, false, 180, searchProfile.customHeaders);
                 if (!(resp.readyState === 4 && resp.status === 200)) {
                     return;
                 }
@@ -4502,8 +4607,6 @@
 
                     result.push(new SearchWorkInfo(link.workno, link.type, link.lang));
                 }
-
-                //TODO: 存储结果列表到缓存（url为key）
 
                 return result;
             } catch (e) {
@@ -4535,33 +4638,50 @@
             let work = linkages[rjCode];
             work = new SearchWorkInfo(work.workno, work.type, work.lang);
 
-            let result = await searchFunction(rjCode, searchProfile, linkages);
+            //检查缓存是否存在，存在则直接使用缓存结果
+            let cache = WorkPromise.getSearchResultFromCache(rjCode, searchProfile.name, settings._s_search_linkage)
+            if(Array.isArray(cache)) return new SearchResult(searchProfile.name, work, cache);
+
+            let result = {};
+            let res = await searchFunction(rjCode, searchProfile, linkages);
+            res.forEach(v => result[v.workno] = v);
+
+            if(!settings._s_search_linkage) {
+                //直接保存并返回
+                WorkPromise.cacheSearchResult(rjCode, searchProfile.name, false, res)
+                return new SearchResult(searchProfile.name, work, res);
+            }
+
+            //---进行完整搜索---
 
             searchSet.delete(rjCode);
-            for (const work of result) {
+            for (const work of res) {
                 searchSet.delete(work.workno);
             }
 
-            if(!settings._s_search_linkage) return new SearchResult(searchProfile.name, work, result);
-
             while(searchSet.size > 0) {
-
                 //提交当前搜索到的部分结果（最后一次的完整结果通过返回值提交，故这段放在while开头
-                if(!progressCallback(new SearchResult(searchProfile.name, work, result))) {
-                    return new SearchResult(searchProfile.name, work, result);
+                if(!progressCallback(new SearchResult(searchProfile.name, work, res))) {
+                    //非完整结果不保存
+                    return new SearchResult(searchProfile.name, work, res);
                 }
 
                 let target = searchSet.values().next().value;
-                let res = await searchFunction(target, searchProfile, linkages);
-                result.push(...res);
+                res = await searchFunction(target, searchProfile, linkages);
+                res.forEach(v => result[v.workno] = v);
 
                 searchSet.delete(target);
                 for(const work of res) {
                     searchSet.delete(work.workno);
                 }
+
+                //res也需要合并先前搜索到的部分结果
+                res = Object.values(result);
             }
 
-            return new SearchResult(searchProfile.name, work, result);
+            //保存结果并返回
+            WorkPromise.cacheSearchResult(rjCode, searchProfile.name, true, res)
+            return new SearchResult(searchProfile.name, work, res);
         },
     }
 
@@ -6047,6 +6167,68 @@
                                     ]
                                 }
                             ]
+                        },
+                    ]
+                },
+                {
+                    //分类：仓库检查
+                    //TODO 本地化
+                    title: "仓库检查",
+                    items: [
+                        {
+                            //TODO 仓检设置
+                            items: [
+                                {
+                                    //仓检开关
+                                    type: "checkbox",
+                                    title: "开启仓检",
+                                    id: "base_search",
+                                    tooltip: "开启后，会检查特定仓库内的作品及其相关版本是否存在，并以标签的形式展示每个仓库的搜索结果。"
+                                },
+                                {
+                                    //仓库地址
+                                    type: "input",
+                                    title: "仓库查询url",
+                                    id: "search_url_pattern",
+                                    tooltip: "仓库搜索url模板，输入%s表示RJ号<br/><br/>" +
+                                        "<b>例如：https://www.xxx.com/sss?desc=1&search=%s</b>"
+                                },
+                                {
+                                    //自定义请求头
+                                    //TODO 添加textarea模板并将这个type改成textarea
+                                    type: "input",
+                                    title: "自定义请求头",
+                                    id: "search_url_headers",
+                                    tooltip: "每行一个，格式为key:value，用换行符分隔。（通常仓库需要身份认证才可访问，此时需要添加认证用请求头）<br/><br/>" +
+                                        "<b>例如：<br/>Authorization: Bearer xxxxxxxxxx</b>"
+                                },
+                                {
+                                    //是否查找完整关联
+                                    type: "checkbox",
+                                    title: "完整关联",
+                                    id: "full_linkage",
+                                    tooltip: "查询仓库前，会先寻找与该作品相关的其它作品（如原版、翻译版等）<br/>" +
+                                        "会产生多次网络请求，但能使得仓库搜索结果更完整（需要同时开启连锁查询）"
+                                },
+                                {
+                                    //搜索语言列表
+                                    type: "input",
+                                    title: "语言列表",
+                                    id: "cue_langsss",
+                                    tooltip: "用空格分隔的语言代码，代表你想要搜索的所有语言关联。<br/>" +
+                                        "语言个数会影响搜索效率和发往DLSite的请求数量。<br/><br/>" +
+                                        "<b>例子：CHI_HANS CHI_HANT ENG</b><br/>" +
+                                        "上例表示需要搜索简体中文、繁体中文、英文语言的翻译作品关联，其它语言的关联将不会搜寻。"
+                                },
+                                {
+                                    //是否进行连锁查询
+                                    type: "checkbox",
+                                    title: "连锁查询",
+                                    id: "search_linkage",
+                                    tooltip: "搜索仓库时，对所有关联的RJ号进行搜索，可能产生多次请求。<br/>" +
+                                        "如果你的仓库包含搜索其它语言版本的功能，可以关闭此项。"
+                                }
+                            ]
                         }
                     ]
                 }
@@ -6266,12 +6448,35 @@
             return rowElement;
         };
 
-        createToggleRow(row){
-            //创建Row
+        createEmptyRow(row) {
             const rowElement = document.createElement("tr");
             if(row.indent) {
                 rowElement.classList.add(this.getClass(`indent-${row.indent}`));
             }
+            return rowElement;
+        };
+
+        createTitleCell(row, titleTag = "label") {
+            const titleCell = document.createElement("td");
+            titleCell.className = this.getClass("tooltip");
+
+            let titleElement;
+            if(titleTag === "label") {
+                titleElement = document.createElement("label");
+                titleElement.setAttribute("for", this.getClass(row.id));
+            } else {
+                titleElement = document.createElement(titleTag);
+            }
+            titleElement.className = this.getClass("row-title") + " " + this.getClass("ignore-drag");
+            titleElement.innerHTML = Csp.createHTML(row.title);
+            titleCell.appendChild(titleElement);
+
+            return [titleCell, titleElement];
+        };
+
+        createToggleRow(row){
+            //创建Row
+            const rowElement = this.createEmptyRow(row);
 
             //创建设置项标题
             const titleCell = document.createElement("td");
@@ -6347,10 +6552,7 @@
         };
 
         createDropdownRow(row){
-            const rowElement = document.createElement("tr");
-            if(row.indent) {
-                rowElement.classList.add(this.getClass(`indent-${row.indent}`));
-            }
+            const rowElement = this.createEmptyRow(row);
 
             const titleCell = document.createElement("td");
             titleCell.className = this.getClass("tooltip");
@@ -6414,10 +6616,7 @@
         };
 
         createInputRow(row){
-            const rowElement = document.createElement("tr");
-            if(row.indent) {
-                rowElement.classList.add(this.getClass(`indent-${row.indent}`));
-            }
+            const rowElement = this.createEmptyRow(row);
 
             const titleCell = document.createElement("td");
             titleCell.className = this.getClass("tooltip");
@@ -6475,10 +6674,7 @@
         };
 
         createTagSwitchRow(row){
-            const rowElement = document.createElement("tr");
-            if(row.indent) {
-                rowElement.classList.add(this.getClass(`indent-${row.indent}`));
-            }
+            const rowElement = this.createEmptyRow(row);
 
             const tagCell = document.createElement("td");
             tagCell.colSpan = 2;
@@ -6819,9 +7015,9 @@
         settings._s_search_profiles = [
             new SearchProfile(
                 "kikoeru",
-                "https://kikoeru.air-mix.top/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s",
+                "https://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s",
                 "kikoeru", {
-                    Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8va2lrb2VydSIsInN1YiI6ImFkbWluIiwiYXVkIjoiaHR0cDovL2tpa29lcnUvYXBpIiwibmFtZSI6ImFkbWluIiwiZ3JvdXAiOiJhZG1pbmlzdHJhdG9yIiwiaWF0IjoxNzQyODMzNDI2LCJleHAiOjE3NDU0MjU0MjZ9.qzh6RSPjB88qkw04pJ_h410ZlObbR66b9AA9zHEu7lU",
+                    Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8va2lrb2VydSIsInN1YiI6ImFkbWluIiwiYXVkIjoiaHR0cDovL2tpa29lcnUvYXBpIiwibmFtZSI6ImFkbWluIiwiZ3JvdXAiOiJhZG1pbmlzdHJhdG9yIiwiaWF0IjoxNzQ1NDI3NjA1LCJleHAiOjE3NDgwMTk2MDV9.Gh7QaVfb6VQ0oRd-5_snuUiHVJAiIpsfPfrp5Nee64s",
                 }),
         ];
 
