@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     4.8.10
+// @version     p-4.9.0
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @connect     *
@@ -266,11 +266,15 @@
         _s_tag_translation_request_vietnamese: false,
 
         //搜索相关
-        _s_base_search: true,
-        _s_search_profiles: [],
-        _s_cue_lang: ["CHI_HANS", "CHI_HANT"],  //限制关联搜索的语言范围，每多一种语言意味着多一次查询请求
+        _s_base_search: false,
+        _s_search_url_pattern: "",
+        _s_show_url_pattern: "",
+        _s_search_url_headers: "",
+        _s_cue_languages: "CHI_HANS CHI_HANT",
+        _ss_search_profiles: [],
+        _ss_cue_lang: ["CHI_HANS", "CHI_HANT"],  //限制关联搜索的语言范围，每多一种语言意味着多一次查询请求
         _s_full_linkage: true,  //开启后，会从DLSite上获取作品的所有关联情况。关闭则会尽力在不进行额外请求的情况下，找到部分作品关联。
-        _s_search_linkage: true,  //开启后，会到仓库中查找所有关联作品，可能会产生多次网络请求（如果你的仓库搜索自带该功能，则可关闭此项）。
+        _s_search_linkage: true,  //开启后，会到仓库中查找所有关联作品，可能会产生多次网络请求（如果你的仓库搜索自带该功能，开启此项也不会严重影响速度）。
 
         backup: function() {
             let backup = {};
@@ -1899,7 +1903,9 @@
                 url,
                 headers: headers,
                 onload: resolve,
-                onerror: reject,
+                onerror: resp => {
+                    reject(resp);
+                },
                 anonymous: anonymous
             });
         })
@@ -2335,15 +2341,39 @@
         /**
          * @param name {string}
          * @param searchUrlTemplate {string}
+         * @param showUrlTemplate {string}
          * @param apiType {string}
          * @param customHeaders {{}}
          */
-        constructor(name, searchUrlTemplate, apiType, customHeaders) {
+        constructor(name, searchUrlTemplate, showUrlTemplate, apiType, customHeaders) {
             this.name = name;
             this.searchUrlTemplate = searchUrlTemplate;
+            this.showUrlTemplate = showUrlTemplate;
             this.apiType = apiType;
             this.customHeaders = customHeaders;
             this.enabled = true;
+
+            this.init(apiType);
+        }
+
+        init(apiType) {
+            if(apiType === "kikoeru") {
+                //http://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s
+                let apiPos = this.searchUrlTemplate.lastIndexOf("/api/");
+                let showPos = this.showUrlTemplate.lastIndexOf("/works");
+
+                if(apiPos >= 0 && this.showUrlTemplate === "") {
+                    let urlPrefix = this.searchUrlTemplate.substring(0, apiPos);
+                    this.showUrlTemplate = `${urlPrefix}/works?keyword=%s`;
+                }else if(showPos >= 0 && this.searchUrlTemplate === "") {
+                    let urlPrefix = this.showUrlTemplate.substring(0, showPos);
+                    this.searchUrlTemplate = `${urlPrefix}/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s`;
+                }
+            }
+        }
+
+        async getHash() {
+            return await hash(`${this.apiType}|${this.searchUrlTemplate}`)
         }
     }
 
@@ -2480,14 +2510,20 @@
             }
 
             let str = "";
-            for (let lang of settings._s_cue_lang) {
+            for (let lang of settings._ss_cue_lang) {
                 let langStr = LANG_MAP_ABBR[lang];
                 let langCot = info.langList[lang];
                 if(!langCot || langCot % 10 === 0) continue;
 
                 str += `${langStr}x${langCot % 10}${langCot > 11 ? "?" : ""}/`
             }
-            str = str.substring(0, str.length - 1);
+            if(!str.endsWith("/")){
+                //代表语言的括号内是空的，说明有该作品但是语言不在cue lang中，此时在里面加"..."代表还有未知语言
+                //TODO 以后改成按已有语言展示而不是按cue lang展示
+                etc = true;
+            }else{
+                str = str.substring(0, str.length - 1);
+            }
 
             return `${text}(${str}${etc ? "..." : ""})`;
         }
@@ -3527,13 +3563,48 @@
         get_tag_base_search: async function(rjCode, searchProfile) {
             const textPrefix = `${searchProfile.name}: `;
             const tag = Popup.get_tag(`${textPrefix}⏳`, "tag-gray");
-            const updateTag = (result, done, error = false) => {
-                if(error) {
-                    tag.classList.remove("tag-gray", "tag-orange", "tag-green", "tag-blue");
-                    tag.classList.add("tag-gray");
-                    tag.innerText = `${textPrefix}❌error`;
+            let urlList = [];
+            const updateUrlList = function (result) {
+                urlList = [];
+
+                if(!result) {
+                    urlList.push(searchProfile.showUrlTemplate?.replaceAll("%s", rjCode));
                     return;
                 }
+
+                let findCurrent = false;
+                for (const workno of Object.keys(result.result)) {
+                    let url = searchProfile.showUrlTemplate?.replaceAll("%s", workno);
+                    urlList.push(url);
+
+                    findCurrent = findCurrent || (workno === rjCode);
+                }
+
+                if(!findCurrent) {
+                    let url = searchProfile.showUrlTemplate?.replaceAll("%s", rjCode);
+                    urlList.unshift(url);
+                }
+
+                urlList.reverse();
+            }
+
+            const onClick = function (e) {
+                for (const url of urlList) {
+                    GM_openInTab(url);
+                }
+            }
+
+            const updateTag = (result, done, error = false, errText = "error") => {
+                if(error) {
+                    updateUrlList(null);
+
+                    tag.classList.remove("tag-gray", "tag-orange", "tag-green", "tag-blue");
+                    tag.classList.add("tag-gray");
+                    tag.innerText = `${textPrefix}❌${errText}`;
+                    return;
+                }
+
+                updateUrlList(result);
 
                 let info = result.analyze();
                 let tagClass = `${VOICELINK_CLASS}_tag-gray`;
@@ -3557,10 +3628,13 @@
             }).then(result => {
                 return updateTag(result, true);
             }).catch(e => {
+                console.error(e);
                 return updateTag(null, false, true);
             });
 
             tag.classList.add(`${VOICELINK_CLASS}_tag_small`);
+            tag.addEventListener("click", onClick);
+            tag.style.cursor = "pointer";
             return tag;
         },
 
@@ -3608,7 +3682,7 @@
             const container = document.createElement("div");
             container.classList.add(`${VOICELINK_CLASS}_tags`);
             container.style.setProperty("margin-top", "0", "important");  //marginTop = "0 !important";
-            Popup.get_tag_base_search(rjCode, settings._s_search_profiles[0]).then(tag => {
+            Popup.get_tag_base_search(rjCode, settings._ss_search_profiles[0]).then(tag => {
                 if(tag){
                     container.appendChild(tag);
                 }
@@ -4480,9 +4554,10 @@
 
             let maxLinkMapSize = 128;
             let linkCache = DataCacheStorage.open(
-                "work-linkages", maxLinkMapSize, false, true);
+                "work-linkages", maxLinkMapSize, true, true, true);
 
             //存入Linkage
+            let langs = settings._ss_cue_lang.join();
             let data = linkCache.get(originalWorkno);
             if(Array.isArray(data)){
                 //已存在部分Linkage则合并它们
@@ -4490,7 +4565,13 @@
             } else {
                 data = linkage;
             }
-            linkCache.commit(originalWorkno, data, getExpireTime());
+            linkCache.commit(`${originalWorkno}|${langs}`, data, getExpireTime());
+        },
+
+        getLinkageFromCache: function(originalWorkno) {
+            const hashKey = `${originalWorkno}|${settings._ss_cue_lang.join()}`
+            let storage = DataCacheStorage.open("work-linkages", 128, true, true, true);
+            return storage.get(hashKey);
         },
 
         getLinkedWorks: async function(rjCode) {
@@ -4536,12 +4617,15 @@
             let trans = await WorkPromise.getTranslationInfo(rjCode);
             if(trans.is_original === undefined || trans.is_original === null) return {};
             if(!trans.is_original) {
-                return WorkPromise.getLinkedWorksFull(trans.original_workno, useCache, saveCache);
+                //TODO 将结果和待搜索RJ号的本地关联搜索结果merge一下再返回（不存缓存，否则会破坏缓存内语言和cue_lang的对应性
+                //TODO 上面那个不算，改成临时添加cue lang，然后方法改成用参数接收cue lang而不是读设置项，缓存那边也要改成参数传递
+                let result = WorkPromise.getLinkedWorksFull(trans.original_workno, useCache, saveCache);
+                result = WorkPromise.mergeLinkage(result, await WorkPromise.getLinkedWorks(rjCode));
+                return result;
             }
 
             //先尝试从缓存获取
-            let storage = DataCacheStorage.open("work-linkages", 128, false, true);
-            let cache = storage.get(rjCode);
+            let cache = WorkPromise.getLinkageFromCache(rjCode)
             if(cache) {
                 return cache;
             }
@@ -4553,7 +4637,7 @@
             result[rjCode] = {workno: rjCode, type: "original", lang: "JPN"};
             let languageEditions = api.language_editions;
             for (let edition of languageEditions) {
-                if (!settings._s_cue_lang.includes(edition.lang)) continue;
+                if (!settings._ss_cue_lang.includes(edition.lang)) continue;
                 //是需要的查询语言，进行Link递归查询
                 result = WorkPromise.mergeLinkage(result, await WorkPromise.getLinkedWorks(edition.workno));
             }
@@ -4564,15 +4648,15 @@
 
         //仓库搜索
 
-        cacheSearchResult(rjCode, searchProfileName, fullSearch, data) {
-            const hashKey = `${rjCode}|${searchProfileName}|${fullSearch}`;
-            const storage = DataCacheStorage.open("search-results", 128, false, true)
+        cacheSearchResult(rjCode, searchProfileHash, fullSearch, data) {
+            const hashKey = `${rjCode}|${searchProfileHash}|${fullSearch}`;
+            const storage = DataCacheStorage.open("search-results", 128, true, true, true)
             storage.commit(hashKey, data, Date.now() + 3 * 60 * 1000)
         },
 
-        getSearchResultFromCache(rjCode, searchProfileName, fullSearch) {
-            const hashKey = `${rjCode}|${searchProfileName}|${fullSearch}`;
-            const storage = DataCacheStorage.open("search-results", 128, false, true)
+        getSearchResultFromCache(rjCode, searchProfileHash, fullSearch) {
+            const hashKey = `${rjCode}|${searchProfileHash}|${fullSearch}`;
+            const storage = DataCacheStorage.open("search-results", 128, true, true, true)
             return storage.get(hashKey);
         },
 
@@ -4639,7 +4723,7 @@
             work = new SearchWorkInfo(work.workno, work.type, work.lang);
 
             //检查缓存是否存在，存在则直接使用缓存结果
-            let cache = WorkPromise.getSearchResultFromCache(rjCode, searchProfile.name, settings._s_search_linkage)
+            let cache = WorkPromise.getSearchResultFromCache(rjCode, await searchProfile.getHash(), settings._s_search_linkage)
             if(Array.isArray(cache)) return new SearchResult(searchProfile.name, work, cache);
 
             let result = {};
@@ -4648,7 +4732,7 @@
 
             if(!settings._s_search_linkage) {
                 //直接保存并返回
-                WorkPromise.cacheSearchResult(rjCode, searchProfile.name, false, res)
+                WorkPromise.cacheSearchResult(rjCode, await searchProfile.getHash(), false, res)
                 return new SearchResult(searchProfile.name, work, res);
             }
 
@@ -4680,7 +4764,7 @@
             }
 
             //保存结果并返回
-            WorkPromise.cacheSearchResult(rjCode, searchProfile.name, true, res)
+            WorkPromise.cacheSearchResult(rjCode, await searchProfile.getHash(), true, res)
             return new SearchResult(searchProfile.name, work, res);
         },
     }
@@ -6176,34 +6260,62 @@
                     title: "仓库检查",
                     items: [
                         {
-                            //TODO 仓检设置
                             items: [
                                 {
                                     //仓检开关
                                     type: "checkbox",
                                     title: "开启仓检",
                                     id: "base_search",
-                                    tooltip: "开启后，会检查特定仓库内的作品及其相关版本是否存在，并以标签的形式展示每个仓库的搜索结果。"
+                                    tooltip: "开启后，会检查特定仓库内的作品及其相关版本是否存在，并以标签的形式展示每个仓库的搜索结果。<br/><br/>" +
+                                        "<b><u>注意：该功能会向第三方仓库API发送查询信息，若仓库不属于你，请在确认仓库所有者允许的情况下使用该功能！</u></b>"
                                 },
                                 {
-                                    //仓库地址
+                                    //仓库地址(API)
+                                    binding: {
+                                        target: "base_search",
+                                        value: true
+                                    },
+
                                     type: "input",
-                                    title: "仓库查询url",
+                                    title: "仓库查询url (API)",
                                     id: "search_url_pattern",
-                                    tooltip: "仓库搜索url模板，输入%s表示RJ号<br/><br/>" +
-                                        "<b>例如：https://www.xxx.com/sss?desc=1&search=%s</b>"
+                                    tooltip: "仓库搜索url模板，输入%s表示RJ号（请输入API地址而非前端地址）<br/>" +
+                                        "如果你不知道api地址，请留空仅填写结果展示url，保存并刷新页面后，系统会尝试匹配可能的api地址<br/><br/>" +
+                                        "<b>例如：https://www.xxx.com/api/search?desc=1&keyword=%s</b>",
+                                },
+                                {
+                                    //仓库地址(前端)
+                                    binding: {
+                                        target: "base_search",
+                                        value: true
+                                    },
+
+                                    type: "input",
+                                    title: "结果展示url (前端)",
+                                    id: "show_url_pattern",
+                                    tooltip: "结果展示url模板，输入%s表示RJ号（请输入你在仓库搜索时，地址栏展示的url）<br/><br/>" +
+                                        "<b>例如：https://www.xxx.com/works?search=%s</b>",
                                 },
                                 {
                                     //自定义请求头
-                                    //TODO 添加textarea模板并将这个type改成textarea
-                                    type: "input",
+                                    binding: {
+                                        target: "base_search",
+                                        value: true
+                                    },
+
+                                    type: "textarea",
                                     title: "自定义请求头",
                                     id: "search_url_headers",
                                     tooltip: "每行一个，格式为key:value，用换行符分隔。（通常仓库需要身份认证才可访问，此时需要添加认证用请求头）<br/><br/>" +
-                                        "<b>例如：<br/>Authorization: Bearer xxxxxxxxxx</b>"
+                                        "<b>例如：<br/>Authorization: Bearer xxxxxxxxxx</b>",
                                 },
                                 {
                                     //是否查找完整关联
+                                    binding: {
+                                        target: "base_search",
+                                        value: true
+                                    },
+
                                     type: "checkbox",
                                     title: "完整关联",
                                     id: "full_linkage",
@@ -6212,9 +6324,14 @@
                                 },
                                 {
                                     //搜索语言列表
+                                    binding: {
+                                        target: "base_search",
+                                        value: true
+                                    },
+
                                     type: "input",
                                     title: "语言列表",
-                                    id: "cue_langsss",
+                                    id: "cue_languages",
                                     tooltip: "用空格分隔的语言代码，代表你想要搜索的所有语言关联。<br/>" +
                                         "语言个数会影响搜索效率和发往DLSite的请求数量。<br/><br/>" +
                                         "<b>例子：CHI_HANS CHI_HANT ENG</b><br/>" +
@@ -6222,11 +6339,16 @@
                                 },
                                 {
                                     //是否进行连锁查询
+                                    binding: {
+                                        target: "base_search",
+                                        value: true
+                                    },
+
                                     type: "checkbox",
                                     title: "连锁查询",
                                     id: "search_linkage",
                                     tooltip: "搜索仓库时，对所有关联的RJ号进行搜索，可能产生多次请求。<br/>" +
-                                        "如果你的仓库包含搜索其它语言版本的功能，可以关闭此项。"
+                                        "如果你的仓库包含搜索其它语言版本的功能，开启此项也不会影响速度。"
                                 }
                             ]
                         }
@@ -6428,6 +6550,9 @@
                 case "input":
                     rowElement = this.createInputRow(row);
                     break;
+                case "textarea":
+                    rowElement = this.createTextareaRow(row);
+                    break;
                 case "tag_switch":
                     rowElement = this.createTagSwitchRow(row);
                     break;
@@ -6471,27 +6596,32 @@
             titleElement.innerHTML = Csp.createHTML(row.title);
             titleCell.appendChild(titleElement);
 
-            return [titleCell, titleElement];
-        };
-
-        createToggleRow(row){
-            //创建Row
-            const rowElement = this.createEmptyRow(row);
-
-            //创建设置项标题
-            const titleCell = document.createElement("td");
-            titleCell.className = this.getClass("tooltip");
-            const title = document.createElement("span");
-            title.className = this.getClass("row-title") + " " + this.getClass("ignore-drag");
-            title.innerHTML = Csp.createHTML(row.title);
-            titleCell.appendChild(title);
-
             if(row.tooltip) {
                 const tooltip = document.createElement("span");
                 tooltip.className = this.getClass("tooltip-text");
                 tooltip.innerHTML = Csp.createHTML(row.tooltip);
                 titleCell.appendChild(tooltip);
             }
+
+            return [titleCell, titleElement];
+        };
+
+        createResetButtonSmall(row, resetFunction) {
+            const settingId = `_s_${row.id}`;
+            const defaultValue = this.settings.getDefaultValue(settingId);
+            const resetButton = document.createElement("button");
+            resetButton.className = this.getClass("reset-btn-small") + " " + this.getClass("ignore-drag");
+            resetButton.title = localize(localizationMap.button_reset);
+            resetButton.onclick = () => resetFunction(defaultValue);
+
+            return [resetButton, defaultValue];
+        }
+
+        createToggleRow(row){
+            //创建Row
+            const rowElement = this.createEmptyRow(row);
+            //创建设置项标题
+            const [titleCell, titleElement] = this.createTitleCell(row, "span");
 
             //创建开关和重置按钮
             const settingId = `_s_${row.id}`;
@@ -6521,20 +6651,15 @@
 
             //创建重置按钮
             if(row.ignore_reset !== true){
-                const defaultValue = this.settings.getDefaultValue(settingId);
-                const resetButton = document.createElement("button");
-                resetButton.className = this.getClass("reset-btn-small") + " " + this.getClass("ignore-drag");
-                resetButton.title = localize(localizationMap.button_reset);
-                resetButton.onclick = () => {
+                const [resetBtn, defaultValue] = this.createResetButtonSmall(row, defaultValue => {
                     input.checked = defaultValue === true;
                     input.dispatchEvent(new Event("change"));
-                };
-                // inputCell.insertBefore(resetButton, inputCell.firstChild);
-                inputContainer.insertBefore(resetButton, inputContainer.firstChild);
+                });
 
+                inputContainer.insertBefore(resetBtn, inputContainer.firstChild);
                 input.addEventListener("change", () => {
                     //决定是否显示重置按钮
-                    resetButton.style.setProperty("display", input.checked === defaultValue ? "none" : "inline-block", "important");  //display = input.checked === defaultValue ? "none" : "inline-block";
+                    resetBtn.style.setProperty("display", input.checked === defaultValue ? "none" : "inline-block", "important");  //display = input.checked === defaultValue ? "none" : "inline-block";
                 });
             }
 
@@ -6553,21 +6678,7 @@
 
         createDropdownRow(row){
             const rowElement = this.createEmptyRow(row);
-
-            const titleCell = document.createElement("td");
-            titleCell.className = this.getClass("tooltip");
-            const label = document.createElement("label");
-            label.className = this.getClass("row-title") + " " + this.getClass("ignore-drag");
-            label.setAttribute("for", this.getClass(row.id));
-            label.innerHTML = Csp.createHTML(row.title);
-            titleCell.appendChild(label);
-
-            if(row.tooltip) {
-                const tooltip = document.createElement("span");
-                tooltip.className = this.getClass("tooltip-text");
-                tooltip.innerHTML = Csp.createHTML(row.tooltip);
-                titleCell.appendChild(tooltip);
-            }
+            const [titleCell, titleElement] = this.createTitleCell(row, "label");
 
             const inputCell = document.createElement("td");
             inputCell.classList.add(this.getClass("input-cell"));
@@ -6586,19 +6697,15 @@
             //创建重置按钮
             const settingId = `_s_${row.id}`;
             if(row.ignore_reset !== true){
-                const defaultValue = this.settings.getDefaultValue(settingId);
-                const resetButton = document.createElement("button");
-                resetButton.className = this.getClass("reset-btn-small") + " " + this.getClass("ignore-drag");
-                resetButton.title = localize(localizationMap.button_reset);
-                resetButton.onclick = () => {
+                const [resetBtn, defaultValue] = this.createResetButtonSmall(row, defaultValue => {
                     select.value = defaultValue;
                     select.dispatchEvent(new Event("change"));
-                };
-                inputCell.insertBefore(resetButton, inputCell.firstChild);
+                });
 
+                inputCell.insertBefore(resetBtn, inputCell.firstChild);
                 select.addEventListener("change", () => {
                     //决定是否显示重置按钮
-                    resetButton.style.setProperty("display", select.value === defaultValue ? "none" : "inline-block", "important");  //display = select.value === defaultValue ? "none" : "inline-block";
+                    resetBtn.style.setProperty("display", select.value === defaultValue ? "none" : "inline-block", "important");  //display = select.value === defaultValue ? "none" : "inline-block";
                 });
             }
 
@@ -6617,21 +6724,7 @@
 
         createInputRow(row){
             const rowElement = this.createEmptyRow(row);
-
-            const titleCell = document.createElement("td");
-            titleCell.className = this.getClass("tooltip");
-            const label = document.createElement("label");
-            label.className = this.getClass("row-title") + " " + this.getClass("ignore-drag");
-            label.setAttribute("for", this.getClass(row.id));
-            label.innerHTML = Csp.createHTML(row.title);
-            titleCell.appendChild(label);
-
-            if(row.tooltip) {
-                const tooltip = document.createElement("span");
-                tooltip.className = this.getClass("tooltip-text");
-                tooltip.innerHTML = Csp.createHTML(row.tooltip);
-                titleCell.appendChild(tooltip);
-            }
+            const [titleCell, titleElement] = this.createTitleCell(row, "label");
 
             const inputCell = document.createElement("td");
             inputCell.classList.add(this.getClass("input-cell"));
@@ -6644,19 +6737,58 @@
             //创建重置按钮
             const settingId = `_s_${row.id}`;
             if(row.ignore_reset !== true){
-                const defaultValue = this.settings.getDefaultValue(settingId);
-                const resetButton = document.createElement("button");
-                resetButton.className = this.getClass("reset-btn-small") + " " + this.getClass("ignore-drag");
-                resetButton.title = localize(localizationMap.button_reset);
-                resetButton.onclick = () => {
+                const [resetBtn, defaultValue] = this.createResetButtonSmall(row, defaultValue => {
                     input.value = defaultValue;
                     input.dispatchEvent(new Event("change"));
-                };
-                inputCell.insertBefore(resetButton, inputCell.firstChild);
+                });
 
+                inputCell.insertBefore(resetBtn, inputCell.firstChild);
                 input.addEventListener("change", () => {
                     //决定是否显示重置按钮
-                    resetButton.style.setProperty("display", input.value === defaultValue ? "none" : "inline-block", "important");  //display = input.value === defaultValue ? "none" : "inline-block";
+                    resetBtn.style.setProperty("display", input.value === defaultValue ? "none" : "inline-block", "important");  //display = input.value === defaultValue ? "none" : "inline-block";
+                });
+            }
+
+            //监听器都创建好了再设置初始值
+            input.addEventListener("change", () => {
+                //更新到暂存设置
+                this.settings.saveTemp(settingId, input.value);
+            })
+            input.value = this.settings[settingId];
+            input.dispatchEvent(new Event("change"));
+
+            rowElement.appendChild(titleCell);
+            rowElement.appendChild(inputCell);
+            return rowElement;
+        };
+
+        createTextareaRow(row){
+            const rowElement = this.createEmptyRow(row);
+            const [titleCell, titleElement] = this.createTitleCell(row, "label");
+
+            const inputCell = document.createElement("td");
+            inputCell.classList.add(this.getClass("input-cell"));
+            const input = document.createElement("textarea");
+            input.id = this.getClass(row.id);
+            input.name = input.id;
+            input.style.minWidth = "100%";
+            input.style.maxWidth = "100%";
+            input.style.height = "100px";
+            input.style.resize = "vertical"
+            inputCell.appendChild(input);
+
+            //创建重置按钮
+            const settingId = `_s_${row.id}`;
+            if(row.ignore_reset !== true){
+                const [resetBtn, defaultValue] = this.createResetButtonSmall(row, defaultValue => {
+                    input.value = defaultValue;
+                    input.dispatchEvent(new Event("change"));
+                });
+
+                inputCell.insertBefore(resetBtn, inputCell.firstChild);
+                input.addEventListener("change", () => {
+                    //决定是否显示重置按钮
+                    resetBtn.style.setProperty("display", input.value === defaultValue ? "none" : "inline-block", "important");  //display = input.value === defaultValue ? "none" : "inline-block";
                 });
             }
 
@@ -7012,14 +7144,32 @@
             isInit = true;
         }
 
-        settings._s_search_profiles = [
+        //将设置项内容导入到searchProfile中，cue_lang也要更新
+        let customHeaders = {};
+        for (const headerText of settings._s_search_url_headers.split("\n")) {
+            try{
+                let val = headerText.split(":", 2);
+                customHeaders[val[0].trim()] = val[1].trim();
+            } catch (e) {}
+        }
+        let searchProfile = new SearchProfile(
+            "kikoeru", settings._s_search_url_pattern, settings._s_show_url_pattern,
+            "kikoeru", customHeaders);
+        settings._ss_search_profiles = [
+            searchProfile
+        ];
+        settings._ss_cue_lang = settings._s_cue_languages.split(" ").map(val => val.trim());
+        settings._s_search_url_pattern = searchProfile.searchUrlTemplate.trim();
+        settings._s_show_url_pattern = searchProfile.showUrlTemplate.trim();
+        settings.save();
+        /*settings._s_search_profiles = [
             new SearchProfile(
                 "kikoeru",
-                "https://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s",
+                "http://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s",
                 "kikoeru", {
-                    Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8va2lrb2VydSIsInN1YiI6ImFkbWluIiwiYXVkIjoiaHR0cDovL2tpa29lcnUvYXBpIiwibmFtZSI6ImFkbWluIiwiZ3JvdXAiOiJhZG1pbmlzdHJhdG9yIiwiaWF0IjoxNzQ1NDI3NjA1LCJleHAiOjE3NDgwMTk2MDV9.Gh7QaVfb6VQ0oRd-5_snuUiHVJAiIpsfPfrp5Nee64s",
+                    Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8va2lrb2VydSIsInN1YiI6ImFkbWluIiwiYXVkIjoiaHR0cDovL2tpa29lcnUvYXBpIiwibmFtZSI6ImFkbWluIiwiZ3JvdXAiOiJhZG1pbmlzdHJhdG9yIiwiaWF0IjoxNzQ1ODI5NTc2LCJleHAiOjE3NDg0MjE1NzZ9.VYHZHxLR1X5_iMZcNrXTJsYa2yY9CWhIVXXHXM1wCQ0",
                 }),
-        ];
+        ];*/
 
         if(!document.body || observing){
             return;
