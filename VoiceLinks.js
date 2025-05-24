@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-4.9.0
+// @version     p-4.9.1
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @connect     *
@@ -26,7 +26,7 @@
 (function () {
     'use strict';
 
-    const IS_PREVIEW = false;
+    const IS_PREVIEW = true;
 
     //region 持久化设置项
     let settings = {
@@ -371,9 +371,9 @@
     //region 本地化选项
     const localizationMap = {
         notice_update: {
-            zh_CN: "VoiceLinks公告更新，可能包含重要的新功能说明，是否跳转至说明页面？",
-            zh_TW: "VoiceLinks公告更新，可能包含重要的新功能説明，是否跳轉至説明頁面？",
-            en_US: "VoiceLinks Notice Update, may contain important new features, do you want to jump to the notice page?"
+            zh_CN: "VoiceLinks公告更新，可能包含重要的新功能说明，是否跳转至说明页面？\n\n注意：如果你需要仓库检查功能，请查看说明页面。",
+            zh_TW: "VoiceLinks公告更新，可能包含重要的新功能説明，是否跳轉至説明頁面？\n\n注意：如果你需要仓库检查功能，请查看说明页面。",
+            en_US: "VoiceLinks Notice Update, may contain important new features, do you want to jump to the notice page?\n\nNote: If you need repo check (kikoeru), please check notice page."
         },
 
         title_settings: {
@@ -3128,7 +3128,15 @@
 
             //------设置RJ号------
             const rjCodeElement = ele.rj_code;
-            rjCodeElement.innerHTML = Csp.createHTML(`[ ${isParent ? " ↑ " : ""}<span class="${VOICELINK_IGNORED_CLASS}" style="font-weight: bold !important;text-decoration-line: underline !important;">${rjCode}</span> ]`);
+            let ie = Popup.createCopyTag("span", rjCode);
+            ie.innerText = rjCode;
+            ie.classList.add(VOICELINK_IGNORED_CLASS);
+            ie.style.setProperty("font-weight", "bold", "important");
+            ie.style.setProperty("text-decoration", "underline", "important");
+            rjCodeElement.innerHTML = Csp.createHTML(`[ ${isParent ? " ↑ " : ""}`);
+            rjCodeElement.appendChild(ie)
+            rjCodeElement.appendChild(document.createTextNode(" ]"))
+
             WorkPromise.getRJChain(rjCode).then(chain => {
                 if(!Popup.isCurrentWork(rjCode)) return;
                 rjCodeElement.innerText = "[ ";
@@ -4583,6 +4591,7 @@
                 if(trans.is_original){
                     result[rjCode] = {workno: rjCode, type: "original", lang: "JPN"};
                     let languageEditions = api.language_editions;
+                    if(!Array.isArray(languageEditions)) languageEditions = Object.values(languageEditions);
                     for (let edition of languageEditions) {
                         result[edition.workno] = {workno: edition.workno, type: "parent", lang: edition.lang};
                     }
@@ -4636,6 +4645,7 @@
 
             result[rjCode] = {workno: rjCode, type: "original", lang: "JPN"};
             let languageEditions = api.language_editions;
+            if(!Array.isArray(languageEditions)) languageEditions = Object.values(languageEditions);
             for (let edition of languageEditions) {
                 if (!settings._ss_cue_lang.includes(edition.lang)) continue;
                 //是需要的查询语言，进行Link递归查询
@@ -6257,7 +6267,7 @@
                 {
                     //分类：仓库检查
                     //TODO 本地化
-                    title: "仓库检查",
+                    title: `仓库检查 (<a href="https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md">?</a>)`,
                     items: [
                         {
                             items: [
@@ -6456,7 +6466,7 @@
 
             //创建标题
             const title = document.createElement("h2");
-            title.innerText = section.title;
+            title.innerHTML = Csp.createHTML(section.title);
             container.appendChild(title);
 
             //遍历构建Table
@@ -7209,7 +7219,7 @@
     //region 公告显示
 
     function showUpdateNotice(force = false) {
-        const firstTimeToken = 105;
+        const firstTimeToken = 106;
         if(GM_getValue("first_token", undefined) === firstTimeToken && !force){
             return;
         }
@@ -7220,7 +7230,7 @@
         }
 
         GM_openInTab(
-            IS_PREVIEW ? `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.8.6/v4.8.6-${settings._s_lang}.md` : `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.8.6/v4.8.6-${settings._s_lang}.md`,
+            IS_PREVIEW ? `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md` : `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md`,
             {active: true});
     }
 
