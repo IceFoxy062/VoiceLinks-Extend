@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-4.9.1
+// @version     p-4.9.2
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @connect     *
@@ -18,6 +18,7 @@
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
+// @require     https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.11.0/sha256.min.js
 // @homepage    https://sleazyfork.org/zh-CN/scripts/456775-voicelinks
 // @downloadURL https://update.sleazyfork.org/scripts/456775/VoiceLinks.user.js
 // @updateURL   https://update.sleazyfork.org/scripts/456775/VoiceLinks.meta.js
@@ -1917,11 +1918,7 @@
      * @returns {Promise<string>}
      */
     async function hash(text) {
-        const enc = new TextEncoder();
-        const data = enc.encode(text);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('') + `|${text.length.toString(16)}`;
+        return sha256(text);
     }
 
     //endregion
@@ -3735,8 +3732,10 @@
             }).catch(e => {});
 
             //仓库搜索情况
-            const searchContainer = Popup.get_search_tag_container(rjCode);
-            infoContainer.appendChild(searchContainer);
+            if(settings._s_base_search){
+                const searchContainer = Popup.get_search_tag_container(rjCode);
+                infoContainer.appendChild(searchContainer);
+            }
 
             //信息部分
             const order = settings[`_s_${category}__info_display_order`];
