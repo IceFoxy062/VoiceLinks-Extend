@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-4.9.2
+// @version     p-4.9.4
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @connect     *
@@ -4817,7 +4817,7 @@
                 const row_data = row.cells[1];
                 const lambda = text => row_header === text;
                 switch (true) {
-                    case (["販売日", "贩卖日", "販賣日", "Release date", "판매일", "Lanzamiento", "Veröffentlicht",
+                    case (["販売日", "发售日", "販賣日", "Release date", "판매일", "Lanzamiento", "Veröffentlicht",
                         "Date de sortie", "Tanggal rilis", "Data di rilascio", "Lançamento", "Utgivningsdatum",
                         "วันที่ขาย", "Ngày phát hành"].some(lambda)):
                         workInfo.date = row_data.innerText.trim();
@@ -6266,7 +6266,7 @@
                 {
                     //分类：仓库检查
                     //TODO 本地化
-                    title: `仓库检查 (<a href="https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md">?</a>)`,
+                    title: `仓库检查 ( <u><a href="https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md">?</a></u> )`,
                     items: [
                         {
                             items: [
@@ -7218,7 +7218,7 @@
     //region 公告显示
 
     function showUpdateNotice(force = false) {
-        const firstTimeToken = 106;
+        const firstTimeToken = 107;
         if(GM_getValue("first_token", undefined) === firstTimeToken && !force){
             return;
         }
