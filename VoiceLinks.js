@@ -4,7 +4,7 @@
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-4.9.4
+// @version     p-4.9.5
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @connect     *
@@ -1140,15 +1140,15 @@
         },
 
         hint_pin: {
-            zh_CN: "按住CTRL以固定弹框，固定时可复制信息",
-            zh_TW: "按住CTRL以固定彈窗，固定時可複製資訊",
-            en_US: "Hold CTRL to pin the popup, info can be copied.",
+            zh_CN: "按住{pin_key}以固定弹框，固定时可复制信息",
+            zh_TW: "按住{pin_key}以固定彈窗，固定時可複製資訊",
+            en_US: "Hold {pin_key} to pin the popup, info can be copied.",
         },
 
         hint_unpin: {
-            zh_CN: "抬起CTRL以关闭弹框 & 查看其它作品RJ信息",
-            zh_TW: "抬起CTRL以關閉彈窗 & 查看其它作品RJ信息",
-            en_US: "Release CTRL to close the popup & view other works.",
+            zh_CN: "抬起{pin_key}以关闭弹框 & 查看其它作品RJ信息",
+            zh_TW: "抬起{pin_key}以關閉彈窗 & 查看其它作品RJ信息",
+            en_US: "Release {pin_key} to close the popup & view other works.",
         },
 
         hint_copy: {
@@ -3877,14 +3877,16 @@
             ele._state.mouseX = e.clientX;
             ele._state.mouseY = e.clientY;
 
+            const pinKey = getOS() === "Mac" ? "Command" : "CTRL";
+
             //如果用户固定了弹框，则提示用户必须ctrl关闭弹框才能解析
             if(Popup.isHoldPinKey(e) && Popup.pinRJ){
-                ele.hint.innerText = localizePopup(localizationMap.hint_unpin);
+                ele.hint.innerText = localizePopup(localizationMap.hint_unpin).replace(/{pin_key}/g, pinKey);
                 return;
             }else{
                 //没有固定弹框的话清理pinRJ，因为有时候pinRJ没办法被keyup清理（如keyup未触发）
                 Popup.pinRJ = undefined
-                ele.hint.innerText = localizePopup(localizationMap.hint_pin);
+                ele.hint.innerText = localizePopup(localizationMap.hint_pin).replace(/{pin_key}/g, pinKey);
             }
 
             //修正链接
@@ -3912,7 +3914,7 @@
             //并设置Copy显示情况
             if(Popup.isHoldPinKey(e)){
                 Popup.setPinState(rjCode, true)
-                ele.hint.innerText = localizePopup(localizationMap.hint_unpin);
+                ele.hint.innerText = localizePopup(localizationMap.hint_unpin).replace(/{pin_key}/g, pinKey);
             }else{
                 Popup.setPinState(rjCode, false, false)
             }
