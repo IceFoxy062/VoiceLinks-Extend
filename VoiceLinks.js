@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name        VoiceLinks
+// @name:en     VoiceLinks
 // @namespace   Sanya
 // @description Makes RJ codes more useful.(8-bit RJCode supported.)
+// @description:en Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-4.9.5
+// @version     p-4.9.6
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @connect     *
@@ -4629,7 +4631,7 @@
             if(!trans.is_original) {
                 //TODO 将结果和待搜索RJ号的本地关联搜索结果merge一下再返回（不存缓存，否则会破坏缓存内语言和cue_lang的对应性
                 //TODO 上面那个不算，改成临时添加cue lang，然后方法改成用参数接收cue lang而不是读设置项，缓存那边也要改成参数传递
-                let result = WorkPromise.getLinkedWorksFull(trans.original_workno, useCache, saveCache);
+                let result = await WorkPromise.getLinkedWorksFull(trans.original_workno, useCache, saveCache);
                 result = WorkPromise.mergeLinkage(result, await WorkPromise.getLinkedWorks(rjCode));
                 return result;
             }
