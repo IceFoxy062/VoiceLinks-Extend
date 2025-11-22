@@ -6,7 +6,7 @@
 // @description:en Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-4.9.6
+// @version     p-4.9.7
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @connect     *
@@ -7184,35 +7184,37 @@
                 }),
         ];*/
 
-        if(!document.body || observing){
-            return;
-        }
-
-        Parser.walkNodes(document.body);
-        if(!document.getElementById(`${VOICELINK_CLASS}-voice-popup`)) Popup.makePopup(false);
-
-        const observer = new MutationObserver(function (m) {
-            for (let i = 0; i < m.length; ++i) {
-                let addedNodes = m[i].addedNodes;
-                let removedNodes = m[i].removedNodes;
-
-                for (let j = 0; j < removedNodes.length; ++j){
-                    let node = removedNodes[j];
-                }
-
-                for (let j = 0; j < addedNodes.length; ++j) {
-                    Parser.walkNodes(addedNodes[j]);
-                }
+        setTimeout(() => {
+            if(!document.body || observing){
+                return;
             }
-        });
 
-        observer.observe(document.body, { childList: true, subtree: true})
-        setUserSelectTitle();
+            Parser.walkNodes(document.body);
+            if(!document.getElementById(`${VOICELINK_CLASS}-voice-popup`)) Popup.makePopup(false);
 
-        //显示重要通知
-        showUpdateNotice();
+            const observer = new MutationObserver(function (m) {
+                for (let i = 0; i < m.length; ++i) {
+                    let addedNodes = m[i].addedNodes;
+                    let removedNodes = m[i].removedNodes;
 
-        observing = true;
+                    for (let j = 0; j < removedNodes.length; ++j){
+                        let node = removedNodes[j];
+                    }
+
+                    for (let j = 0; j < addedNodes.length; ++j) {
+                        Parser.walkNodes(addedNodes[j]);
+                    }
+                }
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true})
+            setUserSelectTitle();
+
+            //显示重要通知
+            showUpdateNotice();
+
+            observing = true;
+        }, 100);
     }
 
     document.addEventListener("DOMContentLoaded", init);
@@ -7253,5 +7255,5 @@
 
     //endregion
 
-    init();
+    // init();
 })();
