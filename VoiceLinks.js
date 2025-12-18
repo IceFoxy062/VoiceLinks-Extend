@@ -6,7 +6,7 @@
 // @description:en Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-4.9.7
+// @version     p-4.9.8
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @connect     *
@@ -7255,5 +7255,7 @@
 
     //endregion
 
-    // init();
+    if(!isInit && document.readyState === "complete"){
+        init();
+    }
 })();
