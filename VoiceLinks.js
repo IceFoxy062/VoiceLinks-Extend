@@ -6,9 +6,10 @@
 // @description:en Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-4.9.8
+// @version     p-4.9.9
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
+// @connect     img.dlsite.jp
 // @connect     *
 // @grant       GM_setClipboard
 // @grant       GM_openInTab
@@ -1923,6 +1924,35 @@
         return sha256(text);
     }
 
+    /**
+     * 通过blob加载图片，防止被广告拦截插件误杀
+     * @param img 需要加载图片的img元素
+     * @param url 图片网址
+     * @returns {Promise<void>}
+     */
+    async function loadImageSafe(img, url) {
+        try {
+            const response = await GM.xmlHttpRequest({
+                method: "GET",
+                url: url,
+                responseType: "blob" // 声明返回 Blob 数据
+            });
+
+            if (response.status === 200) {
+                // 生成本地 blob: 协议临时链接
+                const blobUrl = URL.createObjectURL(response.response);
+                img.src = blobUrl;
+
+                // 渲染完成后释放内存
+                img.onload = () => URL.revokeObjectURL(blobUrl);
+            } else {
+                throw new Error(`图片获取失败，状态码: ${response.status}`);
+            }
+        } catch (err) {
+            console.error("GM.xmlHttpRequest 请求异常:", err);
+        }
+    }
+
     //endregion
 
     //region DLSite页面覆盖
@@ -2966,7 +2996,7 @@
             popup.insertBefore(leftPanel, popup.childNodes[0]);
         },
 
-        updatePopup: function(e, rjCode, isParent=false) {
+        updatePopup: async function(e, rjCode, isParent=false) {
             const ele = Popup.popupElement;
             const popup = ele.popup;
             popup.className = `${VOICELINK_CLASS}_voicepopup ${VOICELINK_CLASS}_voicepopup-maniax ` + (getAdditionalPopupClasses() || '');
@@ -2994,14 +3024,14 @@
                 found = await WorkPromise.getFound(parentRJ);
                 return {found: found, parentRJ: parentRJ};
 
-            }).then((state) => {
+            }).then(async (state) => {
                 if(!Popup.isCurrentWork(rjCode)) return;
 
                 const found = state.found;
                 const rj = state.parentRJ;
                 if(found && rj !== rjCode){
                     //如果找到了父作品的信息但子作品找不到，就重新update
-                    Popup.updatePopup(e, rj, true);
+                    await Popup.updatePopup(e, rj, true);
                     return;
                 }
 
@@ -3040,7 +3070,7 @@
                 //首次加载图片，对图片添加占位
                 ele.img[rjCode] = 1;
                 return WorkPromise.getImgLink(rjCode);
-            }).then(link => {
+            }).then(async link => {
                 if(typeof link !== "string"){
                     //图片已经加载过，传递的是img，不通过当前then
                     return link;  //实际上是img
@@ -3054,14 +3084,14 @@
                 let img;
                 try{
                     img = GM_addElement("img", {
-                        src: link,
+                        src: '',
                     });
                     if(!img) { // noinspection ExceptionCaughtLocallyJS
                         throw new Error("API调用生成失败");
                     }
                 }catch (e) {
                     img = document.createElement("img");
-                    img.src = link;
+                    img.src = '';
                 }
 
                 imgContainer.appendChild(img);
@@ -3087,6 +3117,8 @@
                         img.style.setProperty("filter", "inherit", "important");
                     }
                 });
+
+                loadImageSafe(img, link);
 
                 return img;
             }).then(img => {
@@ -3867,7 +3899,7 @@
          * 鼠标移动到链接上触发
          * @param e {MouseEvent}
          */
-        over: function (e) {
+        over: async function (e) {
             const target = isInDLSite() ? e.target : getVoiceLinkTarget(e.target);
             if(!target || !target.classList.contains(VOICELINK_CLASS)) return;
 
@@ -3910,7 +3942,7 @@
                 Popup.makePopup();
                 popup = ele.popup;
             }
-            Popup.updatePopup(e, rjCode);
+            await Popup.updatePopup(e, rjCode);
 
             //如果按住了CTRL，则将popup可被点击，否则设置穿透
             //并设置Copy显示情况
@@ -7235,7 +7267,8 @@
         }
 
         GM_openInTab(
-            IS_PREVIEW ? `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md` : `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md`,
+            IS_PREVIEW ? `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md`
+                : `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md`,
             {active: true});
     }
 
