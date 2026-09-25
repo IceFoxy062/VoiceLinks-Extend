@@ -2041,7 +2041,30 @@
 
     //region 解析器
 
+    //站点在极短时间内反复重写同一段文本时的抖动保护参数
+    const RUN_REBUILD_LIMIT = 12;       //统计窗口内允许重建的次数
+    const RUN_REBUILD_WINDOW = 500;     //统计窗口长度（毫秒）
+    const RUN_REBUILD_PAUSE = 3000;     //触发保护后暂停解析该节点的时间（毫秒）
+
     const Parser = {
+        /***
+         * 已解析片段的注册表。
+         * key：站点原本持有的文本节点（拆分后作为前缀节点保留在文档中）
+         * value：{ expected: 脚本写入该节点的文本, nodes: 本次拆分注入的全部节点 }
+         * 站点就地改写文本时据此回滚过期的链接节点，并按新内容重新解析。
+         ***/
+        _runs: new WeakMap(),
+
+        /***
+         * 抖动保护状态：key 为文本节点，value 为允许再次解析的时间戳
+         ***/
+        _runPauses: new WeakMap(),
+
+        /***
+         * 抖动保护计数：key 为文本节点，value 为 { count, windowStart }
+         ***/
+        _runRebuilds: new WeakMap(),
+
         walkNodes: function (elem) {
             function acceptNode(node) {
                 if (
@@ -2196,6 +2219,16 @@
         },
 
         linkify: function (textNode) {
+            //节点已脱离文档（例如站点在同一批次里先插入又移除）时无法确定插入位置，直接跳过
+            if (!textNode.parentElement) return;
+
+            //该节点当前已有注入的链接节点时不再重复处理（站点改写后由重建流程负责）
+            const run = this._runs.get(textNode);
+            if (run && run.nodes.length > 0) return;
+
+            //抖动保护期间不再解析该节点，避免脚本与站点互相触发
+            if (this.isRunPaused(textNode)) return;
+
             const nodeOriginalText = textNode.nodeValue;
             const matches = [];
 
@@ -2226,6 +2259,13 @@
             }
 
             // Insert rest of text while linkifying RJ codes
+            //记录本次拆分注入的全部节点，站点就地改写文本时据此回滚
+            const injectedNodes = [];
+            const insertInjected = function (node, referenceNode) {
+                textNode.parentNode.insertBefore(node, referenceNode);
+                injectedNodes.push(node);
+            };
+
             let prevNode = null;
             for (let i = 0; i < matches.length; ++i) {
                 // Insert linkified RJ code
@@ -2235,14 +2275,14 @@
                 if(insert.startsWith("before_rj")){
                     //用导向文本替代RJ号链接，RJ号保留到后面的文本里不变
                     rjLinkNode.innerText = settings._s_url_insert_text;
-                    textNode.parentNode.insertBefore(
+                    insertInjected(
                         rjLinkNode,
                         prevNode ? prevNode.nextSibling : textNode.nextSibling,
                     );
                     prevNode = rjLinkNode;
                     rjLinkNode = Parser.wrapPlaceholder(code);
                 }
-                textNode.parentNode.insertBefore(
+                insertInjected(
                     rjLinkNode,
                     prevNode ? prevNode.nextSibling : textNode.nextSibling,
                 );
@@ -2257,7 +2297,7 @@
 
                 if (substring) {
                     const subtextNode = document.createTextNode(substring);
-                    textNode.parentNode.insertBefore(
+                    insertInjected(
                         subtextNode,
                         rjLinkNode.nextElementSibling,
                     );
@@ -2267,6 +2307,105 @@
                     prevNode = rjLinkNode;
                 }
             }
+
+            //注册本次拆分结果，站点就地改写文本时按新内容回滚重建
+            this.registerRun(textNode, injectedNodes);
+        },
+
+        /***
+         * 注册一次拆分结果，站点就地改写文本时据此回滚重建。
+         * nodes 为空表示该文本节点仍在脚本托管下，但当前没有注入的节点。
+         * @param {Text} textNode 站点原本持有的文本节点
+         * @param {Node[]} injectedNodes 本次拆分注入的全部节点
+         ***/
+        registerRun: function (textNode, injectedNodes) {
+            this._runs.set(textNode, {
+                expected: textNode.nodeValue,
+                nodes: injectedNodes,
+            });
+        },
+
+        /***
+         * 判断一条文本变更是否让已注册的片段过期。
+         * oldValue 与脚本写入的内容一致，说明这次改写来自站点而不是脚本自身；
+         * 改写前后内容相同时无需处理（否则 prefix 模式下空前缀的空写会造成误判）。
+         * @param {MutationRecord} mutation
+         * @returns {boolean}
+         ***/
+        isRunInvalidated: function (mutation) {
+            const run = this._runs.get(mutation.target);
+            return !!run &&
+                mutation.oldValue === run.expected &&
+                mutation.target.nodeValue !== mutation.oldValue;
+        },
+
+        /***
+         * 回滚一次拆分：移除脚本注入的节点，只留下站点写入的文本
+         * @param {Text} textNode
+         * @returns {boolean} 是否存在已注册的片段
+         ***/
+        rollbackRun: function (textNode) {
+            const run = this._runs.get(textNode);
+            if (!run) return false;
+
+            for (const node of run.nodes) {
+                if (node.parentNode) {
+                    node.parentNode.removeChild(node);
+                }
+            }
+            run.nodes.length = 0;
+            //保留注册项：该节点仍由脚本托管，站点再次改写时需要重新解析
+            run.expected = textNode.nodeValue;
+            return true;
+        },
+
+        /***
+         * 站点就地改写了已解析的文本节点：先回滚过期的链接，再按新内容重新解析
+         * @param {Text} textNode
+         ***/
+        rebuildRun: function (textNode) {
+            this.rollbackRun(textNode);
+
+            if (this.checkRunThrottle(textNode)) return;
+
+            this.linkify(textNode);
+        },
+
+        /***
+         * 抖动保护：统计同一节点的重建频率，过于频繁时暂停一段时间再自动恢复，
+         * 避免脚本注入节点与站点重新渲染互相触发导致死循环。
+         * 注意：调用会更新统计窗口，每次重建只应调用一次。
+         * @param {Text} textNode
+         * @returns {boolean} 当前是否处于暂停状态
+         ***/
+        checkRunThrottle: function (textNode) {
+            const now = Date.now();
+            if (this.isRunPaused(textNode)) return true;
+
+            const record = this._runRebuilds.get(textNode);
+            if (!record || now - record.windowStart > RUN_REBUILD_WINDOW) {
+                this._runRebuilds.set(textNode, { count: 1, windowStart: now });
+                return false;
+            }
+
+            ++record.count;
+            if (record.count > RUN_REBUILD_LIMIT) {
+                this._runRebuilds.delete(textNode);
+                this._runPauses.set(textNode, now + RUN_REBUILD_PAUSE);
+                console.warn("VoiceLinks: 检测到文本被高频重写，已暂停解析该节点一段时间。");
+                return true;
+            }
+
+            return false;
+        },
+
+        /***
+         * 该节点当前是否处于抖动保护暂停期
+         * @param {Text} textNode
+         * @returns {boolean}
+         ***/
+        isRunPaused: function (textNode) {
+            return (this._runPauses.get(textNode) || 0) > Date.now();
         },
 
         rebindEvents: function (elem) {
@@ -7256,21 +7395,36 @@
             if(!document.getElementById(`${VOICELINK_CLASS}-voice-popup`)) Popup.makePopup(false);
 
             const observer = new MutationObserver(function (m) {
-                for (let i = 0; i < m.length; ++i) {
-                    let addedNodes = m[i].addedNodes;
-                    let removedNodes = m[i].removedNodes;
+                //同一批次里被反复改写的节点只需要重建一次
+                const rebuildTargets = new Set();
 
-                    for (let j = 0; j < removedNodes.length; ++j){
-                        let node = removedNodes[j];
+                for (let i = 0; i < m.length; ++i) {
+                    if (m[i].type === "characterData") {
+                        //文本被就地改写：已解析片段的链接节点可能已经过期，需要回滚重建
+                        if (Parser.isRunInvalidated(m[i])) {
+                            rebuildTargets.add(m[i].target);
+                        }
+                        continue;
                     }
+
+                    let addedNodes = m[i].addedNodes;
 
                     for (let j = 0; j < addedNodes.length; ++j) {
                         Parser.walkNodes(addedNodes[j]);
                     }
                 }
+
+                for (const textNode of rebuildTargets) {
+                    Parser.rebuildRun(textNode);
+                }
             });
 
-            observer.observe(document.body, { childList: true, subtree: true})
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+                characterDataOldValue: true,
+            })
             setUserSelectTitle();
 
             //显示重要通知
