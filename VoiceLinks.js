@@ -2043,63 +2043,94 @@
 
     const Parser = {
         walkNodes: function (elem) {
-            const rjNodeTreeWalker = document.createTreeWalker(
+            function acceptNode(node) {
+                if (
+                    node.nodeName === "SCRIPT" ||
+                    (node.parentElement && node.parentElement?.nodeName === "SCRIPT")
+                ) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+
+                if (node.parentElement?.isContentEditable) {
+                    return NodeFilter.FILTER_SKIP;
+                }
+
+                if (settings._s_parse_url && node.nodeName === "A") {
+                    if (
+                        !settings._s_parse_url_in_dl &&
+                        document.location.hostname.endsWith("dlsite.com")
+                    ) {
+                        return NodeFilter.FILTER_SKIP;
+                    }
+
+                    let href = node.href;
+                    if (
+                        href.match(URL_REGEX) &&
+                        !node.classList.contains(VOICELINK_IGNORED_CLASS)
+                    ) {
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                }
+
+                if (node.nodeName !== "#text") {
+                    return NodeFilter.FILTER_SKIP;
+                }
+
+                if (
+                    node.parentElement?.classList.contains(VOICELINK_IGNORED_CLASS) ||
+                    node.parentElement?.hasAttribute(RJCODE_ATTRIBUTE)
+                ) {
+                    return NodeFilter.FILTER_SKIP;
+                }
+
+                if (node.parentElement?.classList.contains(VOICELINK_CLASS)) {
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+
+                if (node.nodeValue?.match(RJ_REGEX)) {
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+
+                return NodeFilter.FILTER_SKIP;
+            }
+
+            function processNode(node) {
+                if (node.parentElement?.nodeName === "TEXTAREA") {
+                    return;
+                }
+
+                if (node.parentElement?.classList.contains(VOICELINK_CLASS)) {
+                    Parser.rebindEvents(node.parentElement);
+                } else if (node.nodeName === "A") {
+                    Parser.linkifyURL(node);
+                } else {
+                    Parser.linkify(node);
+                }
+            }
+
+            // ① 先手动检查 root
+            const rootResult = acceptNode(elem);
+
+            if (rootResult === NodeFilter.FILTER_REJECT) {
+                // root 被拒绝，连子树也不遍历
+                return;
+            }
+
+            if (rootResult === NodeFilter.FILTER_ACCEPT) {
+                processNode(elem);
+            }
+
+            // ② 再遍历 root 的后代
+            const walker = document.createTreeWalker(
                 elem,
                 NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
                 {
-                    acceptNode: function (node) {
-                        if(node.nodeName === "SCRIPT" || node.parentElement && node.parentElement.nodeName === "SCRIPT"){
-                            return NodeFilter.FILTER_REJECT;
-                        }
-
-                        if(node.parentElement.isContentEditable){
-                            return NodeFilter.FILTER_SKIP;
-                        }
-
-                        if(settings._s_parse_url && node.nodeName === "A"){
-                            if(!settings._s_parse_url_in_dl && document.location.hostname.endsWith("dlsite.com")){
-                                return NodeFilter.FILTER_SKIP;
-                            }
-
-                            let href = node.href;
-                            if(href.match(URL_REGEX) && !node.classList.contains(VOICELINK_IGNORED_CLASS)){
-                                return NodeFilter.FILTER_ACCEPT;
-                            }
-                        }
-
-                        if (node.nodeName !== "#text") return NodeFilter.FILTER_SKIP;
-                        if(node.parentElement.classList.contains(VOICELINK_IGNORED_CLASS)
-                            || node.parentElement.hasAttribute(RJCODE_ATTRIBUTE)){
-                            return NodeFilter.FILTER_SKIP;
-                        }
-
-                        if (node.parentElement.classList.contains(VOICELINK_CLASS))
-                            return NodeFilter.FILTER_ACCEPT;
-                        if (node.nodeValue.match(RJ_REGEX))
-                            return NodeFilter.FILTER_ACCEPT;
-
-                        return NodeFilter.FILTER_SKIP;
-                    }
-                },
-                false,
+                    acceptNode
+                }
             );
-            while (rjNodeTreeWalker.nextNode()) {
-                const node = rjNodeTreeWalker.currentNode;
 
-                //Ignore Element which let user input (textarea), input can be ignored because it's not a text node.
-                if(node.parentElement.nodeName === "TEXTAREA"){
-                    continue;
-                }
-
-                if (node.parentElement.classList.contains(VOICELINK_CLASS)) {
-                    Parser.rebindEvents(node.parentElement);
-                }else if(node.nodeName === "A") {
-                    // alert("准备解析链接：" + node.nodeValue)
-                    Parser.linkifyURL(node);
-                }else{
-                    // alert("准备解析文本：" + node.nodeValue)
-                    Parser.linkify(node);
-                }
+            while (walker.nextNode()) {
+                processNode(walker.currentNode);
             }
         },
 
