@@ -271,9 +271,11 @@
 
         //搜索相关
         _s_base_search: false,
-        _s_search_url_pattern: "",
-        _s_show_url_pattern: "",
+        _s_show_url_base: "",     //仓库地址(baseurl)，用于生成结果展示url；留空则使用API地址
+        _s_search_url_base: "",   //仓库API地址(baseurl)，用于生成搜索url；留空则使用仓库地址
         _s_search_url_headers: "",
+        _s_search_username: "",
+        _s_search_password: "",
         _s_cue_languages: "CHI_HANS CHI_HANT",
         _ss_search_profiles: [],
         _ss_cue_lang: ["CHI_HANS", "CHI_HANT"],  //限制关联搜索的语言范围，每多一种语言意味着多一次查询请求
@@ -1916,6 +1918,64 @@
     }
 
     /**
+     * 发送JSON格式的POST请求（用于仓库登录接口）
+     * @param url {string}
+     * @param data {{}} 请求体内容，会被序列化为JSON字符串
+     * @param customHeaders {{}} 额外的请求头
+     */
+    function postJsonAsync (url, data, customHeaders = {}){
+        let headers = {...customHeaders};
+        headers["Content-Type"] = "application/json";
+        headers["Accept"] = "application/json";
+        return new Promise((resolve, reject) => {
+            getXmlHttpRequest()({
+                method: "POST",
+                url,
+                data: JSON.stringify(data),
+                headers: headers,
+                onload: resolve,
+                onerror: resp => {
+                    reject(resp);
+                },
+                anonymous: false
+            });
+        })
+    }
+
+    /**
+     * 判断响应是否为验证失效（需要重新登录）
+     * @param resp {{}}
+     * @returns {boolean}
+     */
+    function isAuthFailure(resp) {
+        if (!resp) return false;
+        return resp.status === 401 || resp.status === 403;
+    }
+
+    /**
+     * 从JWT中读取过期时间戳（毫秒），无法读取时返回0（表示有效期未知）
+     * @param token {string}
+     * @returns {number}
+     */
+    function parseJwtExpireTime(token) {
+        try {
+            const payload = token.split(".")[1];
+            if (!payload) return 0;
+
+            let base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+            while (base64.length % 4 !== 0) base64 += "=";
+
+            const data = JSON.parse(new TextDecoder().decode(
+                Uint8Array.from(atob(base64), c => c.charCodeAt(0))));
+
+            //提前60秒视为过期，避免在临界状态下使用即将失效的token
+            return typeof data.exp === "number" ? data.exp * 1000 - 60 * 1000 : 0;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    /**
      * 将文本转化成 'SHA-256|原文本长度' 格式的哈希字符串
      * @param text {string} 待转换的文本
      * @returns {Promise<string>}
@@ -2536,43 +2596,349 @@
 
     //region 搜索支持
 
+    //获取token后无条件信任的时间（毫秒），避免因时间偏差等原因反复重新登录
+    const TOKEN_TRUST_INTERVAL = 60 * 1000;
+    //登录失败后的冷却时间（毫秒），避免登录接口被反复请求
+    const LOGIN_RETRY_COOLDOWN = 60 * 1000;
+
+    /**
+     * 将用户填写的地址规范化为baseurl。
+     * 既可以填写纯baseurl（如https://www.xxx.com），也可以粘贴完整地址
+     * （如https://www.xxx.com/api/search?keyword=%s、https://www.xxx.com/works?keyword=%s），
+     * 后者会被截取为对应的baseurl
+     * @param url {string}
+     * @returns {string}
+     */
+    function normalizeBaseUrl(url) {
+        let base = `${url === undefined || url === null ? "" : url}`.trim();
+        if(base === "") return "";
+
+        //截取粘贴完整地址时残留的接口路径
+        const apiPos = base.lastIndexOf("/api/");
+        if(apiPos >= 0) base = base.substring(0, apiPos);
+        //"/works"仅在作为独立路径段时截取，避免误伤"https://www.xxx.com/workshop"这类地址
+        const worksPos = base.search(/\/works(?=$|[?#/])/);
+        if(worksPos >= 0) base = base.substring(0, worksPos);
+
+        //去掉查询串、锚点与结尾多余的"/"
+        const cutPos = base.search(/[?#]/);
+        if(cutPos >= 0) base = base.substring(0, cutPos);
+        base = base.replace(/\/+$/, "");
+
+        //以API目录结尾的地址（如https://www.xxx.com/api）同样视作根地址
+        if(base.endsWith("/api")) base = base.substring(0, base.length - "/api".length);
+
+        return base;
+    }
+
     class SearchProfile {
+        //当前仓库的token缓存
+        #token = null;
+        //token的过期时间戳（毫秒），0表示有效期未知
+        #tokenExpire = 0;
+        //获取token的时间戳（毫秒）
+        #tokenFetchedAt = 0;
+        //是否已尝试从持久化存储中读取过token
+        #tokenLoaded = false;
+        //进行中的登录请求，用于避免并发重复登录
+        #loginPromise = null;
+        //最近一次登录失败的时间戳（毫秒），0表示最近没有登录失败
+        #loginFailedAt = 0;
+
         /**
          * @param name {string}
-         * @param searchUrlTemplate {string}
-         * @param showUrlTemplate {string}
+         * @param searchBaseUrl {string} 仓库API地址(baseurl)，留空则使用仓库地址
+         * @param showBaseUrl {string} 仓库地址(baseurl)，留空则使用API地址
          * @param apiType {string}
          * @param customHeaders {{}}
+         * @param username {string} 仓库用户名，与密码任意一项留空则表示不进行登录
+         * @param password {string} 仓库密码，与用户名任意一项留空则表示不进行登录
          */
-        constructor(name, searchUrlTemplate, showUrlTemplate, apiType, customHeaders) {
+        constructor(name, searchBaseUrl, showBaseUrl, apiType, customHeaders,
+                    username = "", password = "") {
             this.name = name;
-            this.searchUrlTemplate = searchUrlTemplate;
-            this.showUrlTemplate = showUrlTemplate;
             this.apiType = apiType;
-            this.customHeaders = customHeaders;
+            this.customHeaders = customHeaders === undefined || customHeaders === null ? {} : customHeaders;
+            this.username = `${username === undefined || username === null ? "" : username}`.trim();
+            this.password = `${password === undefined || password === null ? "" : password}`;
             this.enabled = true;
 
-            this.init(apiType);
+            this.init(searchBaseUrl, showBaseUrl);
         }
 
-        init(apiType) {
-            if(apiType === "kikoeru") {
-                //http://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s
-                let apiPos = this.searchUrlTemplate.lastIndexOf("/api/");
-                let showPos = this.showUrlTemplate.lastIndexOf("/works");
+        /**
+         * 根据仓库地址与API地址生成实际使用的查询url与展示url。
+         * 仓库前端与API地址可以分离，两者中任意一个留空时都使用另一个；两个都留空时无法进行仓检
+         * @param searchBaseUrl {string}
+         * @param showBaseUrl {string}
+         */
+        init(searchBaseUrl, showBaseUrl) {
+            //地址可能被填写为完整url，此处统一截取为baseurl
+            let apiBase = normalizeBaseUrl(searchBaseUrl);
+            let frontBase = normalizeBaseUrl(showBaseUrl);
+            //任意一个留空则使用另一个
+            if(apiBase === "") apiBase = frontBase;
+            if(frontBase === "") frontBase = apiBase;
 
-                if(apiPos >= 0 && this.showUrlTemplate === "") {
-                    let urlPrefix = this.searchUrlTemplate.substring(0, apiPos);
-                    this.showUrlTemplate = `${urlPrefix}/works?keyword=%s`;
-                }else if(showPos >= 0 && this.searchUrlTemplate === "") {
-                    let urlPrefix = this.showUrlTemplate.substring(0, showPos);
-                    this.searchUrlTemplate = `${urlPrefix}/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s`;
+            this.searchBaseUrl = apiBase;
+            this.showBaseUrl = frontBase;
+            this.searchUrlTemplate = "";
+            this.showUrlTemplate = "";
+
+            if(this.apiType === "kikoeru") {
+                //http://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s
+                //http://192.168.196.226:8088/works?keyword=%s
+                if(apiBase !== "") {
+                    this.searchUrlTemplate = `${apiBase}/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s`;
+                }
+                if(frontBase !== "") {
+                    this.showUrlTemplate = `${frontBase}/works?keyword=%s`;
                 }
             }
         }
 
         async getHash() {
-            return await hash(`${this.apiType}|${this.searchUrlTemplate}`)
+            return await hash(`${this.apiType}|${this.searchBaseUrl}|${this.showBaseUrl}`)
+        }
+
+        /**
+         * 是否配置了可用于登录的账号密码（任意一项留空都相当于不进行登录）
+         * @returns {boolean}
+         */
+        get canLogin() {
+            return this.username !== "" && this.password.trim() !== "";
+        }
+
+        /**
+         * 登录接口地址：由API地址生成，即{API地址}/api/auth/me
+         * @returns {string} 无法推导时返回空字符串
+         */
+        get loginUrl() {
+            if(this.searchBaseUrl === "") return "";
+            return `${this.searchBaseUrl}/api/auth/me`;
+        }
+
+        /**
+         * 当前缓存的token是否可用（有效期未知时视为可用，实际失效由请求重试流程处理）
+         * @returns {boolean}
+         */
+        #isTokenValid() {
+            if(!this.#token) return false;
+            //刚刚获取到的token直接信任，避免因时间偏差导致反复重新登录
+            if(Date.now() - this.#tokenFetchedAt < TOKEN_TRUST_INTERVAL) return true;
+            if(this.#tokenExpire <= 0) return true;
+            return Date.now() < this.#tokenExpire;
+        }
+
+        /**
+         * token缓存的存储key，按仓库与用户名区分，避免多个账号互相覆盖
+         * @returns {Promise<string>}
+         */
+        async #getTokenCacheKey() {
+            return `search_token_${await hash(`${this.apiType}|${this.searchBaseUrl}|${this.username}`)}`;
+        }
+
+        /**
+         * 从持久化存储中读取此前缓存的token
+         * @returns {Promise<void>}
+         */
+        async #loadToken() {
+            this.#tokenLoaded = true;
+            try {
+                const cached = await GM_getValue(await this.#getTokenCacheKey(), null);
+                if(cached && typeof cached.token === "string") {
+                    this.#token = cached.token;
+                    this.#tokenExpire = typeof cached.expire === "number" ? cached.expire : 0;
+                    this.#tokenFetchedAt = typeof cached.fetchedAt === "number" ? cached.fetchedAt : 0;
+                }
+            }catch (e) {
+                console.error(e);
+            }
+        }
+
+        /**
+         * 缓存token（同时写入内存与持久化存储）
+         * @param token {string}
+         * @returns {Promise<void>}
+         */
+        async #saveToken(token) {
+            this.#token = token;
+            this.#tokenExpire = parseJwtExpireTime(token);
+            this.#tokenFetchedAt = Date.now();
+            this.#tokenLoaded = true;
+            try {
+                GM_setValue(await this.#getTokenCacheKey(), {
+                    token: this.#token,
+                    expire: this.#tokenExpire,
+                    fetchedAt: this.#tokenFetchedAt
+                });
+            }catch (e) {
+                console.error(e);
+            }
+        }
+
+        /**
+         * 清除当前缓存的token
+         * @returns {Promise<void>}
+         */
+        async clearToken() {
+            this.#token = null;
+            this.#tokenExpire = 0;
+            this.#tokenFetchedAt = 0;
+            this.#tokenLoaded = true;
+            try {
+                GM_deleteValue(await this.#getTokenCacheKey());
+            }catch (e) {
+                console.error(e);
+            }
+        }
+
+        /**
+         * 使用账号密码调用登录接口获取token
+         * @returns {Promise<string>} 登录得到的token
+         */
+        async login() {
+            if(!this.canLogin) {
+                throw new Error("未配置仓库账号密码，无法登录");
+            }
+
+            const url = this.loginUrl;
+            if(url === "") {
+                throw new Error("未配置仓库地址（baseurl），无法生成登录接口地址");
+            }
+
+            //登录接口同样可能依赖自定义请求头才能访问，故一并携带；
+            //但需要过滤其中的Authorization，避免可能已失效的旧token干扰登录接口
+            const resp = await postJsonAsync(url, {name: this.username, password: this.password},
+                this.#getCustomHeadersWithoutAuth());
+            if(!(resp.readyState === 4 && resp.status === 200)) {
+                throw new Error(`仓库登录失败：${resp.status} ${resp.statusText}`);
+            }
+
+            let data;
+            try{
+                data = JSON.parse(resp.responseText);
+            }catch (e) {
+                throw new Error("仓库登录响应不是合法的JSON");
+            }
+            if(!data || typeof data.token !== "string" || data.token === "") {
+                throw new Error("仓库登录响应中不包含token");
+            }
+
+            await this.#saveToken(data.token);
+            return data.token;
+        }
+
+        /**
+         * 获取可用的token，必要时使用账号密码登录
+         * @param forceRefresh {boolean} 是否强制重新登录（用于token被判定为失效时）
+         * @returns {Promise<string>} token，未配置账号密码时返回null
+         */
+        async ensureToken(forceRefresh = false) {
+            if(!this.canLogin) return null;
+
+            if(!forceRefresh) {
+                if(!this.#tokenLoaded) {
+                    await this.#loadToken();
+                }
+                if(this.#isTokenValid()) return this.#token;
+            }
+
+            //登录失败后短时间内不再请求登录接口，避免登录接口被反复请求
+            if(this.#loginFailedAt > 0 && Date.now() - this.#loginFailedAt < LOGIN_RETRY_COOLDOWN) {
+                throw new Error("仓库登录失败过于频繁，已暂时跳过登录");
+            }
+
+            //并发的搜索请求共用同一个登录请求
+            if(this.#loginPromise) return this.#loginPromise;
+
+            this.#loginPromise = (async () => {
+                try{
+                    const token = await this.login();
+                    this.#loginFailedAt = 0;
+                    return token;
+                }catch (e) {
+                    this.#loginFailedAt = Date.now();
+                    throw e;
+                }finally {
+                    this.#loginPromise = null;
+                }
+            })();
+
+            return this.#loginPromise;
+        }
+
+        /**
+         * 取出自定义请求头中除Authorization以外的部分。
+         * 自定义请求头的作用不只是提供Authorization（部分仓库API需要特定请求头才可访问），
+         * 因此除Authorization外的内容会始终随请求一起发送
+         * @returns {{}}
+         */
+        #getCustomHeadersWithoutAuth() {
+            let headers = {...this.customHeaders};
+            for(const key of Object.keys(headers)) {
+                //Authorization由账号密码登录得到的token或回退流程负责
+                if(key.toLowerCase() === "authorization") delete headers[key];
+            }
+            return headers;
+        }
+
+        /**
+         * 生成携带指定token的请求头：自定义请求头（去除Authorization） + 登录得到的token
+         * @param token {string}
+         * @returns {{}}
+         */
+        #withToken(token) {
+            let headers = this.#getCustomHeadersWithoutAuth();
+            headers["Authorization"] = `Bearer ${token}`;
+            return headers;
+        }
+
+        /**
+         * 携带身份验证信息请求仓库接口。
+         * 优先使用账号密码登录得到的token；若仓库返回验证失效（401/403），
+         * 则重新登录并携带新token重试一次。未配置账号密码、登录失败或重试仍未通过时，
+         * 回退为仅使用自定义请求头。
+         * @param url {string}
+         * @param cacheAge {number}
+         * @returns {Promise<{}>}
+         */
+        async authedGet(url, cacheAge = 180) {
+            let resp = null;
+
+            if(this.canLogin) {
+                let token = null;
+                try{
+                    token = await this.ensureToken();
+                }catch (e) {
+                    console.error("仓库登录失败：", e);
+                }
+
+                if(token) {
+                    resp = await getHttpAsync(url, false, cacheAge, this.#withToken(token));
+
+                    if(isAuthFailure(resp)) {
+                        //验证失效：丢弃缓存的token，重新登录后再试一次
+                        await this.clearToken();
+                        token = null;
+                        try{
+                            token = await this.ensureToken(true);
+                        }catch (e) {
+                            console.error("仓库重新登录失败：", e);
+                        }
+                        if(token) {
+                            resp = await getHttpAsync(url, false, cacheAge, this.#withToken(token));
+                        }
+                    }
+                }
+            }
+
+            //自定义请求头作为回退手段；未配置任何自定义请求头时不再重复请求
+            if((resp === null || isAuthFailure(resp)) && Object.keys(this.customHeaders).length > 0) {
+                resp = await getHttpAsync(url, false, cacheAge, this.customHeaders);
+            }
+
+            return resp;
         }
     }
 
@@ -3799,6 +4165,8 @@
 
             const onClick = function (e) {
                 for (const url of urlList) {
+                    //未配置仓库地址等原因导致url为空时跳过
+                    if(!url) continue;
                     GM_openInTab(url);
                 }
             }
@@ -4884,10 +5252,13 @@
          */
         getKikoeruSearchResult: async function(rjCode, searchProfile, linkages) {
             let url = searchProfile.searchUrlTemplate?.replaceAll("%s", rjCode);
+            //未配置仓库地址时无法进行查询
+            if(!url) return;
 
             try{
-                let resp = await getHttpAsync(url, false, 180, searchProfile.customHeaders);
-                if (!(resp.readyState === 4 && resp.status === 200)) {
+                //请求会优先使用账号密码登录得到的token，并在token失效时自动重新登录
+                let resp = await searchProfile.authedGet(url, 180);
+                if (!resp || !(resp.readyState === 4 && resp.status === 200)) {
                     return;
                 }
 
@@ -4941,8 +5312,17 @@
             let cache = WorkPromise.getSearchResultFromCache(rjCode, await searchProfile.getHash(), settings._s_search_linkage)
             if(Array.isArray(cache)) return new SearchResult(searchProfile.name, work, cache);
 
+            //查询失败（如验证失效、网络异常等）时抛出错误，避免与"仓库中没有该作品"混淆
+            const search = async (target) => {
+                let res = await searchFunction(target, searchProfile, linkages);
+                if(!Array.isArray(res)) {
+                    throw new Error(`仓库搜索失败：${searchProfile.name}`);
+                }
+                return res;
+            };
+
             let result = {};
-            let res = await searchFunction(rjCode, searchProfile, linkages);
+            let res = await search(rjCode);
             res.forEach(v => result[v.workno] = v);
 
             if(!settings._s_search_linkage) {
@@ -4966,7 +5346,7 @@
                 }
 
                 let target = searchSet.values().next().value;
-                res = await searchFunction(target, searchProfile, linkages);
+                res = await search(target);
                 res.forEach(v => result[v.workno] = v);
 
                 searchSet.delete(target);
@@ -6481,35 +6861,64 @@
                                     type: "checkbox",
                                     title: "开启仓检",
                                     id: "base_search",
-                                    tooltip: "开启后，会检查特定仓库内的作品及其相关版本是否存在，并以标签的形式展示每个仓库的搜索结果。<br/><br/>" +
+                                    tooltip: "开启后，会检查特定仓库内的作品及其相关版本是否存在，并以标签的形式展示每个仓库的搜索结果。<br/>" +
+                                        "<b>目前仅支持kikoeru框架的仓库（非asmr.one）</b><br/><br/>" +
                                         "<b><u>注意：该功能会向第三方仓库API发送查询信息，若仓库不属于你，请在确认仓库所有者允许的情况下使用该功能！</u></b>"
                                 },
                                 {
-                                    //仓库地址(API)
+                                    //仓库地址
                                     binding: {
                                         target: "base_search",
                                         value: true
                                     },
 
                                     type: "input",
-                                    title: "仓库查询url (API)",
-                                    id: "search_url_pattern",
-                                    tooltip: "仓库搜索url模板，输入%s表示RJ号（请输入API地址而非前端地址）<br/>" +
-                                        "如果你不知道api地址，请留空仅填写结果展示url，保存并刷新页面后，系统会尝试匹配可能的api地址<br/><br/>" +
-                                        "<b>例如：https://www.xxx.com/api/search?desc=1&keyword=%s</b>",
+                                    title: "仓库地址",
+                                    id: "show_url_base",
+                                    tooltip: "仓库的根地址，即访问仓库的链接<br/><br/>" +
+                                        "<b>例如：https://example.com</b>",
                                 },
                                 {
-                                    //仓库地址(前端)
+                                    //API地址
                                     binding: {
                                         target: "base_search",
                                         value: true
                                     },
 
                                     type: "input",
-                                    title: "结果展示url (前端)",
-                                    id: "show_url_pattern",
-                                    tooltip: "结果展示url模板，输入%s表示RJ号（请输入你在仓库搜索时，地址栏展示的url）<br/><br/>" +
-                                        "<b>例如：https://www.xxx.com/works?search=%s</b>",
+                                    title: "API地址",
+                                    id: "search_url_base",
+                                    tooltip: "仓库API的地址（baseURL），进行搜索<br/>" +
+                                        "<b>仅当仓库前端与后端API分离时（如API使用了独立的域名或端口）才需要单独填写；留空则使用上方仓库地址</b><br/><br/>" +
+                                        "<b>例如：https://example.com</b>",
+                                },
+                                {
+                                    //仓库用户名
+                                    binding: {
+                                        target: "base_search",
+                                        value: true
+                                    },
+
+                                    type: "input",
+                                    title: "仓库用户名",
+                                    id: "search_username",
+                                    tooltip: "用于自动登录仓库的用户名。<br/>" +
+                                        "与仓库密码任意一项留空时，相当于不进行登录。<br/><br/>" +
+                                        "<b>设置完毕后，请保存并刷新页面。</b>",
+                                },
+                                {
+                                    //仓库密码
+                                    binding: {
+                                        target: "base_search",
+                                        value: true
+                                    },
+
+                                    type: "password",
+                                    title: "仓库密码",
+                                    id: "search_password",
+                                    tooltip: "用于自动登录仓库的密码。<br/>" +
+                                        "脚本会将账号密码本地保存且仅用于登录仓库，不会将其发送给除仓库以外的第三方。<br/><br/>" +
+                                        "<b>设置完毕后，请保存并刷新页面。</b>",
                                 },
                                 {
                                     //自定义请求头
@@ -6521,7 +6930,9 @@
                                     type: "textarea",
                                     title: "自定义请求头",
                                     id: "search_url_headers",
-                                    tooltip: "每行一个，格式为key:value，用换行符分隔。（通常仓库需要身份认证才可访问，此时需要添加认证用请求头）<br/><br/>" +
+                                    tooltip: "每行一个，格式为key:value，用换行符分隔。<br/>" +
+                                        "本项内容会随仓检请求一起发送，用于应对仓库API需要特定请求头才能访问的情况（一般留空即可）。<br/>" +
+                                        "若已填写仓库用户名与密码，身份认证将优先使用登录得到的token，本项中的Authorization头会被覆盖。<br/><br/>" +
                                         "<b>例如：<br/>Authorization: Bearer xxxxxxxxxx</b>",
                                 },
                                 {
@@ -6765,6 +7176,9 @@
                 case "input":
                     rowElement = this.createInputRow(row);
                     break;
+                case "password":
+                    rowElement = this.createInputRow(row);
+                    break;
                 case "textarea":
                     rowElement = this.createTextareaRow(row);
                     break;
@@ -6944,7 +7358,7 @@
             const inputCell = document.createElement("td");
             inputCell.classList.add(this.getClass("input-cell"));
             const input = document.createElement("input");
-            input.type = "text";
+            input.type = row.type === "password" ? "password" : "text";
             input.id = this.getClass(row.id);
             input.name = input.id;
             inputCell.appendChild(input);
@@ -7367,23 +7781,39 @@
                 customHeaders[val[0].trim()] = val[1].trim();
             } catch (e) {}
         }
+        //兼容旧版本设置项：新的仓库地址/API地址均未填写时，尝试从旧的查询url、展示url中截取baseurl
+        if(settings._s_search_url_base === "" && settings._s_show_url_base === "") {
+            const legacySearchUrl = `${GM_getValue("search_url_pattern", "")}`;
+            const legacyShowUrl = `${GM_getValue("show_url_pattern", "")}`;
+            if(legacySearchUrl !== "" || legacyShowUrl !== "") {
+                settings._s_search_url_base = normalizeBaseUrl(legacySearchUrl);
+                settings._s_show_url_base = normalizeBaseUrl(legacyShowUrl);
+                //迁移后删除旧设置项，避免用户清空新设置项后又被旧值还原
+                GM_deleteValue("search_url_pattern");
+                GM_deleteValue("show_url_pattern");
+            }
+        }
+        //地址允许填写完整url，统一规范化为baseurl后再保存，便于在设置中确认实际生效的地址
+        settings._s_show_url_base = normalizeBaseUrl(settings._s_show_url_base);
+        settings._s_search_url_base = normalizeBaseUrl(settings._s_search_url_base);
+
         let searchProfile = new SearchProfile(
-            "kikoeru", settings._s_search_url_pattern, settings._s_show_url_pattern,
-            "kikoeru", customHeaders);
+            "kikoeru", settings._s_search_url_base, settings._s_show_url_base,
+            "kikoeru", customHeaders, settings._s_search_username, settings._s_search_password);
         settings._ss_search_profiles = [
             searchProfile
         ];
         settings._ss_cue_lang = settings._s_cue_languages.split(" ").map(val => val.trim());
-        settings._s_search_url_pattern = searchProfile.searchUrlTemplate.trim();
-        settings._s_show_url_pattern = searchProfile.showUrlTemplate.trim();
         settings.save();
-        /*settings._s_search_profiles = [
+        /*手动添加仓库配置的示例（默认使用设置项中的仓库地址与API地址）
+        settings._ss_search_profiles = [
             new SearchProfile(
                 "kikoeru",
-                "http://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s",
+                "http://192.168.196.226:8088",   //API地址(baseurl)，留空则与仓库地址相同
+                "http://192.168.196.226:8088",   //仓库地址(baseurl)，留空则与API地址相同
                 "kikoeru", {
-                    Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8va2lrb2VydSIsInN1YiI6ImFkbWluIiwiYXVkIjoiaHR0cDovL2tpa29lcnUvYXBpIiwibmFtZSI6ImFkbWluIiwiZ3JvdXAiOiJhZG1pbmlzdHJhdG9yIiwiaWF0IjoxNzQ1ODI5NTc2LCJleHAiOjE3NDg0MjE1NzZ9.VYHZHxLR1X5_iMZcNrXTJsYa2yY9CWhIVXXHXM1wCQ0",
-                }),
+                    Authorization: "Bearer xxxxxxxxxx",
+                }, "用户名", "密码"),
         ];*/
 
         setTimeout(() => {
