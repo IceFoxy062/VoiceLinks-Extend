@@ -6,7 +6,7 @@
 // @description:en Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-4.9.9
+// @version     p-5.0.2
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @connect     img.dlsite.jp
@@ -33,6 +33,10 @@
     const IS_PREVIEW = true;
 
     //region 持久化设置项
+
+    //长度可变（由用户增删）的列表类设置项，读取时不进行长度校验
+    const VARIABLE_LENGTH_SETTINGS = new Set(["_s_search_warehouses"]);
+
     let settings = {
         //语言设置
         _s_lang: "zh_CN",
@@ -271,11 +275,7 @@
 
         //搜索相关
         _s_base_search: false,
-        _s_show_url_base: "",     //仓库地址(baseurl)，用于生成结果展示url；留空则使用API地址
-        _s_search_url_base: "",   //仓库API地址(baseurl)，用于生成搜索url；留空则使用仓库地址
-        _s_search_url_headers: "",
-        _s_search_username: "",
-        _s_search_password: "",
+        _s_search_warehouses: [], //仓库列表，最多MAX_SEARCH_WAREHOUSES条，顺序决定搜索结果标签的顺序
         _s_cue_languages: "CHI_HANS CHI_HANT",
         _ss_search_profiles: [],
         _ss_cue_lang: ["CHI_HANS", "CHI_HANT"],  //限制关联搜索的语言范围，每多一种语言意味着多一次查询请求
@@ -310,7 +310,8 @@
                 if(typeof val !== typeof this[key]){
                     val = this[key];
                 }
-                if(Array.isArray(val) && val.length !== this[key].length){
+                //长度可变的列表（如仓库列表）不能因为长度与默认值不同而被重置
+                if(Array.isArray(val) && val.length !== this[key].length && !VARIABLE_LENGTH_SETTINGS.has(key)){
                     val = this[key];
                     need_reorder = true;
                 }
@@ -1216,10 +1217,16 @@
 
     //region 常量
     const RJ_REGEX = new RegExp("(R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6})", "gi");
-    const URL_REGEX = new RegExp("dlsite.com/.*/product_id/((R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6}))", "g");
+    //仅作品编号部分复用RJ_REGEX，"dlsite页面链接"这个定位条件保持不变
+    const URL_REGEX = new RegExp(`dlsite.com/.*/product_id/(${RJ_REGEX.source})`, "g");
     const VOICELINK_CLASS = 'voicelink-' + Math.random().toString(36).slice(2);
     const VOICELINK_IGNORED_CLASS = `${VOICELINK_CLASS}_ignored`;
     const RJCODE_ATTRIBUTE = 'rjcode';
+    //仓检相关
+    const MAX_SEARCH_WAREHOUSES = 5;            //最多可添加的仓库数量
+    const SEARCH_REQUEST_LIMIT = 3;             //全局同时进行的请求数量上限
+    const SEARCH_CACHE_TTL = 3 * 60 * 1000;     //单个仓库的查询结果缓存有效期（毫秒）
+    const SEARCH_CACHE_SIZE = 256;              //单个仓库的查询结果缓存条数
     const LANG_MAP = {
         JPN: localizePopup(localizationMap.language_japanese),
         ENG: localizePopup(localizationMap.language_english),
@@ -1825,6 +1832,149 @@
         #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_button-flat span{
             display: inline-block !important;
         }
+
+        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_button-primary {
+            display: inline-block !important;
+            padding: 8px 14px !important;
+            border: none !important;
+            border-radius: 5px !important;
+            background: #007bff !important;
+            color: #fff !important;
+            font-size: 14px !important;
+            cursor: pointer !important;
+
+            transition: filter 0.3s !important;
+        }
+        #${VOICELINK_CLASS}_settings-container .${VOICELINK_CLASS}_button-primary:hover {
+            filter: brightness(1.15) !important;
+        }
+
+        /*仓库管理弹窗*/
+        #${VOICELINK_CLASS}_warehouse-container {
+            font-family: Arial, sans-serif !important;
+            background-color: #f4f4f9 !important;
+            color: #333 !important;
+            font-size: 14px !important;
+            line-height: 1.5 !important;
+            text-align: left !important;
+
+            position: fixed !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            top: 40px !important;
+            bottom: 40px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            box-sizing: border-box !important;
+            max-width: 640px !important;
+            width: 100% !important;
+            padding: 16px 24px !important;
+            z-index: 2147483647 !important;
+            border-radius: 20px !important;
+            box-shadow: darkgray 0px 0px 17px 2px !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container h1 {
+            display: block !important;
+            font-size: 24px !important;
+            font-weight: bold !important;
+            margin: 8px 0 12px 0 !important;
+            color: #333 !important;
+            line-height: normal !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 10px !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-hint {
+            color: #666 !important;
+            font-size: 13px !important;
+            margin: 4px 0 12px 0 !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-list {
+            border-top: 1px solid #ddd !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-row {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            padding: 8px 4px !important;
+            border-bottom: 1px solid #eee !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-info {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-name {
+            font-weight: bold !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-preset {
+            color: #888 !important;
+            font-size: 12px !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-btn {
+            display: inline-block !important;
+            padding: 4px 8px !important;
+            border: none !important;
+            border-radius: 4px !important;
+            background: #007bff !important;
+            color: #fff !important;
+            font-size: 13px !important;
+            cursor: pointer !important;
+            white-space: nowrap !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-btn:hover {
+            filter: brightness(1.15) !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-btn:disabled {
+            background: #bbb !important;
+            cursor: not-allowed !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-btn-danger {
+            background: #d9534f !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-footer {
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 8px !important;
+            margin-top: 16px !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-field {
+            margin-bottom: 12px !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-field-title {
+            display: block !important;
+            font-weight: bold !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-field-tooltip {
+            color: #777 !important;
+            font-size: 12px !important;
+            margin-bottom: 4px !important;
+            white-space: normal !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-field-input input,
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-field-input select,
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-field-input textarea {
+            width: 100% !important;
+            box-sizing: border-box !important;
+            padding: 6px 8px !important;
+            border: 1px solid #ccc !important;
+            border-radius: 4px !important;
+            background: #fff !important;
+            color: #333 !important;
+            font-size: 14px !important;
+            font-family: inherit !important;
+            line-height: normal !important;
+            margin: 0 !important;
+        }
+        #${VOICELINK_CLASS}_warehouse-container .${VOICELINK_CLASS}_warehouse-field-input textarea {
+            min-height: 70px !important;
+            resize: vertical !important;
+        }
     `
     //endregion
 
@@ -1898,12 +2048,74 @@
         return (typeof GM !== "undefined" && GM !== null ? GM.xmlHttpRequest : GM_xmlhttpRequest);
     }
 
-    function getHttpAsync (url, anonymous = false, cacheAge = 0, customHeaders = {}){
+    /**
+     * 全局请求队列：限制同时进行的请求数量，避免多仓库查询时并发过高。
+     * 高优先级请求（如弹框自身的信息请求）会优先于低优先级请求（如仓库批量查询）执行
+     */
+    const RequestQueue = {
+        _limit: SEARCH_REQUEST_LIMIT,
+        _active: 0,
+        _waiting: [],
+        _waitingHigh: [],
+
+        get limit() {
+            return this._limit;
+        },
+
+        set limit(value) {
+            if(typeof value === "number" && value > 0) this._limit = Math.floor(value);
+        },
+
+        /**
+         * 将请求排队执行
+         * @param task {function} 返回Promise的任务
+         * @param priority {string} "high"（默认）或"low"
+         * @returns {Promise<*>}
+         */
+        enqueue(task, priority = "high") {
+            return new Promise((resolve, reject) => {
+                const item = {task: task, resolve: resolve, reject: reject};
+                if(priority === "low") {
+                    this._waiting.push(item);
+                }else{
+                    this._waitingHigh.push(item);
+                }
+                this.pump();
+            });
+        },
+
+        pump() {
+            while(this._active < this._limit && (this._waitingHigh.length > 0 || this._waiting.length > 0)) {
+                const item = this._waitingHigh.length > 0 ? this._waitingHigh.shift() : this._waiting.shift();
+                this._active++;
+                (async () => {
+                    try{
+                        item.resolve(await item.task());
+                    }catch (e) {
+                        item.reject(e);
+                    }finally {
+                        this._active--;
+                        this.pump();
+                    }
+                })();
+            }
+        }
+    };
+
+    /**
+     * 发送GET请求
+     * @param url {string}
+     * @param anonymous {boolean} 是否匿名请求（不携带cookie）
+     * @param cacheAge {number} 缓存时间（秒）
+     * @param customHeaders {{}} 额外的请求头
+     * @param priority {string} 请求队列优先级，"high"或"low"
+     */
+    function getHttpAsync (url, anonymous = false, cacheAge = 0, customHeaders = {}, priority = "high"){
         let headers = {...customHeaders};
         headers["Accept"] = "text/xml";
         headers["User-Agent"] = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)";
         headers["Cache-Control"] = cacheAge <= 0 ? "no-cache" : "max-age=" + cacheAge;
-        return new Promise((resolve, reject) => {
+        return RequestQueue.enqueue(() => new Promise((resolve, reject) => {
             getXmlHttpRequest()({
                 method: "GET",
                 url,
@@ -1914,24 +2126,26 @@
                 },
                 anonymous: anonymous
             });
-        })
+        }), priority);
     }
 
     /**
-     * 发送JSON格式的POST请求（用于仓库登录接口）
+     * 发送POST请求
      * @param url {string}
-     * @param data {{}} 请求体内容，会被序列化为JSON字符串
+     * @param body {string} 请求体内容
+     * @param contentType {string} 请求体的内容类型
      * @param customHeaders {{}} 额外的请求头
+     * @param priority {string} 请求队列优先级，"high"或"low"
      */
-    function postJsonAsync (url, data, customHeaders = {}){
+    function postAsync (url, body, contentType = "application/json", customHeaders = {}, priority = "high"){
         let headers = {...customHeaders};
-        headers["Content-Type"] = "application/json";
-        headers["Accept"] = "application/json";
-        return new Promise((resolve, reject) => {
+        headers["Content-Type"] = contentType;
+        headers["Accept"] = contentType.includes("json") ? "application/json" : "*/*";
+        return RequestQueue.enqueue(() => new Promise((resolve, reject) => {
             getXmlHttpRequest()({
                 method: "POST",
                 url,
-                data: JSON.stringify(data),
+                data: body,
                 headers: headers,
                 onload: resolve,
                 onerror: resp => {
@@ -1939,7 +2153,18 @@
                 },
                 anonymous: false
             });
-        })
+        }), priority);
+    }
+
+    /**
+     * 发送JSON格式的POST请求
+     * @param url {string}
+     * @param data {{}} 请求体内容，会被序列化为JSON字符串
+     * @param customHeaders {{}} 额外的请求头
+     * @param priority {string} 请求队列优先级，"high"或"low"
+     */
+    function postJsonAsync (url, data, customHeaders = {}, priority = "high"){
+        return postAsync(url, JSON.stringify(data), "application/json", customHeaders, priority);
     }
 
     /**
@@ -1973,6 +2198,106 @@
         } catch (e) {
             return 0;
         }
+    }
+
+    /**
+     * 判断文本本身是否为一个完整的作品编号。
+     * 编号格式统一由RJ_REGEX判断，不在此处重复维护格式规则
+     * @param text {string}
+     * @returns {boolean}
+     */
+    function isRjCode(text) {
+        if(typeof text !== "string" || text === "") return false;
+        //使用String.match以避免与其它地方的RJ_REGEX.exec共用lastIndex
+        const matches = text.match(RJ_REGEX);
+        return matches !== null && matches.length === 1 && matches[0] === text;
+    }
+
+    /**
+     * 取出作品编号或数字ID中的数字部分，用于把只有数字的标识关联到作品编号上
+     * @param value {string|number}
+     * @returns {number|null} 无法取出时返回null
+     */
+    function getWorkNumber(value) {
+        if(value === undefined || value === null) return null;
+
+        let digits = "";
+        for(const char of `${value}`.trim()) {
+            if(char >= "0" && char <= "9") digits += char;
+        }
+        if(digits === "") return null;
+
+        const number = Number(digits);
+        return Number.isFinite(number) ? number : null;
+    }
+
+    /**
+     * 在关联作品表中查找仓库返回的作品标识对应的作品编号。
+     * rule为"raw"时标识本身必须是完整的作品编号；为"numeric"时按数字匹配；
+     * 为"auto"时优先按完整编号匹配，标识为数字时按数字匹配
+     * @param linkages {{}} 关联作品表（作品编号 → 作品信息）
+     * @param raw {*} 仓库返回的作品标识
+     * @param rule {string} auto / raw / numeric
+     * @returns {string} 关联表中的作品编号，找不到时返回空字符串
+     */
+    function findLinkedWorkno(linkages, raw, rule) {
+        if(raw === undefined || raw === null) return "";
+        const text = `${raw}`.trim().toUpperCase();
+
+        //原样模式：标识本身必须是完整的作品编号，且存在于关联表中
+        if(rule === "raw") {
+            return isRjCode(text) && linkages[text] !== undefined ? text : "";
+        }
+        //自动模式：优先按完整编号匹配
+        if(rule !== "numeric" && isRjCode(text)) {
+            if(linkages[text] !== undefined) return text;
+            return "";
+        }
+
+        //数字模式：按数字部分与关联表中的作品编号匹配
+        const number = getWorkNumber(text);
+        if(number === null) return "";
+
+        for(const workno of Object.keys(linkages)) {
+            if(getWorkNumber(workno) === number) return workno;
+        }
+        return "";
+    }
+
+    /**
+     * 将设置中的自定义请求头文本解析为请求头对象
+     * @param text {string} 每行一个key:value
+     * @returns {{}}
+     */
+    function parseHeaderText(text) {
+        let headers = {};
+        if(typeof text !== "string") return headers;
+        for(const line of text.split("\n")) {
+            const pos = line.indexOf(":");
+            //没有冒号的行不是合法的请求头，直接跳过
+            if(pos < 0) continue;
+            const key = line.substring(0, pos).trim();
+            if(key === "") continue;
+            headers[key] = line.substring(pos + 1).trim();
+        }
+        return headers;
+    }
+
+    /**
+     * 按点分路径从对象中取值，如"data.list"
+     * @param data {{}}
+     * @param path {string}
+     * @returns {*} 找不到时返回undefined
+     */
+    function getByPath(data, path) {
+        if(!path) return undefined;
+        let current = data;
+        for(const key of `${path}`.split(".")) {
+            if(key === "") continue;
+            if(current === undefined || current === null) return undefined;
+            current = current[key];
+        }
+        return current;
     }
 
     /**
@@ -2631,6 +2956,504 @@
         return base;
     }
 
+    //账号密码登录中使用的占位符
+    const LOGIN_USERNAME_PLACEHOLDER = "%username%";
+    const LOGIN_PASSWORD_PLACEHOLDER = "%password%";
+    const LOGIN_TOKEN_PLACEHOLDER = "{token}";
+    //请求体可选的两种内容类型
+    const CONTENT_TYPE_JSON = "application/json";
+    const CONTENT_TYPE_FORM = "application/x-www-form-urlencoded";
+    //作品标识转换规则的可用值
+    const ID_RULES = ["auto", "raw", "numeric"];
+
+    /**
+     * 仓库预设：定义不同类型仓库的配置项、请求方式、响应解析与认证方式。
+     * fields中的字段会被仓库管理界面用于动态生成编辑表单
+     */
+    const SEARCH_PRESETS = {
+        kikoeru: {
+            id: "kikoeru",
+            title: "kikoeru",
+            tooltip: "内置预设：适配kikoeru仓库（音声仓库），自带账号密码登录与 /api/search 查询。",
+            defaults: {
+                showBase: "",
+                searchBase: "",
+                authType: "login",
+                username: "",
+                password: "",
+                headers: ""
+            },
+            fields: [
+                {
+                    key: "showBase", type: "input", title: "仓库地址", required: true,
+                    tooltip: "仓库的根地址，即访问仓库的链接<br/><br/>" +
+                        "<b>例如：https://example.com</b>"
+                },
+                {
+                    key: "searchBase", type: "input", title: "API地址", required: false,
+                    tooltip: "仓库API的地址（baseURL）<br/>" +
+                        "<b>仅当仓库前端与后端API分离时（如API使用了独立的域名或端口）才需要单独填写；留空则使用上方仓库地址</b><br/><br/>" +
+                        "<b>例如：https://example.com</b>"
+                },
+                {
+                    key: "authType", type: "dropdown", title: "认证方式", required: true,
+                    options: [
+                        {value: "login", title: "账号密码登录"},
+                        {value: "headers", title: "固定请求头"},
+                        {value: "none", title: "无认证"}
+                    ],
+                    tooltip: "账号密码登录：自动调用仓库登录接口获取token并缓存，token失效时自动重新登录。<br/>" +
+                        "固定请求头：仅使用下方自定义请求头中的内容进行验证（如手动粘贴的token）。<br/>" +
+                        "无认证：不进行任何验证，仅适用于无需登录即可查询的仓库。"
+                },
+                {
+                    key: "username", type: "input", title: "仓库用户名", required: true,
+                    binding: {key: "authType", value: "login"},
+                    tooltip: "用于自动登录仓库的用户名。"
+                },
+                {
+                    key: "password", type: "password", title: "仓库密码", required: true,
+                    binding: {key: "authType", value: "login"},
+                    tooltip: "用于自动登录仓库的密码（不会自动去除首尾空格）。<br/>" +
+                        "脚本会将账号密码本地保存且仅用于登录仓库，不会将其发送给除仓库以外的第三方。"
+                },
+                {
+                    key: "headers", type: "textarea", title: "自定义请求头", required: false,
+                    tooltip: "每行一个，格式为key:value，用换行符分隔。<br/>" +
+                        "本项内容会随仓检请求一起发送，用于应对仓库API需要特定请求头才能访问的情况（一般留空即可）。<br/>" +
+                        "认证方式为账号密码登录时，本项中的Authorization头会被token覆盖（登录请求中也会将该头过滤）。<br/><br/>" +
+                        "<b>例如：<br/>Authorization: Bearer xxxxxxxxxx</b>"
+                }
+            ],
+
+            getAuthType(profile) {
+                const authType = profile.config.authType;
+                return authType === "login" || authType === "headers" || authType === "none" ? authType : "login";
+            },
+
+            resolve(profile) {
+                const config = profile.config;
+                //地址可能被填写为完整url，此处统一截取为baseurl
+                let apiBase = normalizeBaseUrl(config.searchBase);
+                let frontBase = normalizeBaseUrl(config.showBase);
+                //任意一个留空则使用另一个
+                if(apiBase === "") apiBase = frontBase;
+                if(frontBase === "") frontBase = apiBase;
+
+                profile.apiBaseUrl = apiBase;
+                profile.showBaseUrl = frontBase;
+                //http://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s
+                profile.searchUrlTemplate = apiBase === "" ? "" :
+                    `${apiBase}/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s`;
+                //http://192.168.196.226:8088/works?keyword=%s
+                profile.showUrlTemplate = frontBase === "" ? "" : `${frontBase}/works?keyword=%s`;
+            },
+
+            getLoginConfig(profile) {
+                if(!profile.apiBaseUrl) return null;
+                return {
+                    url: `${profile.apiBaseUrl}/api/auth/me`,
+                    contentType: CONTENT_TYPE_JSON,
+                    //直接序列化，避免用户名或密码中的引号破坏JSON
+                    buildBody: () => JSON.stringify({name: profile.username, password: profile.password}),
+                    tokenPath: "token",
+                    tokenHeader: `Authorization: Bearer ${LOGIN_TOKEN_PLACEHOLDER}`
+                };
+            },
+
+            async search(profile, rjCode, linkages) {
+                const url = `${profile.searchUrlTemplate}`.replaceAll("%s", rjCode);
+                //未配置仓库地址时无法查询
+                if(url === "") return null;
+
+                const resp = await profile.authedRequest(url, {method: "GET", cacheAge: 180});
+                if(!resp || !(resp.readyState === 4 && resp.status === 200)) return null;
+
+                let data;
+                try{
+                    data = JSON.parse(resp.responseText);
+                }catch (e) {
+                    throw new Error("仓库响应不是合法的JSON");
+                }
+                if(!Array.isArray(data.works)) {
+                    throw new Error("仓库响应中不包含works列表");
+                }
+                if(data.works.length <= 0) return [];
+
+                let result = [];
+                for(const work of data.works) {
+                    //kikoeru的id是作品编号中的数字部分，按数字匹配关联作品
+                    const link = linkages[findLinkedWorkno(linkages, work.id, "numeric")];
+                    if(!link) continue;
+
+                    result.push(new SearchWorkInfo(link.workno, link.type, link.lang));
+                }
+
+                return result;
+            }
+        },
+
+        custom: {
+            id: "custom",
+            title: "自定义",
+            tooltip: "自定义预设：通过数据描述适配其它框架的仓库，URL模板中的%s会被替换为搜索关键词（RJ号）。",
+            defaults: {
+                searchUrlTemplate: "",
+                showUrlTemplate: "",
+                method: "GET",
+                bodyTemplate: "",
+                contentType: CONTENT_TYPE_JSON,
+                authType: "none",
+                username: "",
+                password: "",
+                loginUrlTemplate: "",
+                loginBodyTemplate: `{"name":"${LOGIN_USERNAME_PLACEHOLDER}","password":"${LOGIN_PASSWORD_PLACEHOLDER}"}`,
+                loginContentType: CONTENT_TYPE_JSON,
+                tokenPath: "token",
+                tokenHeader: `Authorization: Bearer ${LOGIN_TOKEN_PLACEHOLDER}`,
+                headers: "",
+                listPath: "works",
+                idField: "id",
+                idRule: "auto"
+            },
+            fields: [
+                {
+                    key: "searchUrlTemplate", type: "input", title: "搜索URL模板", required: true,
+                    tooltip: "仓库搜索接口地址，其中的%s会被替换为搜索关键词（RJ号）。<br/>" +
+                        "<b>注意：仅支持%s这一个变量，需要其它信息（如分页、时间戳等）的仓库暂不支持。</b><br/><br/>" +
+                        "<b>例如：https://www.xxx.com/api/search?keyword=%s</b>"
+                },
+                {
+                    key: "showUrlTemplate", type: "input", title: "结果展示URL模板", required: false,
+                    tooltip: "点击搜索结果标签时打开的地址，其中的%s会被替换为RJ号。<br/>" +
+                        "留空则点击标签不打开任何页面。<br/><br/>" +
+                        "<b>例如：https://www.xxx.com/works?keyword=%s</b>"
+                },
+                {
+                    key: "method", type: "dropdown", title: "请求方法", required: true,
+                    options: [{value: "GET", title: "GET"}, {value: "POST", title: "POST"}],
+                    tooltip: "查询仓库时使用的HTTP方法。"
+                },
+                {
+                    key: "bodyTemplate", type: "textarea", title: "请求体模板", required: false,
+                    binding: {key: "method", value: "POST"},
+                    tooltip: "使用POST时发送的请求体内容，其中的%s会被替换为搜索关键词（RJ号）。<br/>" +
+                        "留空则发送空请求体。<br/><br/>" +
+                        "<b>例如：{\"keyword\":\"%s\"}</b>"
+                },
+                {
+                    key: "contentType", type: "dropdown", title: "请求体类型", required: true,
+                    binding: {key: "method", value: "POST"},
+                    options: [
+                        {value: CONTENT_TYPE_JSON, title: "JSON"},
+                        {value: CONTENT_TYPE_FORM, title: "表单（x-www-form-urlencoded）"}
+                    ],
+                    tooltip: "使用POST时请求体的内容类型。"
+                },
+                {
+                    key: "authType", type: "dropdown", title: "认证方式", required: true,
+                    options: [
+                        {value: "none", title: "无认证"},
+                        {value: "headers", title: "固定请求头"},
+                        {value: "login", title: "账号密码登录"}
+                    ],
+                    tooltip: "无认证：不进行任何验证。<br/>" +
+                        "固定请求头：仅使用下方自定义请求头中的内容进行验证。<br/>" +
+                        "账号密码登录：按下方配置调用登录接口获取token并缓存，token失效时自动重新登录。<br/>" +
+                        "不同仓库的登录方式差异较大，若下方配置无法满足，请反馈具体的接口格式。"
+                },
+                {
+                    key: "username", type: "input", title: "用户名", required: true,
+                    binding: {key: "authType", value: "login"},
+                    tooltip: "登录时使用的用户名。"
+                },
+                {
+                    key: "password", type: "password", title: "密码", required: true,
+                    binding: {key: "authType", value: "login"},
+                    tooltip: "登录时使用的密码（不会自动去除首尾空格）。"
+                },
+                {
+                    key: "loginUrlTemplate", type: "input", title: "登录URL", required: true,
+                    binding: {key: "authType", value: "login"},
+                    tooltip: "登录接口地址。<br/><br/><b>例如：https://www.xxx.com/api/auth/me</b>"
+                },
+                {
+                    key: "loginBodyTemplate", type: "textarea", title: "登录请求体", required: true,
+                    binding: {key: "authType", value: "login"},
+                    tooltip: `登录请求体模板，${LOGIN_USERNAME_PLACEHOLDER}与${LOGIN_PASSWORD_PLACEHOLDER}会分别替换为用户名与密码。<br/><br/>` +
+                        `<b>例如：{"name":"${LOGIN_USERNAME_PLACEHOLDER}","password":"${LOGIN_PASSWORD_PLACEHOLDER}"}</b>`
+                },
+                {
+                    key: "loginContentType", type: "dropdown", title: "登录请求体类型", required: true,
+                    binding: {key: "authType", value: "login"},
+                    options: [
+                        {value: CONTENT_TYPE_JSON, title: "JSON"},
+                        {value: CONTENT_TYPE_FORM, title: "表单（x-www-form-urlencoded）"}
+                    ],
+                    tooltip: "登录请求体的内容类型。"
+                },
+                {
+                    key: "tokenPath", type: "input", title: "token取值路径", required: true,
+                    binding: {key: "authType", value: "login"},
+                    tooltip: "登录响应中token所在的路径，用点号分隔。<br/><br/>" +
+                        "<b>例如：token 或 data.token</b>"
+                },
+                {
+                    key: "tokenHeader", type: "input", title: "token请求头", required: true,
+                    binding: {key: "authType", value: "login"},
+                    tooltip: `携带token的请求头，${LOGIN_TOKEN_PLACEHOLDER}会被替换为token。<br/><br/>` +
+                        `<b>例如：Authorization: Bearer ${LOGIN_TOKEN_PLACEHOLDER}</b>`
+                },
+                {
+                    key: "headers", type: "textarea", title: "自定义请求头", required: false,
+                    tooltip: "每行一个，格式为key:value，用换行符分隔。<br/>" +
+                        "本项内容会随仓检请求一起发送；登录接口同样会携带本项内容（但会过滤掉其中的Authorization）。<br/><br/>" +
+                        "<b>例如：<br/>X-API-Key: xxxxxxxxxx</b>"
+                },
+                {
+                    key: "listPath", type: "input", title: "作品列表路径", required: true,
+                    tooltip: "响应JSON中作品列表所在的路径，用点号分隔。<br/><br/>" +
+                        "<b>例如：works 或 data.list</b>"
+                },
+                {
+                    key: "idField", type: "input", title: "作品标识字段", required: true,
+                    tooltip: "列表中代表作品的字段名。<br/><br/><b>例如：id 或 workno</b>"
+                },
+                {
+                    key: "idRule", type: "dropdown", title: "作品标识转换", required: true,
+                    options: [
+                        {value: "auto", title: "自动判断"},
+                        {value: "raw", title: "原样作为作品编号"},
+                        {value: "numeric", title: "按数字匹配"}
+                    ],
+                    tooltip: "自动判断：返回值是完整作品编号时按编号匹配，是纯数字时按数字匹配。<br/>" +
+                        "原样作为作品编号：返回值必须是完整的作品编号（如RJ01081353）。<br/>" +
+                        "按数字匹配：忽略前缀，只按数字部分匹配，适合只返回数字ID的仓库。"
+                }
+            ],
+
+            getAuthType(profile) {
+                const authType = profile.config.authType;
+                return authType === "login" || authType === "headers" || authType === "none" ? authType : "none";
+            },
+
+            resolve(profile) {
+                const config = profile.config;
+                profile.searchUrlTemplate = `${config.searchUrlTemplate ?? ""}`.trim();
+                profile.showUrlTemplate = `${config.showUrlTemplate ?? ""}`.trim();
+            },
+
+            getLoginConfig(profile) {
+                const config = profile.config;
+                const url = `${config.loginUrlTemplate ?? ""}`.trim();
+                if(url === "") return null;
+                return {
+                    url: url,
+                    contentType: config.loginContentType === CONTENT_TYPE_FORM ? CONTENT_TYPE_FORM : CONTENT_TYPE_JSON,
+                    bodyTemplate: `${config.loginBodyTemplate ?? ""}`,
+                    tokenPath: `${config.tokenPath ?? ""}`.trim(),
+                    tokenHeader: `${config.tokenHeader ?? ""}`.trim()
+                };
+            },
+
+            async search(profile, rjCode, linkages) {
+                const config = profile.config;
+                const url = `${profile.searchUrlTemplate}`.replaceAll("%s", rjCode);
+                //未配置搜索URL时无法查询
+                if(url === "") return null;
+
+                const method = `${config.method}`.toUpperCase() === "POST" ? "POST" : "GET";
+                const contentType = config.contentType === CONTENT_TYPE_FORM ? CONTENT_TYPE_FORM : CONTENT_TYPE_JSON;
+                const body = method === "POST" ? `${config.bodyTemplate ?? ""}`.replaceAll("%s", rjCode) : undefined;
+
+                const resp = await profile.authedRequest(url, {method: method, body: body, contentType: contentType, cacheAge: 180});
+                if(!resp || !(resp.readyState === 4 && resp.status === 200)) return null;
+
+                let data;
+                try{
+                    data = JSON.parse(resp.responseText);
+                }catch (e) {
+                    throw new Error("仓库响应不是合法的JSON（自定义预设目前仅支持JSON响应）");
+                }
+
+                let list = getByPath(data, `${config.listPath ?? ""}`.trim());
+                if(!Array.isArray(list) && list !== null && typeof list === "object") {
+                    list = Object.values(list);
+                }
+                if(!Array.isArray(list)) {
+                    throw new Error(`无法按路径「${config.listPath}」找到作品列表`);
+                }
+
+                let result = [];
+                for(const item of list) {
+                    const link = linkages[findLinkedWorkno(linkages,
+                        getByPath(item, `${config.idField ?? ""}`.trim()), config.idRule)];
+                    if(!link) continue;
+
+                    result.push(new SearchWorkInfo(link.workno, link.type, link.lang));
+                }
+
+                return result;
+            }
+        }
+    };
+
+    /**
+     * 生成仓库id（用于区分各仓库的缓存与token）
+     * @returns {string}
+     */
+    function createWarehouseId() {
+        const exists = Array.isArray(settings._s_search_warehouses) ? settings._s_search_warehouses : [];
+        let id;
+        do{
+            id = `w${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        }while(exists.some(warehouse => warehouse && warehouse.id === id));
+        return id;
+    }
+
+    /**
+     * 创建一个仓库配置
+     * @param presetId {string} 预设类型
+     * @param options {{id, name, enabled, config}}
+     * @returns {{}}
+     */
+    function createWarehouse(presetId, options = {}) {
+        const preset = SEARCH_PRESETS[presetId] ? SEARCH_PRESETS[presetId] : SEARCH_PRESETS.kikoeru;
+        return {
+            id: options.id === undefined ? createWarehouseId() : options.id,
+            name: `${options.name === undefined ? preset.title : options.name}`.trim() || preset.title,
+            preset: preset.id,
+            enabled: options.enabled !== false,
+            config: {...preset.defaults, ...(options.config === undefined ? {} : options.config)}
+        };
+    }
+
+    /**
+     * 规范化仓库配置，补齐缺失字段，避免设置数据损坏导致报错
+     * @param warehouse {{}}
+     * @returns {{}|null} 无法识别时返回null
+     */
+    function normalizeWarehouse(warehouse) {
+        if(!warehouse || typeof warehouse !== "object") return null;
+        const preset = SEARCH_PRESETS[warehouse.preset];
+        if(!preset) return null;
+
+        return {
+            id: typeof warehouse.id === "string" && warehouse.id !== "" ? warehouse.id : createWarehouseId(),
+            name: `${warehouse.name === undefined ? preset.title : warehouse.name}`.trim() || preset.title,
+            preset: preset.id,
+            enabled: warehouse.enabled !== false,
+            config: {...preset.defaults, ...(warehouse.config && typeof warehouse.config === "object" ? warehouse.config : {})}
+        };
+    }
+
+    /**
+     * 读取设置中的仓库列表（已规范化，最多MAX_SEARCH_WAREHOUSES条）
+     * @returns {[{}]}
+     */
+    function getWarehouses() {
+        if(!Array.isArray(settings._s_search_warehouses)) return [];
+        return settings._s_search_warehouses
+            .map(warehouse => normalizeWarehouse(warehouse))
+            .filter(warehouse => warehouse !== null)
+            .slice(0, MAX_SEARCH_WAREHOUSES);
+    }
+
+    /**
+     * 保存仓库列表
+     * @param warehouses {[{}]}
+     */
+    function setWarehouses(warehouses) {
+        settings._s_search_warehouses = warehouses.slice(0, MAX_SEARCH_WAREHOUSES);
+        settings.save();
+    }
+
+    /**
+     * 将旧版本的单一仓库设置迁移为仓库列表中的第一个仓库。
+     * 迁移后删除旧设置项，避免用户清空仓库列表后又被旧值还原
+     */
+    function migrateSearchWarehouses() {
+        if(!Array.isArray(settings._s_search_warehouses)) settings._s_search_warehouses = [];
+        if(settings._s_search_warehouses.length > 0) return;
+
+        //上一版的设置项：仓库地址、API地址、账号密码、自定义请求头
+        const showBase = normalizeBaseUrl(GM_getValue("show_url_base", ""));
+        const searchBase = normalizeBaseUrl(GM_getValue("search_url_base", ""));
+        const username = `${GM_getValue("search_username", "")}`;
+        const password = `${GM_getValue("search_password", "")}`;
+        const headers = `${GM_getValue("search_url_headers", "")}`;
+        //更早版本的设置项：完整的查询url与展示url模板
+        const legacySearchUrl = normalizeBaseUrl(GM_getValue("search_url_pattern", ""));
+        const legacyShowUrl = normalizeBaseUrl(GM_getValue("show_url_pattern", ""));
+
+        const apiBase = searchBase !== "" ? searchBase : legacySearchUrl;
+        const frontBase = showBase !== "" ? showBase : legacyShowUrl;
+        const configured = apiBase !== "" || frontBase !== "" || headers !== "" || username !== "" || password !== "";
+        if(!configured) return;
+
+        //账号密码齐全时使用账号密码登录，否则回退为固定请求头
+        const authType = username !== "" && password !== "" ? "login" : (headers !== "" ? "headers" : "none");
+        settings._s_search_warehouses = [createWarehouse("kikoeru", {
+            name: "kikoeru",
+            config: {
+                showBase: frontBase,
+                searchBase: apiBase,
+                authType: authType,
+                username: username,
+                password: password,
+                headers: headers
+            }
+        })];
+
+        for(const key of ["show_url_base", "search_url_base", "search_username", "search_password",
+            "search_url_headers", "search_url_pattern", "show_url_pattern"]) {
+            GM_deleteValue(key);
+        }
+        //旧版本的查询结果缓存池不再使用，一并清除
+        try{
+            DataCacheStorage.dropStorage("search-results");
+        }catch (e) {
+            console.error(e);
+        }
+    }
+
+    /**
+     * 根据设置中的仓库列表构建运行时使用的仓库配置（仅包含已启用且配置完整的仓库）
+     * @returns {[SearchProfile]}
+     */
+    function buildSearchProfiles() {
+        const profiles = [];
+        for(const warehouse of getWarehouses()) {
+            if(!warehouse.enabled) continue;
+
+            const profile = new SearchProfile(warehouse);
+            //无法生成搜索url的仓库（如未填写地址）不参与仓检
+            if(profile.searchUrlTemplate === "") continue;
+
+            profiles.push(profile);
+        }
+        return profiles;
+    }
+
+    /**
+     * 重建运行时使用的仓库配置（仓库列表发生变化后调用）
+     * @returns {[SearchProfile]}
+     */
+    function rebuildSearchProfiles() {
+        settings._ss_search_profiles = buildSearchProfiles();
+        return settings._ss_search_profiles;
+    }
+
+    /**
+     * 判断指定仓库当前是否仍处于启用状态。
+     * 用于在仓库被停用或删除后，中止它尚未完成的连锁查询
+     * @param searchProfile {SearchProfile}
+     * @returns {boolean}
+     */
+    function isSearchProfileActive(searchProfile) {
+        return settings._ss_search_profiles.some(profile => profile.id === searchProfile.id);
+    }
+
     class SearchProfile {
         //当前仓库的token缓存
         #token = null;
@@ -2646,76 +3469,78 @@
         #loginFailedAt = 0;
 
         /**
-         * @param name {string}
-         * @param searchBaseUrl {string} 仓库API地址(baseurl)，留空则使用仓库地址
-         * @param showBaseUrl {string} 仓库地址(baseurl)，留空则使用API地址
-         * @param apiType {string}
-         * @param customHeaders {{}}
-         * @param username {string} 仓库用户名，与密码任意一项留空则表示不进行登录
-         * @param password {string} 仓库密码，与用户名任意一项留空则表示不进行登录
+         * @param warehouse {{}} 仓库配置（设置中仓库列表的一项）
          */
-        constructor(name, searchBaseUrl, showBaseUrl, apiType, customHeaders,
-                    username = "", password = "") {
-            this.name = name;
-            this.apiType = apiType;
-            this.customHeaders = customHeaders === undefined || customHeaders === null ? {} : customHeaders;
-            this.username = `${username === undefined || username === null ? "" : username}`.trim();
-            this.password = `${password === undefined || password === null ? "" : password}`;
-            this.enabled = true;
+        constructor(warehouse) {
+            this.warehouse = warehouse;
+            this.id = warehouse.id;
+            this.name = warehouse.name;
+            this.presetId = warehouse.preset;
+            this.preset = SEARCH_PRESETS[warehouse.preset];
+            this.enabled = warehouse.enabled === true;
+            this.config = warehouse.config;
 
-            this.init(searchBaseUrl, showBaseUrl);
-        }
+            //认证信息（仅账号密码登录的预设需要）
+            this.username = `${this.config.username === undefined || this.config.username === null ? "" : this.config.username}`.trim();
+            this.password = `${this.config.password === undefined || this.config.password === null ? "" : this.config.password}`;
+            this.customHeaders = parseHeaderText(this.config.headers);
 
-        /**
-         * 根据仓库地址与API地址生成实际使用的查询url与展示url。
-         * 仓库前端与API地址可以分离，两者中任意一个留空时都使用另一个；两个都留空时无法进行仓检
-         * @param searchBaseUrl {string}
-         * @param showBaseUrl {string}
-         */
-        init(searchBaseUrl, showBaseUrl) {
-            //地址可能被填写为完整url，此处统一截取为baseurl
-            let apiBase = normalizeBaseUrl(searchBaseUrl);
-            let frontBase = normalizeBaseUrl(showBaseUrl);
-            //任意一个留空则使用另一个
-            if(apiBase === "") apiBase = frontBase;
-            if(frontBase === "") frontBase = apiBase;
-
-            this.searchBaseUrl = apiBase;
-            this.showBaseUrl = frontBase;
+            //由预设生成实际使用的查询url、展示url等信息
             this.searchUrlTemplate = "";
             this.showUrlTemplate = "";
-
-            if(this.apiType === "kikoeru") {
-                //http://192.168.196.226:8088/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s
-                //http://192.168.196.226:8088/works?keyword=%s
-                if(apiBase !== "") {
-                    this.searchUrlTemplate = `${apiBase}/api/search?page=1&sort=desc&order=release&nsfw=0&lyric=&seed=26&isAdvance=0&keyword=%s`;
-                }
-                if(frontBase !== "") {
-                    this.showUrlTemplate = `${frontBase}/works?keyword=%s`;
-                }
-            }
-        }
-
-        async getHash() {
-            return await hash(`${this.apiType}|${this.searchBaseUrl}|${this.showBaseUrl}`)
+            if(this.preset) this.preset.resolve(this);
         }
 
         /**
-         * 是否配置了可用于登录的账号密码（任意一项留空都相当于不进行登录）
+         * 认证方式：none（无认证）/ headers（固定请求头）/ login（账号密码登录）
+         * @returns {string}
+         */
+        get authType() {
+            return this.preset ? this.preset.getAuthType(this) : "none";
+        }
+
+        /**
+         * 是否配置了可用于登录的账号密码（认证方式为登录，且用户名与密码均已填写）
          * @returns {boolean}
          */
         get canLogin() {
-            return this.username !== "" && this.password.trim() !== "";
+            return this.authType === "login" && this.username !== "" && this.password.trim() !== "";
         }
 
         /**
-         * 登录接口地址：由API地址生成，即{API地址}/api/auth/me
-         * @returns {string} 无法推导时返回空字符串
+         * 登录接口地址（未配置登录方式时返回空字符串）
+         * @returns {string}
          */
         get loginUrl() {
-            if(this.searchBaseUrl === "") return "";
-            return `${this.searchBaseUrl}/api/auth/me`;
+            const loginConfig = this.preset ? this.preset.getLoginConfig(this) : null;
+            return loginConfig ? loginConfig.url : "";
+        }
+
+        /**
+         * 该仓库配置的指纹，用于区分查询结果缓存（配置变化后自动失效）
+         * @returns {Promise<string>}
+         */
+        async getHash() {
+            return await hash(`${this.presetId}|${JSON.stringify(this.config)}`)
+        }
+
+        /**
+         * 使用该仓库的预设查询指定RJ号
+         * @param rjCode {string}
+         * @param linkages {{}} 关联作品表
+         * @returns {Promise<[SearchWorkInfo]|null|undefined>}
+         */
+        async search(rjCode, linkages) {
+            if(!this.preset) throw new Error(`未找到仓库预设：${this.presetId}`);
+            return await this.preset.search(this, rjCode, linkages);
+        }
+
+        /**
+         * 清除该仓库的查询结果缓存与登录状态（禁用或删除仓库时使用）
+         */
+        async clearCache() {
+            WorkPromise.clearSearchResultCache(this);
+            await this.clearToken();
         }
 
         /**
@@ -2731,11 +3556,11 @@
         }
 
         /**
-         * token缓存的存储key，按仓库与用户名区分，避免多个账号互相覆盖
-         * @returns {Promise<string>}
+         * token缓存的存储key：每个仓库独立缓存，删除仓库时一并删除
+         * @returns {string}
          */
-        async #getTokenCacheKey() {
-            return `search_token_${await hash(`${this.apiType}|${this.searchBaseUrl}|${this.username}`)}`;
+        #getTokenCacheKey() {
+            return `search_token_${this.id}`;
         }
 
         /**
@@ -2745,7 +3570,7 @@
         async #loadToken() {
             this.#tokenLoaded = true;
             try {
-                const cached = await GM_getValue(await this.#getTokenCacheKey(), null);
+                const cached = await GM_getValue(this.#getTokenCacheKey(), null);
                 if(cached && typeof cached.token === "string") {
                     this.#token = cached.token;
                     this.#tokenExpire = typeof cached.expire === "number" ? cached.expire : 0;
@@ -2767,7 +3592,7 @@
             this.#tokenFetchedAt = Date.now();
             this.#tokenLoaded = true;
             try {
-                GM_setValue(await this.#getTokenCacheKey(), {
+                GM_setValue(this.#getTokenCacheKey(), {
                     token: this.#token,
                     expire: this.#tokenExpire,
                     fetchedAt: this.#tokenFetchedAt
@@ -2787,14 +3612,14 @@
             this.#tokenFetchedAt = 0;
             this.#tokenLoaded = true;
             try {
-                GM_deleteValue(await this.#getTokenCacheKey());
+                GM_deleteValue(this.#getTokenCacheKey());
             }catch (e) {
                 console.error(e);
             }
         }
 
         /**
-         * 使用账号密码调用登录接口获取token
+         * 使用账号密码调用预设定义的登录接口获取token
          * @returns {Promise<string>} 登录得到的token
          */
         async login() {
@@ -2802,17 +3627,24 @@
                 throw new Error("未配置仓库账号密码，无法登录");
             }
 
-            const url = this.loginUrl;
-            if(url === "") {
-                throw new Error("未配置仓库地址（baseurl），无法生成登录接口地址");
+            const loginConfig = this.preset ? this.preset.getLoginConfig(this) : null;
+            if(!loginConfig || !loginConfig.url) {
+                throw new Error("未配置登录接口地址，无法登录");
             }
+
+            //登录请求体：内置预设直接序列化，自定义预设按模板替换用户名与密码
+            const body = typeof loginConfig.buildBody === "function" ? loginConfig.buildBody() :
+                `${loginConfig.bodyTemplate === undefined ? "" : loginConfig.bodyTemplate}`
+                    .replaceAll(LOGIN_USERNAME_PLACEHOLDER, this.username)
+                    .replaceAll(LOGIN_PASSWORD_PLACEHOLDER, this.password);
 
             //登录接口同样可能依赖自定义请求头才能访问，故一并携带；
             //但需要过滤其中的Authorization，避免可能已失效的旧token干扰登录接口
-            const resp = await postJsonAsync(url, {name: this.username, password: this.password},
+            const resp = await postAsync(loginConfig.url, body,
+                loginConfig.contentType === CONTENT_TYPE_FORM ? CONTENT_TYPE_FORM : CONTENT_TYPE_JSON,
                 this.#getCustomHeadersWithoutAuth());
             if(!(resp.readyState === 4 && resp.status === 200)) {
-                throw new Error(`仓库登录失败：${resp.status} ${resp.statusText}`);
+                throw new Error(`仓库「${this.name}」登录失败：${resp.status} ${resp.statusText}`);
             }
 
             let data;
@@ -2821,12 +3653,13 @@
             }catch (e) {
                 throw new Error("仓库登录响应不是合法的JSON");
             }
-            if(!data || typeof data.token !== "string" || data.token === "") {
-                throw new Error("仓库登录响应中不包含token");
+            const token = getByPath(data, loginConfig.tokenPath);
+            if(typeof token !== "string" || token === "") {
+                throw new Error(`仓库登录响应中不包含token（取值路径：${loginConfig.tokenPath}）`);
             }
 
-            await this.#saveToken(data.token);
-            return data.token;
+            await this.#saveToken(token);
+            return token;
         }
 
         /**
@@ -2884,26 +3717,46 @@
         }
 
         /**
-         * 生成携带指定token的请求头：自定义请求头（去除Authorization） + 登录得到的token
+         * 生成携带指定token的请求头：自定义请求头（去除Authorization） + 预设定义的token请求头
          * @param token {string}
          * @returns {{}}
          */
-        #withToken(token) {
+        #buildTokenHeaders(token) {
             let headers = this.#getCustomHeadersWithoutAuth();
-            headers["Authorization"] = `Bearer ${token}`;
+            const loginConfig = this.preset ? this.preset.getLoginConfig(this) : null;
+            const headerText = loginConfig && loginConfig.tokenHeader ? loginConfig.tokenHeader : `Authorization: Bearer ${LOGIN_TOKEN_PLACEHOLDER}`;
+            const tokenHeaders = parseHeaderText(headerText.replaceAll(LOGIN_TOKEN_PLACEHOLDER, token));
+
+            for(const key of Object.keys(tokenHeaders)) {
+                //避免与自定义请求头中的同名请求头冲突
+                for(const existKey of Object.keys(headers)) {
+                    if(existKey.toLowerCase() === key.toLowerCase()) delete headers[existKey];
+                }
+                headers[key] = tokenHeaders[key];
+            }
             return headers;
         }
 
         /**
          * 携带身份验证信息请求仓库接口。
-         * 优先使用账号密码登录得到的token；若仓库返回验证失效（401/403），
-         * 则重新登录并携带新token重试一次。未配置账号密码、登录失败或重试仍未通过时，
+         * 认证方式为账号密码登录时优先使用登录得到的token；若仓库返回验证失效（401/403），
+         * 则重新登录并携带新token重试一次。未配置登录、登录失败或重试仍未通过时，
          * 回退为仅使用自定义请求头。
          * @param url {string}
-         * @param cacheAge {number}
+         * @param options {{method, cacheAge, body, contentType}}
          * @returns {Promise<{}>}
          */
-        async authedGet(url, cacheAge = 180) {
+        async authedRequest(url, options = {}) {
+            const method = `${options.method === undefined ? "GET" : options.method}`.toUpperCase();
+            const request = (headers) => {
+                if(method === "POST") {
+                    return postAsync(url, options.body === undefined ? "" : options.body,
+                        options.contentType === CONTENT_TYPE_FORM ? CONTENT_TYPE_FORM : CONTENT_TYPE_JSON,
+                        headers, "low");
+                }
+                return getHttpAsync(url, false, options.cacheAge === undefined ? 180 : options.cacheAge, headers, "low");
+            };
+
             let resp = null;
 
             if(this.canLogin) {
@@ -2915,7 +3768,7 @@
                 }
 
                 if(token) {
-                    resp = await getHttpAsync(url, false, cacheAge, this.#withToken(token));
+                    resp = await request(this.#buildTokenHeaders(token));
 
                     if(isAuthFailure(resp)) {
                         //验证失效：丢弃缓存的token，重新登录后再试一次
@@ -2927,18 +3780,30 @@
                             console.error("仓库重新登录失败：", e);
                         }
                         if(token) {
-                            resp = await getHttpAsync(url, false, cacheAge, this.#withToken(token));
+                            resp = await request(this.#buildTokenHeaders(token));
                         }
                     }
                 }
             }
 
-            //自定义请求头作为回退手段；未配置任何自定义请求头时不再重复请求
-            if((resp === null || isAuthFailure(resp)) && Object.keys(this.customHeaders).length > 0) {
-                resp = await getHttpAsync(url, false, cacheAge, this.customHeaders);
+            //自定义请求头作为回退手段。
+            //尚未发起过请求时（无认证或不进行登录）必须发出请求；
+            //已经用token请求过且被判定失效时，仅在存在自定义请求头时才额外重试一次
+            if(resp === null || (isAuthFailure(resp) && Object.keys(this.customHeaders).length > 0)) {
+                resp = await request(this.customHeaders);
             }
 
             return resp;
+        }
+
+        /**
+         * 携带身份验证信息发起GET请求
+         * @param url {string}
+         * @param cacheAge {number} 缓存时间（秒）
+         * @returns {Promise<{}>}
+         */
+        async authedGet(url, cacheAge = 180) {
+            return await this.authedRequest(url, {method: "GET", cacheAge: cacheAge});
         }
     }
 
@@ -4259,11 +5124,22 @@
             const container = document.createElement("div");
             container.classList.add(`${VOICELINK_CLASS}_tags`);
             container.style.setProperty("margin-top", "0", "important");  //marginTop = "0 !important";
-            Popup.get_tag_base_search(rjCode, settings._ss_search_profiles[0]).then(tag => {
-                if(tag){
-                    container.appendChild(tag);
-                }
-            }).catch(e => {});
+
+            //每个启用的仓库各生成一个标签，顺序与仓库列表顺序一致
+            for(const searchProfile of settings._ss_search_profiles) {
+                const shadowTag = document.createElement("span");
+                shadowTag.style.setProperty("display", "none", "important");
+                container.appendChild(shadowTag);
+
+                Popup.get_tag_base_search(rjCode, searchProfile).then(tag => {
+                    if(tag){
+                        container.insertBefore(tag, shadowTag);
+                    }
+                    shadowTag.remove();
+                }).catch(e => {
+                    shadowTag.remove();
+                });
+            }
             return container;
         },
 
@@ -4304,7 +5180,7 @@
             }).catch(e => {});
 
             //仓库搜索情况
-            if(settings._s_base_search){
+            if(settings._s_base_search && settings._ss_search_profiles.length > 0){
                 const searchContainer = Popup.get_search_tag_container(rjCode);
                 infoContainer.appendChild(searchContainer);
             }
@@ -5231,59 +6107,32 @@
 
         //仓库搜索
 
-        cacheSearchResult(rjCode, searchProfileHash, fullSearch, data) {
-            const hashKey = `${rjCode}|${searchProfileHash}|${fullSearch}`;
-            const storage = DataCacheStorage.open("search-results", 128, true, true, true)
-            storage.commit(hashKey, data, Date.now() + 3 * 60 * 1000)
+        /**
+         * 获取指定仓库的查询结果缓存池。
+         * 每个仓库独立一个缓存池，便于扩容以及在被禁用/删除时整体清理
+         * @param searchProfile {SearchProfile}
+         * @returns {DataCacheStorage}
+         */
+        getSearchResultStorage(searchProfile) {
+            return DataCacheStorage.open(`search-results-${searchProfile.id}`, SEARCH_CACHE_SIZE, true, true, true);
         },
 
-        getSearchResultFromCache(rjCode, searchProfileHash, fullSearch) {
+        cacheSearchResult(searchProfile, rjCode, searchProfileHash, fullSearch, data) {
             const hashKey = `${rjCode}|${searchProfileHash}|${fullSearch}`;
-            const storage = DataCacheStorage.open("search-results", 128, true, true, true)
-            return storage.get(hashKey);
+            WorkPromise.getSearchResultStorage(searchProfile).commit(hashKey, data, Date.now() + SEARCH_CACHE_TTL);
+        },
+
+        getSearchResultFromCache(searchProfile, rjCode, searchProfileHash, fullSearch) {
+            const hashKey = `${rjCode}|${searchProfileHash}|${fullSearch}`;
+            return WorkPromise.getSearchResultStorage(searchProfile).get(hashKey);
         },
 
         /**
-         * 获取来自Kikoeru API的搜索结果
-         * @param rjCode {string}
+         * 清除指定仓库的查询结果缓存池
          * @param searchProfile {SearchProfile}
-         * @param linkages {{}}
-         * @returns {[SearchWorkInfo]}
          */
-        getKikoeruSearchResult: async function(rjCode, searchProfile, linkages) {
-            let url = searchProfile.searchUrlTemplate?.replaceAll("%s", rjCode);
-            //未配置仓库地址时无法进行查询
-            if(!url) return;
-
-            try{
-                //请求会优先使用账号密码登录得到的token，并在token失效时自动重新登录
-                let resp = await searchProfile.authedGet(url, 180);
-                if (!resp || !(resp.readyState === 4 && resp.status === 200)) {
-                    return;
-                }
-
-                let data = JSON.parse(resp.responseText);
-                if (!Array.isArray(data.works)) {
-                    throw new Error("Invalid Response.");
-                } else if (data.works.length <= 0) {
-                    return [];
-                }
-
-                let result = [];
-                for (const work of data.works) {
-                    let rj = work.id > 999999 ? `RJ0${work.id}` : `RJ${work.id}`;
-                    let link = linkages[rj];
-                    if(!link) continue;
-
-                    result.push(new SearchWorkInfo(link.workno, link.type, link.lang));
-                }
-
-                return result;
-            } catch (e) {
-                console.error(e);
-                return null;
-            }
-
+        clearSearchResultCache(searchProfile) {
+            DataCacheStorage.dropStorage(`search-results-${searchProfile.id}`);
         },
 
         /**
@@ -5293,15 +6142,6 @@
          * @param progressCallback {function (result: SearchResult): boolean} 搜索的阶段性成果，如果返回false则停止搜索
          */
         getSearchResult: async function(rjCode, searchProfile, progressCallback) {
-            let searchFunction = null;
-            switch (searchProfile.apiType.toLowerCase()) {
-                case "kikoeru":
-                    searchFunction = WorkPromise.getKikoeruSearchResult;
-                    break;
-                default:
-                    throw new Error(`Invalid API Type: ${searchProfile.apiType.toLowerCase()}`);
-            }
-
             let linkages = settings._s_full_linkage ?
                 await WorkPromise.getLinkedWorksFull(rjCode) : await WorkPromise.getLinkedWorks(rjCode);
             let searchSet = new Set(Object.keys(linkages));
@@ -5309,14 +6149,14 @@
             work = new SearchWorkInfo(work.workno, work.type, work.lang);
 
             //检查缓存是否存在，存在则直接使用缓存结果
-            let cache = WorkPromise.getSearchResultFromCache(rjCode, await searchProfile.getHash(), settings._s_search_linkage)
+            let cache = WorkPromise.getSearchResultFromCache(searchProfile, rjCode, await searchProfile.getHash(), settings._s_search_linkage)
             if(Array.isArray(cache)) return new SearchResult(searchProfile.name, work, cache);
 
             //查询失败（如验证失效、网络异常等）时抛出错误，避免与"仓库中没有该作品"混淆
             const search = async (target) => {
-                let res = await searchFunction(target, searchProfile, linkages);
+                let res = await searchProfile.search(target, linkages);
                 if(!Array.isArray(res)) {
-                    throw new Error(`仓库搜索失败：${searchProfile.name}`);
+                    throw new Error(`仓库「${searchProfile.name}」查询失败`);
                 }
                 return res;
             };
@@ -5327,7 +6167,7 @@
 
             if(!settings._s_search_linkage) {
                 //直接保存并返回
-                WorkPromise.cacheSearchResult(rjCode, await searchProfile.getHash(), false, res)
+                WorkPromise.cacheSearchResult(searchProfile, rjCode, await searchProfile.getHash(), false, res)
                 return new SearchResult(searchProfile.name, work, res);
             }
 
@@ -5341,6 +6181,12 @@
             while(searchSet.size > 0) {
                 //提交当前搜索到的部分结果（最后一次的完整结果通过返回值提交，故这段放在while开头
                 if(!progressCallback(new SearchResult(searchProfile.name, work, res))) {
+                    //非完整结果不保存
+                    return new SearchResult(searchProfile.name, work, res);
+                }
+
+                //仓库在查询过程中被停用或删除时，不再发起后续请求
+                if(!isSearchProfileActive(searchProfile)) {
                     //非完整结果不保存
                     return new SearchResult(searchProfile.name, work, res);
                 }
@@ -5359,7 +6205,7 @@
             }
 
             //保存结果并返回
-            WorkPromise.cacheSearchResult(rjCode, await searchProfile.getHash(), true, res)
+            WorkPromise.cacheSearchResult(searchProfile, rjCode, await searchProfile.getHash(), true, res)
             return new SearchResult(searchProfile.name, work, res);
         },
     }
@@ -5830,7 +6676,8 @@
         },
 
         getParentWorkRjCode: function (redirectUrl){
-            const reg = new RegExp("(?<=product_id/)((R[JE][0-9]{8})|(R[JE][0-9]{6})|([VB]J[0-9]{8})|([VB]J[0-9]{6}))")
+            //仅作品编号部分复用RJ_REGEX，"紧跟在product_id/之后"这个定位条件保持不变
+            const reg = new RegExp(`(?<=product_id/)(${RJ_REGEX.source})`, "i");
             return redirectUrl.match(reg)[0];
         }
     }
@@ -6862,78 +7709,23 @@
                                     title: "开启仓检",
                                     id: "base_search",
                                     tooltip: "开启后，会检查特定仓库内的作品及其相关版本是否存在，并以标签的形式展示每个仓库的搜索结果。<br/>" +
-                                        "<b>目前仅支持kikoeru框架的仓库（非asmr.one）</b><br/><br/>" +
+                                        "<b>内置kikoeru框架的预设（非asmr.one），也可通过自定义预设适配其它框架的仓库</b><br/><br/>" +
                                         "<b><u>注意：该功能会向第三方仓库API发送查询信息，若仓库不属于你，请在确认仓库所有者允许的情况下使用该功能！</u></b>"
                                 },
                                 {
-                                    //仓库地址
+                                    //仓库管理
                                     binding: {
                                         target: "base_search",
                                         value: true
                                     },
 
-                                    type: "input",
-                                    title: "仓库地址",
-                                    id: "show_url_base",
-                                    tooltip: "仓库的根地址，即访问仓库的链接<br/><br/>" +
-                                        "<b>例如：https://example.com</b>",
-                                },
-                                {
-                                    //API地址
-                                    binding: {
-                                        target: "base_search",
-                                        value: true
-                                    },
-
-                                    type: "input",
-                                    title: "API地址",
-                                    id: "search_url_base",
-                                    tooltip: "仓库API的地址（baseURL），进行搜索<br/>" +
-                                        "<b>仅当仓库前端与后端API分离时（如API使用了独立的域名或端口）才需要单独填写；留空则使用上方仓库地址</b><br/><br/>" +
-                                        "<b>例如：https://example.com</b>",
-                                },
-                                {
-                                    //仓库用户名
-                                    binding: {
-                                        target: "base_search",
-                                        value: true
-                                    },
-
-                                    type: "input",
-                                    title: "仓库用户名",
-                                    id: "search_username",
-                                    tooltip: "用于自动登录仓库的用户名。<br/>" +
-                                        "与仓库密码任意一项留空时，相当于不进行登录。<br/><br/>" +
-                                        "<b>设置完毕后，请保存并刷新页面。</b>",
-                                },
-                                {
-                                    //仓库密码
-                                    binding: {
-                                        target: "base_search",
-                                        value: true
-                                    },
-
-                                    type: "password",
-                                    title: "仓库密码",
-                                    id: "search_password",
-                                    tooltip: "用于自动登录仓库的密码。<br/>" +
-                                        "脚本会将账号密码本地保存且仅用于登录仓库，不会将其发送给除仓库以外的第三方。<br/><br/>" +
-                                        "<b>设置完毕后，请保存并刷新页面。</b>",
-                                },
-                                {
-                                    //自定义请求头
-                                    binding: {
-                                        target: "base_search",
-                                        value: true
-                                    },
-
-                                    type: "textarea",
-                                    title: "自定义请求头",
-                                    id: "search_url_headers",
-                                    tooltip: "每行一个，格式为key:value，用换行符分隔。<br/>" +
-                                        "本项内容会随仓检请求一起发送，用于应对仓库API需要特定请求头才能访问的情况（一般留空即可）。<br/>" +
-                                        "若已填写仓库用户名与密码，身份认证将优先使用登录得到的token，本项中的Authorization头会被覆盖。<br/><br/>" +
-                                        "<b>例如：<br/>Authorization: Bearer xxxxxxxxxx</b>",
+                                    type: "button",
+                                    title: "仓库列表",
+                                    button_title: `管理仓库（已添加 ${getWarehouses().length}/${MAX_SEARCH_WAREHOUSES}）`,
+                                    tooltip: "添加、编辑、启用/停用、排序或删除仓库。<br/>" +
+                                        `最多可添加${MAX_SEARCH_WAREHOUSES}个仓库，列表顺序即为弹框中搜索结果标签的顺序。<br/>` +
+                                        "账号密码、登录状态与查询缓存均按仓库独立保存；停用或删除仓库时会清空该仓库的缓存。",
+                                    onclick: () => WarehouseManager.showPopup()
                                 },
                                 {
                                     //是否查找完整关联
@@ -7179,6 +7971,9 @@
                 case "password":
                     rowElement = this.createInputRow(row);
                     break;
+                case "button":
+                    rowElement = this.createButtonRow(row);
+                    break;
                 case "textarea":
                     rowElement = this.createTextareaRow(row);
                     break;
@@ -7385,6 +8180,26 @@
             })
             input.value = this.settings[settingId];
             input.dispatchEvent(new Event("change"));
+
+            rowElement.appendChild(titleCell);
+            rowElement.appendChild(inputCell);
+            return rowElement;
+        };
+
+        createButtonRow(row){
+            const rowElement = this.createEmptyRow(row);
+            const [titleCell] = this.createTitleCell(row, "span");
+
+            const inputCell = document.createElement("td");
+            inputCell.classList.add(this.getClass("input-cell"));
+
+            const button = document.createElement("button");
+            button.className = this.getClass("button-primary");
+            button.innerText = row.button_title === undefined ? row.title : row.button_title;
+            button.onclick = () => {
+                if(typeof row.onclick === "function") row.onclick();
+            };
+            inputCell.appendChild(button);
 
             rowElement.appendChild(titleCell);
             rowElement.appendChild(inputCell);
@@ -7725,6 +8540,499 @@
         }
     }
 
+    /**
+     * 仓库管理弹窗：添加、编辑、启用/停用、排序、删除仓库
+     * 所有修改会立即保存并生效（无需刷新页面）
+     */
+    const WarehouseManager = {
+        //当前编辑状态 {warehouse: {}, isNew: boolean}
+        editing: null,
+        //编辑表单中的输入控件 {字段key: 元素}
+        formInputs: {},
+        //编辑表单容器
+        formElement: null,
+
+        getClass(name) {
+            return `${VOICELINK_CLASS}_warehouse-${name}`;
+        },
+
+        getContainer() {
+            return document.getElementById(`${VOICELINK_CLASS}_warehouse-container`);
+        },
+
+        /**
+         * 打开仓库管理界面
+         */
+        showPopup() {
+            WarehouseManager.close();
+            const container = document.createElement("div");
+            container.id = `${VOICELINK_CLASS}_warehouse-container`;
+            document.body.appendChild(container);
+            WarehouseManager.renderList(container);
+        },
+
+        close() {
+            const container = WarehouseManager.getContainer();
+            if(container) container.remove();
+            WarehouseManager.editing = null;
+            WarehouseManager.formInputs = {};
+            WarehouseManager.formElement = null;
+        },
+
+        /**
+         * 渲染仓库列表
+         * @param container {Element}
+         */
+        renderList(container) {
+            container.dataset.view = "list";
+            container.innerHTML = "";
+            WarehouseManager.editing = null;
+            WarehouseManager.formInputs = {};
+            WarehouseManager.formElement = null;
+
+            const body = document.createElement("div");
+            container.appendChild(body);
+
+            const warehouses = getWarehouses();
+
+            //标题栏
+            const header = document.createElement("div");
+            header.className = WarehouseManager.getClass("header");
+            const title = document.createElement("h1");
+            title.innerText = "仓库管理";
+            header.appendChild(title);
+
+            const addButton = document.createElement("button");
+            addButton.className = WarehouseManager.getClass("btn");
+            addButton.innerText = "添加仓库";
+            addButton.disabled = warehouses.length >= MAX_SEARCH_WAREHOUSES;
+            if(addButton.disabled) addButton.title = `最多只能添加${MAX_SEARCH_WAREHOUSES}个仓库`;
+            addButton.onclick = () => WarehouseManager.openEditor(null);
+            header.appendChild(addButton);
+            body.appendChild(header);
+
+            const hint = document.createElement("p");
+            hint.className = WarehouseManager.getClass("hint");
+            hint.innerText = `最多可添加${MAX_SEARCH_WAREHOUSES}个仓库，列表顺序即为弹框中搜索结果标签的顺序。` +
+                "关闭左侧开关可以暂停该仓库的仓检（停用时会清空该仓库的缓存）。";
+            body.appendChild(hint);
+
+            //仓库列表
+            const list = document.createElement("div");
+            list.className = WarehouseManager.getClass("list");
+            body.appendChild(list);
+
+            if(warehouses.length === 0) {
+                const empty = document.createElement("p");
+                empty.className = WarehouseManager.getClass("hint");
+                empty.innerText = "还没有添加任何仓库，点击右上角「添加仓库」开始配置。";
+                list.appendChild(empty);
+            }else{
+                warehouses.forEach((warehouse, index) => {
+                    list.appendChild(WarehouseManager.createRow(warehouse, index, warehouses.length));
+                });
+            }
+
+            //底部按钮
+            const footer = document.createElement("div");
+            footer.className = WarehouseManager.getClass("footer");
+            footer.appendChild(WarehouseManager.createButton("关闭", () => WarehouseManager.close()));
+            body.appendChild(footer);
+        },
+
+        /**
+         * 创建列表中的一行仓库
+         */
+        createRow(warehouse, index, total) {
+            const row = document.createElement("div");
+            row.className = WarehouseManager.getClass("row");
+
+            //启用开关
+            const toggle = document.createElement("input");
+            toggle.type = "checkbox";
+            toggle.checked = warehouse.enabled;
+            toggle.title = "是否启用该仓库的仓检";
+            toggle.onchange = () => WarehouseManager.toggleWarehouse(warehouse.id, toggle.checked);
+            row.appendChild(toggle);
+
+            //名称与预设
+            const info = document.createElement("div");
+            info.className = WarehouseManager.getClass("info");
+            const name = document.createElement("div");
+            name.className = WarehouseManager.getClass("name");
+            name.innerText = warehouse.name;
+            name.title = warehouse.name;
+            const presetText = document.createElement("div");
+            presetText.className = WarehouseManager.getClass("preset");
+            const preset = SEARCH_PRESETS[warehouse.preset];
+            presetText.innerText = `${preset ? preset.title : warehouse.preset}${warehouse.enabled ? "" : "｜已停用"}`;
+            info.appendChild(name);
+            info.appendChild(presetText);
+            row.appendChild(info);
+
+            //操作按钮
+            row.appendChild(WarehouseManager.createButton("编辑", () => WarehouseManager.openEditor(warehouse.id)));
+            row.appendChild(WarehouseManager.createButton("上移", () => WarehouseManager.moveWarehouse(index, -1), index <= 0));
+            row.appendChild(WarehouseManager.createButton("下移", () => WarehouseManager.moveWarehouse(index, 1), index >= total - 1));
+            row.appendChild(WarehouseManager.createButton("删除", () => WarehouseManager.deleteWarehouse(warehouse.id), false, true));
+
+            return row;
+        },
+
+        createButton(text, onclick, disabled = false, danger = false) {
+            const button = document.createElement("button");
+            button.className = WarehouseManager.getClass("btn") + (danger ? ` ${WarehouseManager.getClass("btn-danger")}` : "");
+            button.innerText = text;
+            button.disabled = disabled === true;
+            button.onclick = onclick;
+            return button;
+        },
+
+        /**
+         * 保存仓库列表的修改，并重建运行时配置、刷新界面
+         * @param warehouses {[{}]}
+         */
+        applyWarehouses(warehouses) {
+            setWarehouses(warehouses);
+            rebuildSearchProfiles();
+            const container = WarehouseManager.getContainer();
+            if(container) WarehouseManager.renderList(container);
+        },
+
+        /**
+         * 清除指定仓库的查询缓存与登录状态
+         * @param warehouse {{}}
+         */
+        clearWarehouseCache(warehouse) {
+            try{
+                const profile = new SearchProfile(warehouse);
+                profile.clearCache().catch(e => console.error(e));
+            }catch (e) {
+                console.error(e);
+            }
+        },
+
+        /**
+         * 启用/停用仓库（停用时清空该仓库的缓存）
+         */
+        toggleWarehouse(id, enabled) {
+            const warehouses = getWarehouses();
+            const warehouse = warehouses.find(item => item.id === id);
+            if(!warehouse) return;
+            warehouse.enabled = enabled;
+
+            if(!enabled) {
+                WarehouseManager.clearWarehouseCache(warehouse);
+            }
+            WarehouseManager.applyWarehouses(warehouses);
+        },
+
+        /**
+         * 调整仓库顺序
+         */
+        moveWarehouse(index, delta) {
+            const warehouses = getWarehouses();
+            const target = index + delta;
+            if(target < 0 || target >= warehouses.length) return;
+
+            const tmp = warehouses[index];
+            warehouses[index] = warehouses[target];
+            warehouses[target] = tmp;
+            WarehouseManager.applyWarehouses(warehouses);
+        },
+
+        /**
+         * 删除仓库（同时删除其账号密码、登录状态与查询缓存）
+         */
+        deleteWarehouse(id) {
+            const warehouses = getWarehouses();
+            const warehouse = warehouses.find(item => item.id === id);
+            if(!warehouse) return;
+
+            if(!window.confirm(`确定要删除仓库「${warehouse.name}」吗？\n该仓库的账号密码、登录状态与查询结果缓存都会被删除。`)) {
+                return;
+            }
+
+            WarehouseManager.clearWarehouseCache(warehouse);
+            WarehouseManager.applyWarehouses(warehouses.filter(item => item.id !== id));
+        },
+
+        /**
+         * 打开编辑界面
+         * @param id {string|null} 为null时表示添加新仓库
+         */
+        openEditor(id) {
+            const container = WarehouseManager.getContainer();
+            if(!container) return;
+
+            let warehouse = null;
+            let isNew = false;
+            if(id === null) {
+                warehouse = createWarehouse("kikoeru");
+                isNew = true;
+            }else{
+                warehouse = getWarehouses().find(item => item.id === id);
+            }
+            if(!warehouse) return;
+
+            WarehouseManager.editing = {warehouse: warehouse, isNew: isNew};
+            WarehouseManager.renderEditor(container);
+        },
+
+        /**
+         * 渲染编辑界面（字段内容由预设决定）
+         * @param container {Element}
+         */
+        renderEditor(container) {
+            container.dataset.view = "editor";
+            container.innerHTML = "";
+            WarehouseManager.formInputs = {};
+
+            const editing = WarehouseManager.editing;
+            const warehouse = editing.warehouse;
+            const preset = SEARCH_PRESETS[warehouse.preset];
+            if(!preset) return;
+
+            const body = document.createElement("div");
+            container.appendChild(body);
+
+            const title = document.createElement("h1");
+            title.innerText = editing.isNew ? "添加仓库" : "编辑仓库";
+            body.appendChild(title);
+
+            const form = document.createElement("div");
+            WarehouseManager.formElement = form;
+            body.appendChild(form);
+
+            //预设类型
+            const presetField = WarehouseManager.createField(form, {
+                key: "", title: "预设类型", required: true,
+                tooltip: preset.tooltip
+            });
+            const presetSelect = document.createElement("select");
+            for(const presetId of Object.keys(SEARCH_PRESETS)) {
+                const option = document.createElement("option");
+                option.value = presetId;
+                option.innerText = SEARCH_PRESETS[presetId].title;
+                presetSelect.appendChild(option);
+            }
+            presetSelect.value = warehouse.preset;
+            presetSelect.onchange = () => WarehouseManager.changePreset(presetSelect.value);
+            presetField.input.appendChild(presetSelect);
+
+            //仓库名称
+            const nameField = WarehouseManager.createField(form, {
+                key: "name", title: "仓库名称", required: true,
+                tooltip: "显示在搜索结果标签前的名称，多个仓库可以重名。"
+            });
+            const nameInput = document.createElement("input");
+            nameInput.type = "text";
+            nameInput.value = warehouse.name;
+            nameField.input.appendChild(nameInput);
+            WarehouseManager.formInputs.name = nameInput;
+
+            //预设字段
+            for(const field of preset.fields) {
+                const fieldElement = WarehouseManager.createField(form, field);
+                const input = field.type === "textarea" ? document.createElement("textarea") :
+                    field.type === "dropdown" ? document.createElement("select") : document.createElement("input");
+                if(input.nodeName === "INPUT") input.type = field.type === "password" ? "password" : "text";
+
+                const value = warehouse.config[field.key] === undefined ? "" : `${warehouse.config[field.key]}`;
+                if(field.type === "dropdown") {
+                    for(const option of field.options) {
+                        const optionElement = document.createElement("option");
+                        optionElement.value = option.value;
+                        optionElement.innerText = option.title;
+                        input.appendChild(optionElement);
+                    }
+                    input.value = value;
+                }else{
+                    input.value = value;
+                }
+                input.addEventListener("change", () => WarehouseManager.applyFieldBindings());
+                fieldElement.input.appendChild(input);
+                WarehouseManager.formInputs[field.key] = input;
+            }
+
+            //根据当前内容应用字段显隐
+            WarehouseManager.applyFieldBindings();
+
+            //底部按钮
+            const footer = document.createElement("div");
+            footer.className = WarehouseManager.getClass("footer");
+            footer.appendChild(WarehouseManager.createButton(editing.isNew ? "添加" : "保存", () => WarehouseManager.saveEditor()));
+            footer.appendChild(WarehouseManager.createButton("取消", () => WarehouseManager.backToList()));
+            body.appendChild(footer);
+        },
+
+        /**
+         * 创建表单字段
+         * @param form {Element}
+         * @param field {{key, title, tooltip, required, binding}}
+         * @returns {{wrapper: Element, input: Element}}
+         */
+        createField(form, field) {
+            const wrapper = document.createElement("div");
+            wrapper.className = WarehouseManager.getClass("field");
+            wrapper.dataset.fieldKey = field.key === undefined ? "" : field.key;
+            if(field.binding) {
+                wrapper.dataset.bindingKey = field.binding.key;
+                wrapper.dataset.bindingValue = field.binding.value;
+            }
+
+            const title = document.createElement("div");
+            title.className = WarehouseManager.getClass("field-title");
+            title.innerText = `${field.title}${field.required === true ? " *" : ""}`;
+            wrapper.appendChild(title);
+
+            if(field.tooltip) {
+                const tooltip = document.createElement("div");
+                tooltip.className = WarehouseManager.getClass("field-tooltip");
+                tooltip.innerHTML = Csp.createHTML(field.tooltip);
+                wrapper.appendChild(tooltip);
+            }
+
+            const input = document.createElement("div");
+            input.className = WarehouseManager.getClass("field-input");
+            wrapper.appendChild(input);
+
+            form.appendChild(wrapper);
+            return {wrapper: wrapper, input: input};
+        },
+
+        /**
+         * 根据当前表单内容更新字段的显示与隐藏（与设置页面的binding逻辑一致）
+         */
+        applyFieldBindings() {
+            const form = WarehouseManager.formElement;
+            if(!form) return;
+
+            for(const wrapper of form.querySelectorAll(`.${WarehouseManager.getClass("field")}`)) {
+                const bindingKey = wrapper.dataset.bindingKey;
+                if(!bindingKey) continue;
+
+                const controller = WarehouseManager.formInputs[bindingKey];
+                const visible = controller !== undefined && `${controller.value}` === wrapper.dataset.bindingValue;
+                if(visible) {
+                    wrapper.style.removeProperty("display");
+                }else{
+                    wrapper.style.setProperty("display", "none", "important");
+                }
+            }
+        },
+
+        /**
+         * 读取当前表单内容
+         * @returns {{}}
+         */
+        getFormValues() {
+            const values = {};
+            for(const key of Object.keys(WarehouseManager.formInputs)) {
+                values[key] = WarehouseManager.formInputs[key].value;
+            }
+            return values;
+        },
+
+        /**
+         * 切换预设类型（仅保留含义相同的请求头与账号密码，其余字段使用新预设的默认值）
+         * @param presetId {string}
+         */
+        changePreset(presetId) {
+            const editing = WarehouseManager.editing;
+            const container = WarehouseManager.getContainer();
+            const preset = SEARCH_PRESETS[presetId];
+            if(!editing || !container || !preset) return;
+
+            const current = editing.warehouse;
+            const values = WarehouseManager.getFormValues();
+            const config = {...preset.defaults};
+            for(const key of ["headers", "username", "password"]) {
+                if(values[key] !== undefined && Object.prototype.hasOwnProperty.call(config, key)) {
+                    config[key] = values[key];
+                }
+            }
+
+            editing.warehouse = {
+                id: current.id,
+                name: `${values.name === undefined ? "" : values.name}`.trim() || preset.title,
+                preset: presetId,
+                enabled: current.enabled,
+                config: config
+            };
+            WarehouseManager.renderEditor(container);
+        },
+
+        /**
+         * 保存编辑结果
+         */
+        saveEditor() {
+            const editing = WarehouseManager.editing;
+            const container = WarehouseManager.getContainer();
+            if(!editing || !container) return;
+
+            const warehouse = editing.warehouse;
+            const preset = SEARCH_PRESETS[warehouse.preset];
+            if(!preset) return;
+
+            const values = WarehouseManager.getFormValues();
+            const form = WarehouseManager.formElement;
+
+            //校验：名称与当前可见的必填字段不能为空
+            const missing = [];
+            if(`${values.name === undefined ? "" : values.name}`.trim() === "") missing.push("仓库名称");
+            for(const field of preset.fields) {
+                if(field.required !== true) continue;
+                const wrapper = form.querySelector(`[data-field-key="${field.key}"]`);
+                if(wrapper && wrapper.style.display === "none") continue;
+                if(`${values[field.key] === undefined ? "" : values[field.key]}`.trim() === "") missing.push(field.title);
+            }
+            if(missing.length > 0) {
+                window.alert(`以下内容不能为空：\n${missing.join("\n")}`);
+                return;
+            }
+
+            const updated = {
+                id: warehouse.id,
+                name: `${values.name}`.trim(),
+                preset: warehouse.preset,
+                enabled: warehouse.enabled === true,
+                config: {...preset.defaults}
+            };
+            for(const field of preset.fields) {
+                const value = values[field.key];
+                updated.config[field.key] = value === undefined ? preset.defaults[field.key] : value;
+            }
+
+            const warehouses = getWarehouses();
+            if(editing.isNew) {
+                if(warehouses.length >= MAX_SEARCH_WAREHOUSES) {
+                    window.alert(`最多只能添加${MAX_SEARCH_WAREHOUSES}个仓库`);
+                    return;
+                }
+                warehouses.push(updated);
+            }else{
+                const index = warehouses.findIndex(item => item.id === updated.id);
+                if(index < 0) return;
+                warehouses[index] = updated;
+            }
+
+            setWarehouses(warehouses);
+            //配置变化后清除该仓库的登录状态与查询缓存
+            if(!editing.isNew) WarehouseManager.clearWarehouseCache(updated);
+            rebuildSearchProfiles();
+            WarehouseManager.renderList(container);
+        },
+
+        /**
+         * 返回仓库列表
+         */
+        backToList() {
+            const container = WarehouseManager.getContainer();
+            if(container) WarehouseManager.renderList(container);
+        }
+    };
+
     const SettingsPopup = {
         showPopup(useTemp = false) {
             let uiBuilder = new SettingPageBuilder(getSettingsUi(), settings);
@@ -7773,48 +9081,11 @@
             isInit = true;
         }
 
-        //将设置项内容导入到searchProfile中，cue_lang也要更新
-        let customHeaders = {};
-        for (const headerText of settings._s_search_url_headers.split("\n")) {
-            try{
-                let val = headerText.split(":", 2);
-                customHeaders[val[0].trim()] = val[1].trim();
-            } catch (e) {}
-        }
-        //兼容旧版本设置项：新的仓库地址/API地址均未填写时，尝试从旧的查询url、展示url中截取baseurl
-        if(settings._s_search_url_base === "" && settings._s_show_url_base === "") {
-            const legacySearchUrl = `${GM_getValue("search_url_pattern", "")}`;
-            const legacyShowUrl = `${GM_getValue("show_url_pattern", "")}`;
-            if(legacySearchUrl !== "" || legacyShowUrl !== "") {
-                settings._s_search_url_base = normalizeBaseUrl(legacySearchUrl);
-                settings._s_show_url_base = normalizeBaseUrl(legacyShowUrl);
-                //迁移后删除旧设置项，避免用户清空新设置项后又被旧值还原
-                GM_deleteValue("search_url_pattern");
-                GM_deleteValue("show_url_pattern");
-            }
-        }
-        //地址允许填写完整url，统一规范化为baseurl后再保存，便于在设置中确认实际生效的地址
-        settings._s_show_url_base = normalizeBaseUrl(settings._s_show_url_base);
-        settings._s_search_url_base = normalizeBaseUrl(settings._s_search_url_base);
-
-        let searchProfile = new SearchProfile(
-            "kikoeru", settings._s_search_url_base, settings._s_show_url_base,
-            "kikoeru", customHeaders, settings._s_search_username, settings._s_search_password);
-        settings._ss_search_profiles = [
-            searchProfile
-        ];
+        //兼容旧版本的单一仓库设置，并重建运行时使用的仓库配置
+        migrateSearchWarehouses();
         settings._ss_cue_lang = settings._s_cue_languages.split(" ").map(val => val.trim());
+        rebuildSearchProfiles();
         settings.save();
-        /*手动添加仓库配置的示例（默认使用设置项中的仓库地址与API地址）
-        settings._ss_search_profiles = [
-            new SearchProfile(
-                "kikoeru",
-                "http://192.168.196.226:8088",   //API地址(baseurl)，留空则与仓库地址相同
-                "http://192.168.196.226:8088",   //仓库地址(baseurl)，留空则与API地址相同
-                "kikoeru", {
-                    Authorization: "Bearer xxxxxxxxxx",
-                }, "用户名", "密码"),
-        ];*/
 
         setTimeout(() => {
             if(!document.body || observing){
