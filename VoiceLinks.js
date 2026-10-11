@@ -1199,6 +1199,637 @@
             en_US: "🌐"
         },
 
+        //仓检：设置分区
+        //说明：文本中的{max}、{count}、{name}、{fields}会在使用时由localizeFormat替换为对应内容
+        search_settings_title: {
+            zh_CN: "仓库检查",
+            zh_TW: "倉庫檢查",
+            en_US: "Repository Check",
+        },
+
+        search_enable: {
+            zh_CN: "开启仓检",
+            zh_TW: "開啟倉檢",
+            en_US: "Enable Repository Check",
+        },
+
+        search_enable_tooltip: {
+            zh_CN: "开启后，会检查特定仓库内的作品及其相关版本是否存在，并以标签的形式展示每个仓库的搜索结果。<br/>" +
+                "<b>内置kikoeru框架的预设（非asmr.one），也可通过自定义预设适配其它框架的仓库</b><br/><br/>" +
+                "<b><u>注意：该功能会向第三方仓库API发送查询信息，若仓库不属于你，请在确认仓库所有者允许的情况下使用该功能！</u></b>",
+            zh_TW: "開啟後，會檢查特定倉庫內的作品及其相關版本是否存在，並以標籤的形式展示每個倉庫的搜尋結果。<br/>" +
+                "<b>內建 kikoeru 框架的預設（非 asmr.one），也可透過自訂預設適配其他框架的倉庫</b><br/><br/>" +
+                "<b><u>注意：該功能會向第三方倉庫 API 發送查詢資訊，若倉庫不屬於你，請在確認倉庫所有者允許的情況下使用該功能！</u></b>",
+            en_US: "Once enabled, the script checks whether the work and its related versions exist in the specified repositories, and shows each repository's search result as a label.<br/>" +
+                "<b>A preset for the kikoeru framework is built in (asmr.one is not supported), and repositories on other frameworks can be adapted with the custom preset</b><br/><br/>" +
+                "<b><u>Note: this feature sends queries to third-party repository APIs. If a repository is not yours, please make sure its owner allows this before using the feature!</u></b>",
+        },
+
+        search_manage_warehouses: {
+            zh_CN: "管理仓库（已添加 {count}/{max}）",
+            zh_TW: "管理倉庫（已新增 {count}/{max}）",
+            en_US: "Manage repositories ({count}/{max} added)",
+        },
+
+        search_warehouse_list: {
+            zh_CN: "仓库列表",
+            zh_TW: "倉庫列表",
+            en_US: "Repository list",
+        },
+
+        search_manage_warehouses_tooltip: {
+            zh_CN: "添加、编辑、启用/停用、排序或删除仓库。<br/>" +
+                "最多可添加{max}个仓库，列表顺序即为弹框中搜索结果标签的顺序。<br/>" +
+                "账号密码、登录状态与查询缓存均按仓库独立保存；停用或删除仓库时会清空该仓库的缓存。",
+            zh_TW: "新增、編輯、啟用/停用、排序或刪除倉庫。<br/>" +
+                "最多可新增 {max} 個倉庫，列表順序即為彈出視窗中搜尋結果標籤的順序。<br/>" +
+                "帳號密碼、登入狀態與查詢快取均按倉庫獨立儲存；停用或刪除倉庫時會清空該倉庫的快取。",
+            en_US: "Add, edit, enable/disable, reorder, or delete repositories.<br/>" +
+                "Up to {max} repositories can be added, and their order is the order of the search result labels in the pop-up.<br/>" +
+                "Credentials, login state, and query cache are stored per repository; disabling or deleting a repository clears its cache.",
+        },
+
+        search_full_linkage: {
+            zh_CN: "完整关联",
+            zh_TW: "完整關聯",
+            en_US: "Full linkage",
+        },
+
+        search_full_linkage_tooltip: {
+            zh_CN: "查询仓库前，会先寻找与该作品相关的其它作品（如原版、翻译版等）<br/>" +
+                "会产生多次网络请求，但能使得仓库搜索结果更完整（需要同时开启连锁查询）",
+            zh_TW: "查詢倉庫前，會先尋找與該作品相關的其他作品（如原版、翻譯版等）<br/>" +
+                "會產生多次網路請求，但能讓倉庫搜尋結果更完整（需要同時開啟連鎖查詢）",
+            en_US: "Before querying the repositories, the script looks for other works related to this one (such as the original or translated versions).<br/>" +
+                "This causes several network requests, but makes the repository search results more complete (requires chained search to be enabled as well).",
+        },
+
+        search_cue_languages: {
+            zh_CN: "语言列表",
+            zh_TW: "語言列表",
+            en_US: "Language list",
+        },
+
+        search_cue_languages_tooltip: {
+            zh_CN: "用空格分隔的语言代码，代表你想要搜索的所有语言关联。<br/>" +
+                "语言个数会影响搜索效率和发往DLSite的请求数量。<br/><br/>" +
+                "<b>例子：CHI_HANS CHI_HANT ENG</b><br/>" +
+                "上例表示需要搜索简体中文、繁体中文、英文语言的翻译作品关联，其它语言的关联将不会搜寻。",
+            zh_TW: "以空格分隔的語言代碼，代表你想要搜尋的所有語言關聯。<br/>" +
+                "語言數量會影響搜尋效率與發往 DLSite 的請求數量。<br/><br/>" +
+                "<b>範例：CHI_HANS CHI_HANT ENG</b><br/>" +
+                "上例表示需要搜尋簡體中文、繁體中文、英文語言的翻譯作品關聯，其他語言的關聯將不會搜尋。",
+            en_US: "Space-separated language codes, representing all language relations you want to search.<br/>" +
+                "The number of languages affects search speed and the number of requests sent to DLSite.<br/><br/>" +
+                "<b>Example: CHI_HANS CHI_HANT ENG</b><br/>" +
+                "The example above searches for translation relations in Simplified Chinese, Traditional Chinese, and English; relations in other languages are not searched.",
+        },
+
+        search_linkage: {
+            zh_CN: "连锁查询",
+            zh_TW: "連鎖查詢",
+            en_US: "Chained search",
+        },
+
+        search_linkage_tooltip: {
+            zh_CN: "搜索仓库时，对所有关联的RJ号进行搜索，可能产生多次请求。<br/>" +
+                "如果你的仓库包含搜索其它语言版本的功能，开启此项也不会影响速度。",
+            zh_TW: "搜尋倉庫時，對所有關聯的 RJ 號進行搜尋，可能產生多次請求。<br/>" +
+                "如果你的倉庫本身包含搜尋其他語言版本的功能，開啟此項也不會影響速度。",
+            en_US: "Search every related RJ code in the repositories, which may cause several requests.<br/>" +
+                "If your repository can already search for other language versions, enabling this option will not slow things down.",
+        },
+
+        //仓检：仓库管理弹窗
+        search_manager_title: {
+            zh_CN: "仓库管理",
+            zh_TW: "倉庫管理",
+            en_US: "Repository Management",
+        },
+
+        search_manager_add: {
+            zh_CN: "添加仓库",
+            zh_TW: "新增倉庫",
+            en_US: "Add repository",
+        },
+
+        search_manager_add_limit: {
+            zh_CN: "最多只能添加{max}个仓库",
+            zh_TW: "最多只能新增 {max} 個倉庫",
+            en_US: "You can add at most {max} repositories",
+        },
+
+        search_manager_hint: {
+            zh_CN: "最多可添加{max}个仓库，列表顺序即为弹框中搜索结果标签的顺序。" +
+                "关闭左侧开关可以暂停该仓库的仓检（停用时会清空该仓库的缓存）。",
+            zh_TW: "最多可新增 {max} 個倉庫，列表順序即為彈出視窗中搜尋結果標籤的順序。" +
+                "關閉左側開關可以暫停該倉庫的倉檢（停用時會清空該倉庫的快取）。",
+            en_US: "Up to {max} repositories can be added, and their order is the order of the search result labels in the pop-up. " +
+                "Turn off the switch on the left to pause the check for that repository (disabling it clears the repository's cache).",
+        },
+
+        search_manager_empty: {
+            zh_CN: "还没有添加任何仓库，点击右上角「添加仓库」开始配置。",
+            zh_TW: "還沒有新增任何倉庫，點擊右上角「新增倉庫」開始設定。",
+            en_US: "No repositories have been added yet. Click \"Add repository\" in the top-right corner to get started.",
+        },
+
+        search_manager_close: {
+            zh_CN: "关闭",
+            zh_TW: "關閉",
+            en_US: "Close",
+        },
+
+        search_manager_toggle_tooltip: {
+            zh_CN: "是否启用该仓库的仓检",
+            zh_TW: "是否啟用該倉庫的倉檢",
+            en_US: "Whether this repository takes part in Repository Check",
+        },
+
+        search_manager_disabled: {
+            zh_CN: "｜已停用",
+            zh_TW: "｜已停用",
+            en_US: " | Disabled",
+        },
+
+        search_manager_edit: {
+            zh_CN: "编辑",
+            zh_TW: "編輯",
+            en_US: "Edit",
+        },
+
+        search_manager_move_up: {
+            zh_CN: "上移",
+            zh_TW: "上移",
+            en_US: "Move up",
+        },
+
+        search_manager_move_down: {
+            zh_CN: "下移",
+            zh_TW: "下移",
+            en_US: "Move down",
+        },
+
+        search_manager_delete: {
+            zh_CN: "删除",
+            zh_TW: "刪除",
+            en_US: "Delete",
+        },
+
+        search_manager_delete_confirm: {
+            zh_CN: "确定要删除仓库「{name}」吗？\n该仓库的账号密码、登录状态与查询结果缓存都会被删除。",
+            zh_TW: "確定要刪除倉庫「{name}」嗎？\n該倉庫的帳號密碼、登入狀態與查詢結果快取都會被刪除。",
+            en_US: "Are you sure you want to delete the repository \"{name}\"?\nIts credentials, login state, and query result cache will all be deleted.",
+        },
+
+        search_manager_editor_add_title: {
+            zh_CN: "添加仓库",
+            zh_TW: "新增倉庫",
+            en_US: "Add repository",
+        },
+
+        search_manager_editor_edit_title: {
+            zh_CN: "编辑仓库",
+            zh_TW: "編輯倉庫",
+            en_US: "Edit repository",
+        },
+
+        search_manager_preset_field: {
+            zh_CN: "预设类型",
+            zh_TW: "預設類型",
+            en_US: "Preset type",
+        },
+
+        search_manager_name_field: {
+            zh_CN: "仓库名称",
+            zh_TW: "倉庫名稱",
+            en_US: "Repository name",
+        },
+
+        search_manager_name_tooltip: {
+            zh_CN: "显示在搜索结果标签前的名称，多个仓库可以重名。",
+            zh_TW: "顯示在搜尋結果標籤前的名稱，多個倉庫可以重名。",
+            en_US: "The name shown in front of the search result label. Multiple repositories may share the same name.",
+        },
+
+        search_manager_footer_add: {
+            zh_CN: "添加",
+            zh_TW: "新增",
+            en_US: "Add",
+        },
+
+        search_manager_footer_save: {
+            zh_CN: "保存",
+            zh_TW: "儲存",
+            en_US: "Save",
+        },
+
+        search_manager_cancel: {
+            zh_CN: "取消",
+            zh_TW: "取消",
+            en_US: "Cancel",
+        },
+
+        search_manager_required_alert: {
+            zh_CN: "以下内容不能为空：\n{fields}",
+            zh_TW: "以下內容不能為空：\n{fields}",
+            en_US: "The following fields cannot be empty:\n{fields}",
+        },
+
+        //仓检：仓库预设与预设字段
+        search_preset_kikoeru_tooltip: {
+            zh_CN: "内置预设：适配kikoeru仓库（音声仓库），自带账号密码登录与 /api/search 查询。",
+            zh_TW: "內建預設：適配 kikoeru 倉庫（音聲倉庫），自帶帳號密碼登入與 /api/search 查詢。",
+            en_US: "Built-in preset: for kikoeru repositories (doujin audio libraries). Comes with username/password login and /api/search queries.",
+        },
+
+        search_preset_custom: {
+            zh_CN: "自定义",
+            zh_TW: "自訂",
+            en_US: "Custom",
+        },
+
+        search_preset_custom_tooltip: {
+            zh_CN: "自定义预设：通过数据描述适配其它框架的仓库，URL模板中的%s会被替换为搜索关键词（RJ号）。",
+            zh_TW: "自訂預設：透過資料描述適配其他框架的倉庫，URL 模板中的 %s 會被替換為搜尋關鍵字（RJ 號）。",
+            en_US: "Custom preset: adapts repositories on other frameworks through a data description. The %s in URL templates is replaced with the search keyword (the RJ code).",
+        },
+
+        search_field_repo_url: {
+            zh_CN: "仓库地址",
+            zh_TW: "倉庫地址",
+            en_US: "Repository URL",
+        },
+
+        search_field_repo_url_tooltip: {
+            zh_CN: "仓库的根地址，即访问仓库的链接<br/><br/><b>例如：https://example.com</b>",
+            zh_TW: "倉庫的根地址，即存取倉庫的連結<br/><br/><b>例如：https://example.com</b>",
+            en_US: "The root URL of the repository, i.e. the link you normally use to access it.<br/><br/><b>Example: https://example.com</b>",
+        },
+
+        search_field_api_url: {
+            zh_CN: "API地址",
+            zh_TW: "API 位址",
+            en_US: "API URL",
+        },
+
+        search_field_api_url_tooltip: {
+            zh_CN: "仓库API的地址（baseURL）<br/>" +
+                "<b>仅当仓库前端与后端API分离时（如API使用了独立的域名或端口）才需要单独填写；留空则使用上方仓库地址</b><br/><br/>" +
+                "<b>例如：https://example.com</b>",
+            zh_TW: "倉庫 API 的位址（baseURL）<br/>" +
+                "<b>僅當倉庫前端與後端 API 分離時（如 API 使用了獨立的網域或連接埠）才需要單獨填寫；留空則使用上方倉庫地址</b><br/><br/>" +
+                "<b>例如：https://example.com</b>",
+            en_US: "The address of the repository API (baseURL).<br/>" +
+                "<b>Only needed when the repository frontend and backend API are hosted separately (for example when the API uses its own domain or port); leave it empty to use the repository URL above</b><br/><br/>" +
+                "<b>Example: https://example.com</b>",
+        },
+
+        search_field_auth: {
+            zh_CN: "认证方式",
+            zh_TW: "認證方式",
+            en_US: "Authentication",
+        },
+
+        search_auth_login: {
+            zh_CN: "账号密码登录",
+            zh_TW: "帳號密碼登入",
+            en_US: "Username/Password Login",
+        },
+
+        search_auth_headers: {
+            zh_CN: "固定请求头",
+            zh_TW: "固定請求標頭",
+            en_US: "Fixed Request Headers",
+        },
+
+        search_auth_none: {
+            zh_CN: "无认证",
+            zh_TW: "無認證",
+            en_US: "No Authentication",
+        },
+
+        search_field_auth_tooltip_kikoeru: {
+            zh_CN: "账号密码登录：自动调用仓库登录接口获取token并缓存，token失效时自动重新登录。<br/>" +
+                "固定请求头：仅使用下方自定义请求头中的内容进行验证（如手动粘贴的token）。<br/>" +
+                "无认证：不进行任何验证，仅适用于无需登录即可查询的仓库。",
+            zh_TW: "帳號密碼登入：自動呼叫倉庫登入 API 取得 token 並快取，token 失效時自動重新登入。<br/>" +
+                "固定請求標頭：僅使用下方自訂請求標頭中的內容進行驗證（如手動貼上的 token）。<br/>" +
+                "無認證：不進行任何驗證，僅適用於無需登入即可查詢的倉庫。",
+            en_US: "Username/Password Login: automatically calls the repository's login API, caches the token, and logs in again once the token expires.<br/>" +
+                "Fixed Request Headers: authenticates using only the custom request headers below (for example a token copied by hand).<br/>" +
+                "No Authentication: no authentication at all; only suitable for repositories that can be queried without logging in.",
+        },
+
+        search_field_auth_tooltip_custom: {
+            zh_CN: "无认证：不进行任何验证。<br/>" +
+                "固定请求头：仅使用下方自定义请求头中的内容进行验证。<br/>" +
+                "账号密码登录：按下方配置调用登录接口获取token并缓存，token失效时自动重新登录。<br/>" +
+                "不同仓库的登录方式差异较大，若下方配置无法满足，请反馈具体的接口格式。",
+            zh_TW: "無認證：不進行任何驗證。<br/>" +
+                "固定請求標頭：僅使用下方自訂請求標頭中的內容進行驗證。<br/>" +
+                "帳號密碼登入：依下方設定呼叫登入 API 取得 token 並快取，token 失效時自動重新登入。<br/>" +
+                "不同倉庫的登入方式差異較大，若下方設定無法滿足，請回報具體的介面格式。",
+            en_US: "No Authentication: no authentication at all.<br/>" +
+                "Fixed Request Headers: authenticates using only the custom request headers below.<br/>" +
+                "Username/Password Login: calls the login API according to the settings below, caches the token, and logs in again once the token expires.<br/>" +
+                "Login methods differ a lot between repositories; if the settings below cannot cover yours, please report the actual API format.",
+        },
+
+        search_field_username: {
+            zh_CN: "仓库用户名",
+            zh_TW: "倉庫使用者名稱",
+            en_US: "Repository username",
+        },
+
+        search_field_username_tooltip: {
+            zh_CN: "用于自动登录仓库的用户名。",
+            zh_TW: "用於自動登入倉庫的使用者名稱。",
+            en_US: "The username used to log in to the repository automatically.",
+        },
+
+        search_field_password: {
+            zh_CN: "仓库密码",
+            zh_TW: "倉庫密碼",
+            en_US: "Repository password",
+        },
+
+        search_field_password_tooltip: {
+            zh_CN: "用于自动登录仓库的密码（不会自动去除首尾空格）。<br/>" +
+                "脚本会将账号密码本地保存且仅用于登录仓库，不会将其发送给除仓库以外的第三方。",
+            zh_TW: "用於自動登入倉庫的密碼（不會自動去除首尾空格）。<br/>" +
+                "腳本會將帳號密碼儲存在本機，且僅用於登入倉庫，不會將其傳送給倉庫以外的第三方。",
+            en_US: "The password used to log in to the repository automatically (leading and trailing spaces are not trimmed).<br/>" +
+                "The script stores your credentials locally and uses them only to log in to the repository; they are never sent to any third party other than the repository.",
+        },
+
+        search_field_headers: {
+            zh_CN: "自定义请求头",
+            zh_TW: "自訂請求標頭",
+            en_US: "Custom request headers",
+        },
+
+        search_field_headers_tooltip_kikoeru: {
+            zh_CN: "每行一个，格式为key:value，用换行符分隔。<br/>" +
+                "本项内容会随仓检请求一起发送，用于应对仓库API需要特定请求头才能访问的情况（一般留空即可）。<br/>" +
+                "认证方式为账号密码登录时，本项中的Authorization头会被token覆盖（登录请求中也会将该头过滤）。<br/><br/>" +
+                "<b>例如：<br/>Authorization: Bearer xxxxxxxxxx</b>",
+            zh_TW: "每行一個，格式為 key:value，以換行符分隔。<br/>" +
+                "本項內容會隨倉檢請求一起傳送，用於應對倉庫 API 需要特定請求標頭才能存取的情況（一般留空即可）。<br/>" +
+                "認證方式為帳號密碼登入時，本項中的 Authorization 標頭會被 token 覆蓋（登入請求中也會將該標頭過濾）。<br/><br/>" +
+                "<b>例如：<br/>Authorization: Bearer xxxxxxxxxx</b>",
+            en_US: "One entry per line in the form key:value.<br/>" +
+                "These headers are sent along with Repository Check requests, for repository APIs that require specific headers to be accessible (usually left empty).<br/>" +
+                "When the authentication method is username/password login, the Authorization header here is overridden by the token (and filtered out of login requests).<br/><br/>" +
+                "<b>Example:<br/>Authorization: Bearer xxxxxxxxxx</b>",
+        },
+
+        search_field_headers_tooltip_custom: {
+            zh_CN: "每行一个，格式为key:value，用换行符分隔。<br/>" +
+                "本项内容会随仓检请求一起发送；登录接口同样会携带本项内容（但会过滤掉其中的Authorization）。<br/><br/>" +
+                "<b>例如：<br/>X-API-Key: xxxxxxxxxx</b>",
+            zh_TW: "每行一個，格式為 key:value，以換行符分隔。<br/>" +
+                "本項內容會隨倉檢請求一起傳送；登入 API 同樣會攜帶本項內容（但會過濾掉其中的 Authorization）。<br/><br/>" +
+                "<b>例如：<br/>X-API-Key: xxxxxxxxxx</b>",
+            en_US: "One entry per line in the form key:value.<br/>" +
+                "These headers are sent along with Repository Check requests, and the login API receives them as well (with Authorization filtered out).<br/><br/>" +
+                "<b>Example:<br/>X-API-Key: xxxxxxxxxx</b>",
+        },
+
+        search_field_search_url: {
+            zh_CN: "搜索URL模板",
+            zh_TW: "搜尋 URL 模板",
+            en_US: "Search URL template",
+        },
+
+        search_field_search_url_tooltip: {
+            zh_CN: "仓库搜索接口地址，其中的%s会被替换为搜索关键词（RJ号）。<br/>" +
+                "<b>注意：仅支持%s这一个变量，需要其它信息（如分页、时间戳等）的仓库暂不支持。</b><br/><br/>" +
+                "<b>例如：https://www.xxx.com/api/search?keyword=%s</b>",
+            zh_TW: "倉庫搜尋 API 位址，其中的 %s 會被替換為搜尋關鍵字（RJ 號）。<br/>" +
+                "<b>注意：僅支援 %s 這一個變數，需要其他資訊（如分頁、時間戳等）的倉庫暫不支援。</b><br/><br/>" +
+                "<b>例如：https://www.xxx.com/api/search?keyword=%s</b>",
+            en_US: "The repository's search API address, where %s is replaced with the search keyword (the RJ code).<br/>" +
+                "<b>Note: only the single %s variable is supported; repositories that need other information (paging, timestamps, etc.) are not supported yet.</b><br/><br/>" +
+                "<b>Example: https://www.xxx.com/api/search?keyword=%s</b>",
+        },
+
+        search_field_show_url: {
+            zh_CN: "结果展示URL模板",
+            zh_TW: "結果展示 URL 模板",
+            en_US: "Result page URL template",
+        },
+
+        search_field_show_url_tooltip: {
+            zh_CN: "点击搜索结果标签时打开的地址，其中的%s会被替换为RJ号。<br/>" +
+                "留空则点击标签不打开任何页面。<br/><br/>" +
+                "<b>例如：https://www.xxx.com/works?keyword=%s</b>",
+            zh_TW: "點擊搜尋結果標籤時開啟的位址，其中的 %s 會被替換為 RJ 號。<br/>" +
+                "留空則點擊標籤不會開啟任何頁面。<br/><br/>" +
+                "<b>例如：https://www.xxx.com/works?keyword=%s</b>",
+            en_US: "The address opened when a search result label is clicked, where %s is replaced with the RJ code.<br/>" +
+                "If left empty, clicking the label opens nothing.<br/><br/>" +
+                "<b>Example: https://www.xxx.com/works?keyword=%s</b>",
+        },
+
+        search_field_method: {
+            zh_CN: "请求方法",
+            zh_TW: "請求方法",
+            en_US: "Request method",
+        },
+
+        search_field_method_tooltip: {
+            zh_CN: "查询仓库时使用的HTTP方法。",
+            zh_TW: "查詢倉庫時使用的 HTTP 方法。",
+            en_US: "The HTTP method used when querying the repository.",
+        },
+
+        search_field_body_template: {
+            zh_CN: "请求体模板",
+            zh_TW: "請求主體模板",
+            en_US: "Request body template",
+        },
+
+        search_field_body_template_tooltip: {
+            zh_CN: "使用POST时发送的请求体内容，其中的%s会被替换为搜索关键词（RJ号）。<br/>" +
+                "留空则发送空请求体。<br/><br/>" +
+                "<b>例如：{\"keyword\":\"%s\"}</b>",
+            zh_TW: "使用 POST 時傳送的請求主體內容，其中的 %s 會被替換為搜尋關鍵字（RJ 號）。<br/>" +
+                "留空則傳送空的主體。<br/><br/>" +
+                "<b>例如：{\"keyword\":\"%s\"}</b>",
+            en_US: "The request body sent when POST is used, where %s is replaced with the search keyword (the RJ code).<br/>" +
+                "Leave it empty to send an empty body.<br/><br/>" +
+                "<b>Example: {\"keyword\":\"%s\"}</b>",
+        },
+
+        search_field_content_type: {
+            zh_CN: "请求体类型",
+            zh_TW: "請求主體類型",
+            en_US: "Request body type",
+        },
+
+        search_field_content_type_tooltip: {
+            zh_CN: "使用POST时请求体的内容类型。",
+            zh_TW: "使用 POST 時請求主體的內容類型。",
+            en_US: "The content type of the request body when POST is used.",
+        },
+
+        search_option_form: {
+            zh_CN: "表单（x-www-form-urlencoded）",
+            zh_TW: "表單（x-www-form-urlencoded）",
+            en_US: "Form (x-www-form-urlencoded)",
+        },
+
+        search_field_login_username: {
+            zh_CN: "用户名",
+            zh_TW: "使用者名稱",
+            en_US: "Username",
+        },
+
+        search_field_login_username_tooltip: {
+            zh_CN: "登录时使用的用户名。",
+            zh_TW: "登入時使用的使用者名稱。",
+            en_US: "The username used when logging in.",
+        },
+
+        search_field_login_password: {
+            zh_CN: "密码",
+            zh_TW: "密碼",
+            en_US: "Password",
+        },
+
+        search_field_login_password_tooltip: {
+            zh_CN: "登录时使用的密码（不会自动去除首尾空格）。",
+            zh_TW: "登入時使用的密碼（不會自動去除首尾空格）。",
+            en_US: "The password used when logging in (leading and trailing spaces are not trimmed).",
+        },
+
+        search_field_login_url: {
+            zh_CN: "登录URL",
+            zh_TW: "登入 URL",
+            en_US: "Login URL",
+        },
+
+        search_field_login_url_tooltip: {
+            zh_CN: "登录接口地址。<br/><br/><b>例如：https://www.xxx.com/api/auth/me</b>",
+            zh_TW: "登入 API 位址。<br/><br/><b>例如：https://www.xxx.com/api/auth/me</b>",
+            en_US: "The address of the login API.<br/><br/><b>Example: https://www.xxx.com/api/auth/me</b>",
+        },
+
+        search_field_login_body: {
+            zh_CN: "登录请求体",
+            zh_TW: "登入請求主體",
+            en_US: "Login request body",
+        },
+
+        search_field_login_body_tooltip: {
+            zh_CN: "登录请求体模板，%username%与%password%会分别替换为用户名与密码。<br/><br/>" +
+                "<b>例如：{\"name\":\"%username%\",\"password\":\"%password%\"}</b>",
+            zh_TW: "登入請求主體模板，%username% 與 %password% 會分別替換為使用者名稱與密碼。<br/><br/>" +
+                "<b>例如：{\"name\":\"%username%\",\"password\":\"%password%\"}</b>",
+            en_US: "The login request body template; %username% and %password% are replaced with the username and password respectively.<br/><br/>" +
+                "<b>Example: {\"name\":\"%username%\",\"password\":\"%password%\"}</b>",
+        },
+
+        search_field_login_content_type: {
+            zh_CN: "登录请求体类型",
+            zh_TW: "登入請求主體類型",
+            en_US: "Login request body type",
+        },
+
+        search_field_login_content_type_tooltip: {
+            zh_CN: "登录请求体的内容类型。",
+            zh_TW: "登入請求主體的內容類型。",
+            en_US: "The content type of the login request body.",
+        },
+
+        search_field_token_path: {
+            zh_CN: "token取值路径",
+            zh_TW: "token 取值路徑",
+            en_US: "Token path",
+        },
+
+        search_field_token_path_tooltip: {
+            zh_CN: "登录响应中token所在的路径，用点号分隔。<br/><br/><b>例如：token 或 data.token</b>",
+            zh_TW: "登入回應中 token 所在的路徑，以點號分隔。<br/><br/><b>例如：token 或 data.token</b>",
+            en_US: "The path of the token in the login response, separated by dots.<br/><br/><b>Example: token or data.token</b>",
+        },
+
+        search_field_token_header: {
+            zh_CN: "token请求头",
+            zh_TW: "token 請求標頭",
+            en_US: "Token header",
+        },
+
+        search_field_token_header_tooltip: {
+            zh_CN: "携带token的请求头，{token}会被替换为token。<br/><br/>" +
+                "<b>例如：Authorization: Bearer {token}</b>",
+            zh_TW: "攜帶 token 的請求標頭，{token} 會被替換為 token。<br/><br/>" +
+                "<b>例如：Authorization: Bearer {token}</b>",
+            en_US: "The request header that carries the token; {token} is replaced with the token.<br/><br/>" +
+                "<b>Example: Authorization: Bearer {token}</b>",
+        },
+
+        search_field_list_path: {
+            zh_CN: "作品列表路径",
+            zh_TW: "作品列表路徑",
+            en_US: "Work list path",
+        },
+
+        search_field_list_path_tooltip: {
+            zh_CN: "响应JSON中作品列表所在的路径，用点号分隔。<br/><br/><b>例如：works 或 data.list</b>",
+            zh_TW: "回應 JSON 中作品列表所在的路徑，以點號分隔。<br/><br/><b>例如：works 或 data.list</b>",
+            en_US: "The path of the work list in the JSON response, separated by dots.<br/><br/><b>Example: works or data.list</b>",
+        },
+
+        search_field_id_field: {
+            zh_CN: "作品标识字段",
+            zh_TW: "作品識別欄位",
+            en_US: "Work ID field",
+        },
+
+        search_field_id_field_tooltip: {
+            zh_CN: "列表中代表作品的字段名。<br/><br/><b>例如：id 或 workno</b>",
+            zh_TW: "列表中代表作品的欄位名稱。<br/><br/><b>例如：id 或 workno</b>",
+            en_US: "The name of the field that identifies a work in the list.<br/><br/><b>Example: id or workno</b>",
+        },
+
+        search_field_id_rule: {
+            zh_CN: "作品标识转换",
+            zh_TW: "作品識別轉換",
+            en_US: "Work ID conversion",
+        },
+
+        search_field_id_rule_tooltip: {
+            zh_CN: "自动判断：返回值是完整作品编号时按编号匹配，是纯数字时按数字匹配。<br/>" +
+                "原样作为作品编号：返回值必须是完整的作品编号（如RJ01081353）。<br/>" +
+                "按数字匹配：忽略前缀，只按数字部分匹配，适合只返回数字ID的仓库。",
+            zh_TW: "自動判斷：回傳值是完整作品編號時按編號比對，是純數字時按數字比對。<br/>" +
+                "原樣作為作品編號：回傳值必須是完整的作品編號（如 RJ01081353）。<br/>" +
+                "按數字比對：忽略前綴，只按數字部分比對，適合只回傳數字 ID 的倉庫。",
+            en_US: "Auto: match by code when the value is a complete work code, and by number when it is a plain number.<br/>" +
+                "Use as Work Code: the value must be a complete work code (for example RJ01081353).<br/>" +
+                "Match by Number: ignore the prefix and match by the numeric part only, which suits repositories that return numeric IDs only.",
+        },
+
+        search_option_id_auto: {
+            zh_CN: "自动判断",
+            zh_TW: "自動判斷",
+            en_US: "Auto",
+        },
+
+        search_option_id_raw: {
+            zh_CN: "原样作为作品编号",
+            zh_TW: "原樣作為作品編號",
+            en_US: "Use as Work Code",
+        },
+
+        search_option_id_numeric: {
+            zh_CN: "按数字匹配",
+            zh_TW: "按數字比對",
+            en_US: "Match by Number",
+        },
+
 
 
         get: function (key, langKey = "_s_lang") {
@@ -1212,6 +1843,20 @@
 
     function localizePopup(key) {
         return localizationMap.get(key, "_s_popup_lang");
+    }
+
+    /**
+     * 取得本地化文本，并将其中的{xxx}占位符替换为对应的内容
+     * @param key {string}
+     * @param values {{}} 占位符名称与对应内容，如 {count: 2}
+     * @returns {string}
+     */
+    function localizeFormat(key, values = {}) {
+        let text = localize(key);
+        for(const name of Object.keys(values)) {
+            text = text.replaceAll(`{${name}}`, `${values[name]}`);
+        }
+        return text;
     }
     //endregion
 
@@ -2974,7 +3619,8 @@
         kikoeru: {
             id: "kikoeru",
             title: "kikoeru",
-            tooltip: "内置预设：适配kikoeru仓库（音声仓库），自带账号密码登录与 /api/search 查询。",
+            //预设与字段的名称、说明使用getter，切换界面语言后无需重新加载页面
+            get tooltip() { return localize(localizationMap.search_preset_kikoeru_tooltip); },
             defaults: {
                 showBase: "",
                 searchBase: "",
@@ -2985,44 +3631,41 @@
             },
             fields: [
                 {
-                    key: "showBase", type: "input", title: "仓库地址", required: true,
-                    tooltip: "仓库的根地址，即访问仓库的链接<br/><br/>" +
-                        "<b>例如：https://example.com</b>"
+                    key: "showBase", type: "input", required: true,
+                    get title() { return localize(localizationMap.search_field_repo_url); },
+                    get tooltip() { return localize(localizationMap.search_field_repo_url_tooltip); }
                 },
                 {
-                    key: "searchBase", type: "input", title: "API地址", required: false,
-                    tooltip: "仓库API的地址（baseURL）<br/>" +
-                        "<b>仅当仓库前端与后端API分离时（如API使用了独立的域名或端口）才需要单独填写；留空则使用上方仓库地址</b><br/><br/>" +
-                        "<b>例如：https://example.com</b>"
+                    key: "searchBase", type: "input", required: false,
+                    get title() { return localize(localizationMap.search_field_api_url); },
+                    get tooltip() { return localize(localizationMap.search_field_api_url_tooltip); }
                 },
                 {
-                    key: "authType", type: "dropdown", title: "认证方式", required: true,
+                    key: "authType", type: "dropdown", required: true,
                     options: [
-                        {value: "login", title: "账号密码登录"},
-                        {value: "headers", title: "固定请求头"},
-                        {value: "none", title: "无认证"}
+                        {value: "login", get title() { return localize(localizationMap.search_auth_login); }},
+                        {value: "headers", get title() { return localize(localizationMap.search_auth_headers); }},
+                        {value: "none", get title() { return localize(localizationMap.search_auth_none); }}
                     ],
-                    tooltip: "账号密码登录：自动调用仓库登录接口获取token并缓存，token失效时自动重新登录。<br/>" +
-                        "固定请求头：仅使用下方自定义请求头中的内容进行验证（如手动粘贴的token）。<br/>" +
-                        "无认证：不进行任何验证，仅适用于无需登录即可查询的仓库。"
+                    get title() { return localize(localizationMap.search_field_auth); },
+                    get tooltip() { return localize(localizationMap.search_field_auth_tooltip_kikoeru); }
                 },
                 {
-                    key: "username", type: "input", title: "仓库用户名", required: true,
+                    key: "username", type: "input", required: true,
                     binding: {key: "authType", value: "login"},
-                    tooltip: "用于自动登录仓库的用户名。"
+                    get title() { return localize(localizationMap.search_field_username); },
+                    get tooltip() { return localize(localizationMap.search_field_username_tooltip); }
                 },
                 {
-                    key: "password", type: "password", title: "仓库密码", required: true,
+                    key: "password", type: "password", required: true,
                     binding: {key: "authType", value: "login"},
-                    tooltip: "用于自动登录仓库的密码（不会自动去除首尾空格）。<br/>" +
-                        "脚本会将账号密码本地保存且仅用于登录仓库，不会将其发送给除仓库以外的第三方。"
+                    get title() { return localize(localizationMap.search_field_password); },
+                    get tooltip() { return localize(localizationMap.search_field_password_tooltip); }
                 },
                 {
-                    key: "headers", type: "textarea", title: "自定义请求头", required: false,
-                    tooltip: "每行一个，格式为key:value，用换行符分隔。<br/>" +
-                        "本项内容会随仓检请求一起发送，用于应对仓库API需要特定请求头才能访问的情况（一般留空即可）。<br/>" +
-                        "认证方式为账号密码登录时，本项中的Authorization头会被token覆盖（登录请求中也会将该头过滤）。<br/><br/>" +
-                        "<b>例如：<br/>Authorization: Bearer xxxxxxxxxx</b>"
+                    key: "headers", type: "textarea", required: false,
+                    get title() { return localize(localizationMap.search_field_headers); },
+                    get tooltip() { return localize(localizationMap.search_field_headers_tooltip_kikoeru); }
                 }
             ],
 
@@ -3095,8 +3738,8 @@
 
         custom: {
             id: "custom",
-            title: "自定义",
-            tooltip: "自定义预设：通过数据描述适配其它框架的仓库，URL模板中的%s会被替换为搜索关键词（RJ号）。",
+            get title() { return localize(localizationMap.search_preset_custom); },
+            get tooltip() { return localize(localizationMap.search_preset_custom_tooltip); },
             defaults: {
                 searchUrlTemplate: "",
                 showUrlTemplate: "",
@@ -3118,117 +3761,117 @@
             },
             fields: [
                 {
-                    key: "searchUrlTemplate", type: "input", title: "搜索URL模板", required: true,
-                    tooltip: "仓库搜索接口地址，其中的%s会被替换为搜索关键词（RJ号）。<br/>" +
-                        "<b>注意：仅支持%s这一个变量，需要其它信息（如分页、时间戳等）的仓库暂不支持。</b><br/><br/>" +
-                        "<b>例如：https://www.xxx.com/api/search?keyword=%s</b>"
+                    key: "searchUrlTemplate", type: "input", required: true,
+                    get title() { return localize(localizationMap.search_field_search_url); },
+                    get tooltip() { return localize(localizationMap.search_field_search_url_tooltip); }
                 },
                 {
-                    key: "showUrlTemplate", type: "input", title: "结果展示URL模板", required: false,
-                    tooltip: "点击搜索结果标签时打开的地址，其中的%s会被替换为RJ号。<br/>" +
-                        "留空则点击标签不打开任何页面。<br/><br/>" +
-                        "<b>例如：https://www.xxx.com/works?keyword=%s</b>"
+                    key: "showUrlTemplate", type: "input", required: false,
+                    get title() { return localize(localizationMap.search_field_show_url); },
+                    get tooltip() { return localize(localizationMap.search_field_show_url_tooltip); }
                 },
                 {
-                    key: "method", type: "dropdown", title: "请求方法", required: true,
+                    key: "method", type: "dropdown", required: true,
                     options: [{value: "GET", title: "GET"}, {value: "POST", title: "POST"}],
-                    tooltip: "查询仓库时使用的HTTP方法。"
+                    get title() { return localize(localizationMap.search_field_method); },
+                    get tooltip() { return localize(localizationMap.search_field_method_tooltip); }
                 },
                 {
-                    key: "bodyTemplate", type: "textarea", title: "请求体模板", required: false,
+                    key: "bodyTemplate", type: "textarea", required: false,
                     binding: {key: "method", value: "POST"},
-                    tooltip: "使用POST时发送的请求体内容，其中的%s会被替换为搜索关键词（RJ号）。<br/>" +
-                        "留空则发送空请求体。<br/><br/>" +
-                        "<b>例如：{\"keyword\":\"%s\"}</b>"
+                    get title() { return localize(localizationMap.search_field_body_template); },
+                    get tooltip() { return localize(localizationMap.search_field_body_template_tooltip); }
                 },
                 {
-                    key: "contentType", type: "dropdown", title: "请求体类型", required: true,
+                    key: "contentType", type: "dropdown", required: true,
                     binding: {key: "method", value: "POST"},
                     options: [
                         {value: CONTENT_TYPE_JSON, title: "JSON"},
-                        {value: CONTENT_TYPE_FORM, title: "表单（x-www-form-urlencoded）"}
+                        {value: CONTENT_TYPE_FORM, get title() { return localize(localizationMap.search_option_form); }}
                     ],
-                    tooltip: "使用POST时请求体的内容类型。"
+                    get title() { return localize(localizationMap.search_field_content_type); },
+                    get tooltip() { return localize(localizationMap.search_field_content_type_tooltip); }
                 },
                 {
-                    key: "authType", type: "dropdown", title: "认证方式", required: true,
+                    key: "authType", type: "dropdown", required: true,
                     options: [
-                        {value: "none", title: "无认证"},
-                        {value: "headers", title: "固定请求头"},
-                        {value: "login", title: "账号密码登录"}
+                        {value: "none", get title() { return localize(localizationMap.search_auth_none); }},
+                        {value: "headers", get title() { return localize(localizationMap.search_auth_headers); }},
+                        {value: "login", get title() { return localize(localizationMap.search_auth_login); }}
                     ],
-                    tooltip: "无认证：不进行任何验证。<br/>" +
-                        "固定请求头：仅使用下方自定义请求头中的内容进行验证。<br/>" +
-                        "账号密码登录：按下方配置调用登录接口获取token并缓存，token失效时自动重新登录。<br/>" +
-                        "不同仓库的登录方式差异较大，若下方配置无法满足，请反馈具体的接口格式。"
+                    get title() { return localize(localizationMap.search_field_auth); },
+                    get tooltip() { return localize(localizationMap.search_field_auth_tooltip_custom); }
                 },
                 {
-                    key: "username", type: "input", title: "用户名", required: true,
+                    key: "username", type: "input", required: true,
                     binding: {key: "authType", value: "login"},
-                    tooltip: "登录时使用的用户名。"
+                    get title() { return localize(localizationMap.search_field_login_username); },
+                    get tooltip() { return localize(localizationMap.search_field_login_username_tooltip); }
                 },
                 {
-                    key: "password", type: "password", title: "密码", required: true,
+                    key: "password", type: "password", required: true,
                     binding: {key: "authType", value: "login"},
-                    tooltip: "登录时使用的密码（不会自动去除首尾空格）。"
+                    get title() { return localize(localizationMap.search_field_login_password); },
+                    get tooltip() { return localize(localizationMap.search_field_login_password_tooltip); }
                 },
                 {
-                    key: "loginUrlTemplate", type: "input", title: "登录URL", required: true,
+                    key: "loginUrlTemplate", type: "input", required: true,
                     binding: {key: "authType", value: "login"},
-                    tooltip: "登录接口地址。<br/><br/><b>例如：https://www.xxx.com/api/auth/me</b>"
+                    get title() { return localize(localizationMap.search_field_login_url); },
+                    get tooltip() { return localize(localizationMap.search_field_login_url_tooltip); }
                 },
                 {
-                    key: "loginBodyTemplate", type: "textarea", title: "登录请求体", required: true,
+                    key: "loginBodyTemplate", type: "textarea", required: true,
                     binding: {key: "authType", value: "login"},
-                    tooltip: `登录请求体模板，${LOGIN_USERNAME_PLACEHOLDER}与${LOGIN_PASSWORD_PLACEHOLDER}会分别替换为用户名与密码。<br/><br/>` +
-                        `<b>例如：{"name":"${LOGIN_USERNAME_PLACEHOLDER}","password":"${LOGIN_PASSWORD_PLACEHOLDER}"}</b>`
+                    get title() { return localize(localizationMap.search_field_login_body); },
+                    get tooltip() { return localize(localizationMap.search_field_login_body_tooltip); }
                 },
                 {
-                    key: "loginContentType", type: "dropdown", title: "登录请求体类型", required: true,
+                    key: "loginContentType", type: "dropdown", required: true,
                     binding: {key: "authType", value: "login"},
                     options: [
                         {value: CONTENT_TYPE_JSON, title: "JSON"},
-                        {value: CONTENT_TYPE_FORM, title: "表单（x-www-form-urlencoded）"}
+                        {value: CONTENT_TYPE_FORM, get title() { return localize(localizationMap.search_option_form); }}
                     ],
-                    tooltip: "登录请求体的内容类型。"
+                    get title() { return localize(localizationMap.search_field_login_content_type); },
+                    get tooltip() { return localize(localizationMap.search_field_login_content_type_tooltip); }
                 },
                 {
-                    key: "tokenPath", type: "input", title: "token取值路径", required: true,
+                    key: "tokenPath", type: "input", required: true,
                     binding: {key: "authType", value: "login"},
-                    tooltip: "登录响应中token所在的路径，用点号分隔。<br/><br/>" +
-                        "<b>例如：token 或 data.token</b>"
+                    get title() { return localize(localizationMap.search_field_token_path); },
+                    get tooltip() { return localize(localizationMap.search_field_token_path_tooltip); }
                 },
                 {
-                    key: "tokenHeader", type: "input", title: "token请求头", required: true,
+                    key: "tokenHeader", type: "input", required: true,
                     binding: {key: "authType", value: "login"},
-                    tooltip: `携带token的请求头，${LOGIN_TOKEN_PLACEHOLDER}会被替换为token。<br/><br/>` +
-                        `<b>例如：Authorization: Bearer ${LOGIN_TOKEN_PLACEHOLDER}</b>`
+                    get title() { return localize(localizationMap.search_field_token_header); },
+                    get tooltip() { return localize(localizationMap.search_field_token_header_tooltip); }
                 },
                 {
-                    key: "headers", type: "textarea", title: "自定义请求头", required: false,
-                    tooltip: "每行一个，格式为key:value，用换行符分隔。<br/>" +
-                        "本项内容会随仓检请求一起发送；登录接口同样会携带本项内容（但会过滤掉其中的Authorization）。<br/><br/>" +
-                        "<b>例如：<br/>X-API-Key: xxxxxxxxxx</b>"
+                    key: "headers", type: "textarea", required: false,
+                    get title() { return localize(localizationMap.search_field_headers); },
+                    get tooltip() { return localize(localizationMap.search_field_headers_tooltip_custom); }
                 },
                 {
-                    key: "listPath", type: "input", title: "作品列表路径", required: true,
-                    tooltip: "响应JSON中作品列表所在的路径，用点号分隔。<br/><br/>" +
-                        "<b>例如：works 或 data.list</b>"
+                    key: "listPath", type: "input", required: true,
+                    get title() { return localize(localizationMap.search_field_list_path); },
+                    get tooltip() { return localize(localizationMap.search_field_list_path_tooltip); }
                 },
                 {
-                    key: "idField", type: "input", title: "作品标识字段", required: true,
-                    tooltip: "列表中代表作品的字段名。<br/><br/><b>例如：id 或 workno</b>"
+                    key: "idField", type: "input", required: true,
+                    get title() { return localize(localizationMap.search_field_id_field); },
+                    get tooltip() { return localize(localizationMap.search_field_id_field_tooltip); }
                 },
                 {
-                    key: "idRule", type: "dropdown", title: "作品标识转换", required: true,
+                    key: "idRule", type: "dropdown", required: true,
                     options: [
-                        {value: "auto", title: "自动判断"},
-                        {value: "raw", title: "原样作为作品编号"},
-                        {value: "numeric", title: "按数字匹配"}
+                        {value: "auto", get title() { return localize(localizationMap.search_option_id_auto); }},
+                        {value: "raw", get title() { return localize(localizationMap.search_option_id_raw); }},
+                        {value: "numeric", get title() { return localize(localizationMap.search_option_id_numeric); }}
                     ],
-                    tooltip: "自动判断：返回值是完整作品编号时按编号匹配，是纯数字时按数字匹配。<br/>" +
-                        "原样作为作品编号：返回值必须是完整的作品编号（如RJ01081353）。<br/>" +
-                        "按数字匹配：忽略前缀，只按数字部分匹配，适合只返回数字ID的仓库。"
+                    get title() { return localize(localizationMap.search_field_id_rule); },
+                    get tooltip() { return localize(localizationMap.search_field_id_rule_tooltip); }
                 }
             ],
 
@@ -7698,19 +8341,16 @@
                 },
                 {
                     //分类：仓库检查
-                    //TODO 本地化
-                    title: `仓库检查 ( <u><a href="https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md">?</a></u> )`,
+                    title: `${localize(localizationMap.search_settings_title)} ( <u><a href="https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md">?</a></u> )`,
                     items: [
                         {
                             items: [
                                 {
                                     //仓检开关
                                     type: "checkbox",
-                                    title: "开启仓检",
+                                    title: localize(localizationMap.search_enable),
                                     id: "base_search",
-                                    tooltip: "开启后，会检查特定仓库内的作品及其相关版本是否存在，并以标签的形式展示每个仓库的搜索结果。<br/>" +
-                                        "<b>内置kikoeru框架的预设（非asmr.one），也可通过自定义预设适配其它框架的仓库</b><br/><br/>" +
-                                        "<b><u>注意：该功能会向第三方仓库API发送查询信息，若仓库不属于你，请在确认仓库所有者允许的情况下使用该功能！</u></b>"
+                                    tooltip: localize(localizationMap.search_enable_tooltip)
                                 },
                                 {
                                     //仓库管理
@@ -7720,11 +8360,14 @@
                                     },
 
                                     type: "button",
-                                    title: "仓库列表",
-                                    button_title: `管理仓库（已添加 ${getWarehouses().length}/${MAX_SEARCH_WAREHOUSES}）`,
-                                    tooltip: "添加、编辑、启用/停用、排序或删除仓库。<br/>" +
-                                        `最多可添加${MAX_SEARCH_WAREHOUSES}个仓库，列表顺序即为弹框中搜索结果标签的顺序。<br/>` +
-                                        "账号密码、登录状态与查询缓存均按仓库独立保存；停用或删除仓库时会清空该仓库的缓存。",
+                                    title: localize(localizationMap.search_warehouse_list),
+                                    button_title: localizeFormat(localizationMap.search_manage_warehouses, {
+                                        count: getWarehouses().length,
+                                        max: MAX_SEARCH_WAREHOUSES
+                                    }),
+                                    tooltip: localizeFormat(localizationMap.search_manage_warehouses_tooltip, {
+                                        max: MAX_SEARCH_WAREHOUSES
+                                    }),
                                     onclick: () => WarehouseManager.showPopup()
                                 },
                                 {
@@ -7735,10 +8378,9 @@
                                     },
 
                                     type: "checkbox",
-                                    title: "完整关联",
+                                    title: localize(localizationMap.search_full_linkage),
                                     id: "full_linkage",
-                                    tooltip: "查询仓库前，会先寻找与该作品相关的其它作品（如原版、翻译版等）<br/>" +
-                                        "会产生多次网络请求，但能使得仓库搜索结果更完整（需要同时开启连锁查询）"
+                                    tooltip: localize(localizationMap.search_full_linkage_tooltip)
                                 },
                                 {
                                     //搜索语言列表
@@ -7748,12 +8390,9 @@
                                     },
 
                                     type: "input",
-                                    title: "语言列表",
+                                    title: localize(localizationMap.search_cue_languages),
                                     id: "cue_languages",
-                                    tooltip: "用空格分隔的语言代码，代表你想要搜索的所有语言关联。<br/>" +
-                                        "语言个数会影响搜索效率和发往DLSite的请求数量。<br/><br/>" +
-                                        "<b>例子：CHI_HANS CHI_HANT ENG</b><br/>" +
-                                        "上例表示需要搜索简体中文、繁体中文、英文语言的翻译作品关联，其它语言的关联将不会搜寻。"
+                                    tooltip: localize(localizationMap.search_cue_languages_tooltip)
                                 },
                                 {
                                     //是否进行连锁查询
@@ -7763,10 +8402,9 @@
                                     },
 
                                     type: "checkbox",
-                                    title: "连锁查询",
+                                    title: localize(localizationMap.search_linkage),
                                     id: "search_linkage",
-                                    tooltip: "搜索仓库时，对所有关联的RJ号进行搜索，可能产生多次请求。<br/>" +
-                                        "如果你的仓库包含搜索其它语言版本的功能，开启此项也不会影响速度。"
+                                    tooltip: localize(localizationMap.search_linkage_tooltip)
                                 }
                             ]
                         }
@@ -8599,22 +9237,23 @@
             const header = document.createElement("div");
             header.className = WarehouseManager.getClass("header");
             const title = document.createElement("h1");
-            title.innerText = "仓库管理";
+            title.innerText = localize(localizationMap.search_manager_title);
             header.appendChild(title);
 
             const addButton = document.createElement("button");
             addButton.className = WarehouseManager.getClass("btn");
-            addButton.innerText = "添加仓库";
+            addButton.innerText = localize(localizationMap.search_manager_add);
             addButton.disabled = warehouses.length >= MAX_SEARCH_WAREHOUSES;
-            if(addButton.disabled) addButton.title = `最多只能添加${MAX_SEARCH_WAREHOUSES}个仓库`;
+            if(addButton.disabled) {
+                addButton.title = localizeFormat(localizationMap.search_manager_add_limit, {max: MAX_SEARCH_WAREHOUSES});
+            }
             addButton.onclick = () => WarehouseManager.openEditor(null);
             header.appendChild(addButton);
             body.appendChild(header);
 
             const hint = document.createElement("p");
             hint.className = WarehouseManager.getClass("hint");
-            hint.innerText = `最多可添加${MAX_SEARCH_WAREHOUSES}个仓库，列表顺序即为弹框中搜索结果标签的顺序。` +
-                "关闭左侧开关可以暂停该仓库的仓检（停用时会清空该仓库的缓存）。";
+            hint.innerText = localizeFormat(localizationMap.search_manager_hint, {max: MAX_SEARCH_WAREHOUSES});
             body.appendChild(hint);
 
             //仓库列表
@@ -8625,7 +9264,7 @@
             if(warehouses.length === 0) {
                 const empty = document.createElement("p");
                 empty.className = WarehouseManager.getClass("hint");
-                empty.innerText = "还没有添加任何仓库，点击右上角「添加仓库」开始配置。";
+                empty.innerText = localize(localizationMap.search_manager_empty);
                 list.appendChild(empty);
             }else{
                 warehouses.forEach((warehouse, index) => {
@@ -8636,7 +9275,8 @@
             //底部按钮
             const footer = document.createElement("div");
             footer.className = WarehouseManager.getClass("footer");
-            footer.appendChild(WarehouseManager.createButton("关闭", () => WarehouseManager.close()));
+            footer.appendChild(WarehouseManager.createButton(localize(localizationMap.search_manager_close),
+                () => WarehouseManager.close()));
             body.appendChild(footer);
         },
 
@@ -8651,7 +9291,7 @@
             const toggle = document.createElement("input");
             toggle.type = "checkbox";
             toggle.checked = warehouse.enabled;
-            toggle.title = "是否启用该仓库的仓检";
+            toggle.title = localize(localizationMap.search_manager_toggle_tooltip);
             toggle.onchange = () => WarehouseManager.toggleWarehouse(warehouse.id, toggle.checked);
             row.appendChild(toggle);
 
@@ -8665,16 +9305,21 @@
             const presetText = document.createElement("div");
             presetText.className = WarehouseManager.getClass("preset");
             const preset = SEARCH_PRESETS[warehouse.preset];
-            presetText.innerText = `${preset ? preset.title : warehouse.preset}${warehouse.enabled ? "" : "｜已停用"}`;
+            presetText.innerText = `${preset ? preset.title : warehouse.preset}` +
+                `${warehouse.enabled ? "" : localize(localizationMap.search_manager_disabled)}`;
             info.appendChild(name);
             info.appendChild(presetText);
             row.appendChild(info);
 
             //操作按钮
-            row.appendChild(WarehouseManager.createButton("编辑", () => WarehouseManager.openEditor(warehouse.id)));
-            row.appendChild(WarehouseManager.createButton("上移", () => WarehouseManager.moveWarehouse(index, -1), index <= 0));
-            row.appendChild(WarehouseManager.createButton("下移", () => WarehouseManager.moveWarehouse(index, 1), index >= total - 1));
-            row.appendChild(WarehouseManager.createButton("删除", () => WarehouseManager.deleteWarehouse(warehouse.id), false, true));
+            row.appendChild(WarehouseManager.createButton(localize(localizationMap.search_manager_edit),
+                () => WarehouseManager.openEditor(warehouse.id)));
+            row.appendChild(WarehouseManager.createButton(localize(localizationMap.search_manager_move_up),
+                () => WarehouseManager.moveWarehouse(index, -1), index <= 0));
+            row.appendChild(WarehouseManager.createButton(localize(localizationMap.search_manager_move_down),
+                () => WarehouseManager.moveWarehouse(index, 1), index >= total - 1));
+            row.appendChild(WarehouseManager.createButton(localize(localizationMap.search_manager_delete),
+                () => WarehouseManager.deleteWarehouse(warehouse.id), false, true));
 
             return row;
         },
@@ -8749,7 +9394,7 @@
             const warehouse = warehouses.find(item => item.id === id);
             if(!warehouse) return;
 
-            if(!window.confirm(`确定要删除仓库「${warehouse.name}」吗？\n该仓库的账号密码、登录状态与查询结果缓存都会被删除。`)) {
+            if(!window.confirm(localizeFormat(localizationMap.search_manager_delete_confirm, {name: warehouse.name}))) {
                 return;
             }
 
@@ -8797,7 +9442,9 @@
             container.appendChild(body);
 
             const title = document.createElement("h1");
-            title.innerText = editing.isNew ? "添加仓库" : "编辑仓库";
+            title.innerText = editing.isNew ?
+                localize(localizationMap.search_manager_editor_add_title) :
+                localize(localizationMap.search_manager_editor_edit_title);
             body.appendChild(title);
 
             const form = document.createElement("div");
@@ -8806,7 +9453,7 @@
 
             //预设类型
             const presetField = WarehouseManager.createField(form, {
-                key: "", title: "预设类型", required: true,
+                key: "", title: localize(localizationMap.search_manager_preset_field), required: true,
                 tooltip: preset.tooltip
             });
             const presetSelect = document.createElement("select");
@@ -8822,8 +9469,8 @@
 
             //仓库名称
             const nameField = WarehouseManager.createField(form, {
-                key: "name", title: "仓库名称", required: true,
-                tooltip: "显示在搜索结果标签前的名称，多个仓库可以重名。"
+                key: "name", title: localize(localizationMap.search_manager_name_field), required: true,
+                tooltip: localize(localizationMap.search_manager_name_tooltip)
             });
             const nameInput = document.createElement("input");
             nameInput.type = "text";
@@ -8861,8 +9508,11 @@
             //底部按钮
             const footer = document.createElement("div");
             footer.className = WarehouseManager.getClass("footer");
-            footer.appendChild(WarehouseManager.createButton(editing.isNew ? "添加" : "保存", () => WarehouseManager.saveEditor()));
-            footer.appendChild(WarehouseManager.createButton("取消", () => WarehouseManager.backToList()));
+            footer.appendChild(WarehouseManager.createButton(
+                localize(editing.isNew ? localizationMap.search_manager_footer_add : localizationMap.search_manager_footer_save),
+                () => WarehouseManager.saveEditor()));
+            footer.appendChild(WarehouseManager.createButton(localize(localizationMap.search_manager_cancel),
+                () => WarehouseManager.backToList()));
             body.appendChild(footer);
         },
 
@@ -8980,7 +9630,9 @@
 
             //校验：名称与当前可见的必填字段不能为空
             const missing = [];
-            if(`${values.name === undefined ? "" : values.name}`.trim() === "") missing.push("仓库名称");
+            if(`${values.name === undefined ? "" : values.name}`.trim() === "") {
+                missing.push(localize(localizationMap.search_manager_name_field));
+            }
             for(const field of preset.fields) {
                 if(field.required !== true) continue;
                 const wrapper = form.querySelector(`[data-field-key="${field.key}"]`);
@@ -8988,7 +9640,7 @@
                 if(`${values[field.key] === undefined ? "" : values[field.key]}`.trim() === "") missing.push(field.title);
             }
             if(missing.length > 0) {
-                window.alert(`以下内容不能为空：\n${missing.join("\n")}`);
+                window.alert(localizeFormat(localizationMap.search_manager_required_alert, {fields: missing.join("\n")}));
                 return;
             }
 
@@ -9007,7 +9659,7 @@
             const warehouses = getWarehouses();
             if(editing.isNew) {
                 if(warehouses.length >= MAX_SEARCH_WAREHOUSES) {
-                    window.alert(`最多只能添加${MAX_SEARCH_WAREHOUSES}个仓库`);
+                    window.alert(localizeFormat(localizationMap.search_manager_add_limit, {max: MAX_SEARCH_WAREHOUSES}));
                     return;
                 }
                 warehouses.push(updated);
@@ -9142,7 +9794,7 @@
     //region 公告显示
 
     function showUpdateNotice(force = false) {
-        const firstTimeToken = 107;
+        const firstTimeToken = 108;
         if(GM_getValue("first_token", undefined) === firstTimeToken && !force){
             return;
         }
@@ -9153,8 +9805,8 @@
         }
 
         GM_openInTab(
-            IS_PREVIEW ? `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md`
-                : `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md`,
+            IS_PREVIEW ? `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v5.0.x/v5.0.x-${settings._s_lang}.md`
+                : `https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v5.0.x/v5.0.x-${settings._s_lang}.md`,
             {active: true});
     }
 
