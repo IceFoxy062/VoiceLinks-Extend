@@ -6,7 +6,7 @@
 // @description:en Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-5.0.2
+// @version     p-5.0.4
 // @connect     dlsite.com
 // @connect     media.ci-en.jp
 // @connect     img.dlsite.jp
@@ -8341,7 +8341,7 @@
                 },
                 {
                     //分类：仓库检查
-                    title: `${localize(localizationMap.search_settings_title)} ( <u><a href="https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v4.9.x/v4.9.x-${settings._s_lang}.md">?</a></u> )`,
+                    title: `${localize(localizationMap.search_settings_title)} ( <u><a href="https://github.com/IceFoxy062/VoiceLinks-Extend/blob/dev/docs/major_updates/v5.0.x/v5.0.x-${settings._s_lang}.md">?</a></u> )`,
                     items: [
                         {
                             items: [
