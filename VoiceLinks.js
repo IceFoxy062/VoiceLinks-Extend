@@ -6,7 +6,7 @@
 // @description:en Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-5.0.4
+// @version     p-5.0.5
 // @connect     dlsite.com
 // @connect     www.dlsite.com
 // @connect     media.ci-en.jp
@@ -20,6 +20,7 @@
 // @grant       GM_deleteValue
 // @grant       GM_addElement
 // @grant       GM_cookie
+// @grant       GM.cookie
 // @grant       GM.xmlHttpRequest
 // @grant       GM_xmlhttpRequest
 // @run-at      document-start
@@ -56,6 +57,7 @@
         _s_sfw_blur_level: "medium",
         _s_sfw_remove_when_hover: true,
         _s_sfw_blur_transition: true,
+        _s_dlsite_manual_cf_clearance: "",
 
         //信息显示设置
         _s_category_preset: "voice",
@@ -479,6 +481,18 @@
             zh_CN: "如果脚本中，修改DLSite页面元素的功能覆盖了其它脚本的修改，则会触发该弹窗警告",
             zh_TW: "如果腳本中，修改DLSite頁面元素的功能覆蓋了其它腳本的修改，则會觸發該彈窗警告",
             en_US: "If the script modifies the functionality of DLSite elements that are covered by other scripts, the warning will be triggered"
+        },
+
+        dlsite_manual_cf_clearance: {
+            zh_CN: "手动 cf_clearance（备用）",
+            zh_TW: "手動 cf_clearance（備援）",
+            en_US: "Manual cf_clearance (fallback)"
+        },
+
+        dlsite_manual_cf_clearance_tooltip: {
+            zh_CN: "仅当匿名 DLSite 请求无法自动获取 cf_clearance 时使用。该值属于敏感凭据，只适用于当前浏览器与网络环境，请勿分享。留空可禁用。",
+            zh_TW: "僅當匿名 DLSite 請求無法自動取得 cf_clearance 時使用。該值屬於敏感憑證，只適用於目前瀏覽器與網路環境，請勿分享。留空可停用。",
+            en_US: "Used only when an anonymous DLSite request cannot obtain cf_clearance automatically. This is a sensitive credential tied to the current browser and network environment; do not share it. Leave empty to disable the fallback."
         },
 
         url_insert_mode: {
@@ -2520,10 +2534,6 @@
             border-radius: 20px !important;
             box-shadow: darkgray 0px 0px 17px 2px !important;
         }
-        #${VOICELINK_CLASS}_warehouse-container.${VOICELINK_CLASS}_dlsite-challenge {
-            bottom: auto !important;
-            max-height: min(320px, calc(100vh - 80px)) !important;
-        }
         #${VOICELINK_CLASS}_warehouse-container h1 {
             display: block !important;
             font-size: 24px !important;
@@ -2696,24 +2706,25 @@
     }
 
     function getXmlHttpRequest() {
-        return (typeof GM !== "undefined" && GM !== null ? GM.xmlHttpRequest : GM_xmlhttpRequest);
+        return GM_xmlhttpRequest;
     }
 
-    const DLSITE_COOKIE_STORAGE_KEY = "dlsite_cloudflare_cookies";
-    const DLSITE_CLEARANCE_STORAGE_KEY = "dlsite_cf_clearance";
-    const DLSITE_REJECTED_CLEARANCE_KEY = "dlsite_rejected_cf_clearance";
+    const DLSITE_CHALLENGE_SUPPRESS_UNTIL_KEY = "dlsite_challenge_suppress_until";
+    const DLSITE_CHALLENGE_SUPPRESS_MS = 48 * 60 * 60 * 1000;
+    const DLSITE_OBSOLETE_STORAGE_KEYS = [
+        "dlsite_cloudflare_cookies",
+        "dlsite_cf_clearance",
+        "dlsite_rejected_cf_clearance"
+    ];
 
     /**
-     * Cloudflare access gate for DLSite.  GM_xmlhttpRequest must use its own cookie
-     * integration here: manually setting Cookie can overwrite a newly issued
-     * cf_clearance with the stale value captured before the challenge.
+     * 处理 DLSite 的 Cloudflare Challenge。匿名请求优先使用浏览器中的实时
+     * clearance，读取不到时再使用设置中的手动值。
      */
-    const DLsiteAccessGate = {
-        _readyPromise: null,
-        _challengePromise: null,
-        _challengeConfirmed: false,
+    const DLSiteAccessGate = {
+        _challengePromptPromise: null,
 
-        isDLsiteUrl(url) {
+        isDLSiteUrl(url) {
             try {
                 const hostname = new URL(url, document.location.href).hostname;
                 return hostname === "dlsite.com" || hostname.endsWith(".dlsite.com");
@@ -2722,21 +2733,28 @@
             }
         },
 
-        findClearance(cookies) {
-            const rejectedClearance = GM_getValue(DLSITE_REJECTED_CLEARANCE_KEY, null);
-            const now = Date.now() / 1000;
-            const candidates = cookies.filter(cookie =>
-                cookie.name === "cf_clearance" && cookie.value &&
-                (!cookie.expirationDate || cookie.expirationDate > now)
-            );
-            const usable = candidates.filter(cookie => cookie.value !== rejectedClearance);
-            const selected = usable.length > 0 ? usable : candidates;
-            return selected.sort((a, b) => (b.expirationDate || 0) - (a.expirationDate || 0))[0] || null;
+        normalizeClearance(input) {
+            if(typeof input !== "string") return null;
+            let value = input.trim();
+            const match = value.match(/(?:^|;\s*)cf_clearance\s*=\s*([^;]+)/i);
+            if(match) value = match[1].trim();
+            if(!value || /[\u0000-\u001f\u007f;]/.test(value)) return null;
+            return value;
         },
 
-        async saveCookies() {
-            if(typeof GM_cookie === "undefined" || !GM_cookie || typeof GM_cookie.list !== "function") return [];
-            const listCookies = details => new Promise(resolve => {
+        async listLiveCookies(details) {
+            try {
+                if(typeof GM !== "undefined" && GM?.cookie && typeof GM.cookie.list === "function") {
+                    return await GM.cookie.list(details);
+                }
+            }catch (error) {
+            }
+
+            if(typeof GM_cookie === "undefined" || !GM_cookie || typeof GM_cookie.list !== "function") {
+                return [];
+            }
+
+            return new Promise(resolve => {
                 try {
                     GM_cookie.list(details, (items, error) => {
                         resolve(error ? [] : items || []);
@@ -2745,271 +2763,96 @@
                     resolve([]);
                 }
             });
-            const currentUrl = isInDLSite() ? window.location.href.split("#")[0] : "https://www.dlsite.com/";
-            // Query unpartitioned and partitioned cookie stores. partitionKey: {}
-            // asks Tampermonkey 5.2+ to return cookies from every partition.
-            const results = await Promise.all([
-                listCookies({url: currentUrl}),
-                listCookies({name: "cf_clearance"}),
-                listCookies({url: currentUrl, name: "cf_clearance"}),
-                listCookies({domain: ".dlsite.com"}),
-                listCookies({domain: "www.dlsite.com"}),
-                listCookies({name: "cf_clearance", partitionKey: {}}),
-                listCookies({url: currentUrl, name: "cf_clearance", partitionKey: {}})
-            ]);
-            const cookieMap = new Map();
-            for(const cookie of results.flat()) {
-                const domain = `${cookie.domain || ""}`.replace(/^\./, "");
-                if(domain !== "dlsite.com" && !domain.endsWith(".dlsite.com")) continue;
-                cookieMap.set(`${cookie.domain}|${cookie.path}|${cookie.name}|${JSON.stringify(cookie.partitionKey || null)}`, cookie);
+        },
+
+        findClearance(cookies) {
+            const now = Date.now() / 1000;
+            const candidates = (Array.isArray(cookies) ? cookies : []).filter(cookie =>
+                cookie.name === "cf_clearance" && cookie.value &&
+                (!cookie.expirationDate || cookie.expirationDate > now)
+            );
+            return candidates
+                .sort((a, b) => (b.expirationDate || 0) - (a.expirationDate || 0))[0] || null;
+        },
+
+        async getLiveClearance(url) {
+            const queries = [
+                {url: url, name: "cf_clearance"},
+                {url: url, name: "cf_clearance", partitionKey: {}}
+            ];
+            for(const details of queries) {
+                const clearance = this.findClearance(await this.listLiveCookies(details));
+                if(clearance) return clearance.value;
             }
-            const cookies = [...cookieMap.values()];
-            // Do not erase a previously captured clearance merely because the current
-            // userscript manager cannot expose HttpOnly cookies.
-            const clearance = this.findClearance(cookies);
-            if(clearance && clearance.value) {
-                const rejectedClearance = GM_getValue(DLSITE_REJECTED_CLEARANCE_KEY, null);
-                if(rejectedClearance && clearance.value === rejectedClearance) {
-                    return cookies;
-                }
-                if(rejectedClearance && clearance.value !== rejectedClearance) {
-                    GM_deleteValue(DLSITE_REJECTED_CLEARANCE_KEY);
-                }
-                GM_setValue(DLSITE_COOKIE_STORAGE_KEY, cookies.map(cookie => ({
-                    name: cookie.name,
-                    value: cookie.value,
-                    domain: cookie.domain,
-                    path: cookie.path,
-                    expirationDate: cookie.expirationDate,
-                    partitionKey: cookie.partitionKey
-                })));
-                // Keep a dedicated value so every instance of this userscript can read
-                // the latest clearance without parsing the complete cookie list.
-                GM_setValue(DLSITE_CLEARANCE_STORAGE_KEY, clearance.value);
-            }
-            return cookies;
+            return null;
         },
 
-        clearStoredClearanceAfterForbidden() {
-            const storedClearance = GM_getValue(DLSITE_CLEARANCE_STORAGE_KEY, null);
-            if(storedClearance) GM_setValue(DLSITE_REJECTED_CLEARANCE_KEY, storedClearance);
-            GM_deleteValue(DLSITE_CLEARANCE_STORAGE_KEY);
-            GM_deleteValue(DLSITE_COOKIE_STORAGE_KEY);
+        async getExplicitClearance(url) {
+            const liveClearance = await this.getLiveClearance(url);
+            if(liveClearance) return liveClearance;
+            return this.normalizeClearance(settings._s_dlsite_manual_cf_clearance);
         },
 
-        getCookieHeader() {
-            const storedClearance = GM_getValue(DLSITE_CLEARANCE_STORAGE_KEY, null);
-            return storedClearance ? `cf_clearance=${storedClearance}` : "";
-        },
+        meetCloudflareChallenge(resp) {
+            const headers = typeof resp?.responseHeaders === "string" ?
+                resp.responseHeaders : JSON.stringify(resp?.responseHeaders || "");
+            const html = `${resp?.responseText || ""}`.slice(0, 100000);
 
-        applyCookieHeader(headers) {
-            const cookie = this.getCookieHeader();
-            if(cookie) headers["Cookie"] = headers["Cookie"] ? `${headers["Cookie"]}; ${cookie}` : cookie;
-            return headers;
-        },
-
-        async setManualClearance(input) {
-            let value = `${input || ""}`.trim();
-            const match = value.match(/(?:^|;\s*)cf_clearance=([^;]+)/i);
-            if(match) value = match[1].trim();
-            if(!value) throw new Error("cf_clearance 不能为空");
-
-            GM_setValue(DLSITE_CLEARANCE_STORAGE_KEY, value);
-            return value;
-        },
-
-        request(url, headers = {}) {
-            return new Promise((resolve, reject) => {
-                getXmlHttpRequest()({
-                    method: "GET",
-                    url: url,
-                    headers: this.applyCookieHeader({...headers}),
-                    anonymous: false,
-                    onload: resolve,
-                    onerror: reject
-                });
-            });
-        },
-
-        async ensure(url) {
-            if(!this.isDLsiteUrl(url)) return;
-            if(!this._readyPromise) {
-                this._readyPromise = (async () => {
-                    const response = await this.request(url, {"Cache-Control": "no-cache"});
-                    if(response.status === 403) {
-                        await this.saveCookies();
-                        this.clearStoredClearanceAfterForbidden();
-                        await this.showChallenge(url);
-                    }
-                })().catch(error => {
-                    this._readyPromise = null;
-                    throw error;
-                });
-            }
-            return this._readyPromise;
-        },
-
-        async handleForbidden(url) {
-            this._readyPromise = null;
-            await this.saveCookies();
-            this.clearStoredClearanceAfterForbidden();
-            await this.showChallenge(url);
-            this._readyPromise = Promise.resolve();
-        },
-
-        showChallenge(probeUrl) {
-            if(this._challengePromise) return this._challengePromise;
-            if(this._challengeConfirmed || window.name === "voicelinks_dlsite_challenge" ||
-                window.location.hash === "#voicelinks-dlsite-challenge") return Promise.resolve();
-            const challengePromise = new Promise((resolve, reject) => {
-                const width = Math.min(1200, Math.max(800, Math.floor(window.screen.availWidth * 0.8)));
-                const height = Math.min(900, Math.max(600, Math.floor(window.screen.availHeight * 0.8)));
-                const left = Math.max(0, Math.floor((window.screen.availWidth - width) / 2));
-                const top = Math.max(0, Math.floor((window.screen.availHeight - height) / 2));
-                let challengeWindow = null;
-                let finished = false;
-                let probing = false;
-                let poller = null;
-                let timeout = null;
-
-                WarehouseManager.close();
-                const container = document.createElement("div");
-                container.id = `${VOICELINK_CLASS}_warehouse-container`;
-                container.className = `${VOICELINK_CLASS}_dlsite-challenge`;
-                const title = document.createElement("h1");
-                title.innerText = "需要完成 DLsite 验证";
-                const hint = document.createElement("p");
-                hint.className = WarehouseManager.getClass("hint");
-                hint.innerText = "DLsite 请求返回 403，需要完成 Cloudflare Challenge 后才能继续。";
-                const footer = document.createElement("div");
-                footer.className = WarehouseManager.getClass("footer");
-                const openButton = WarehouseManager.createButton("打开 DLsite", () => {
-                    challengeWindow = window.open(
-                        "https://www.dlsite.com/maniax/#voicelinks-dlsite-challenge",
-                        "voicelinks_dlsite_challenge",
-                        `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-                    );
-                    if(!challengeWindow) {
-                        hint.innerText = "验证窗口被浏览器拦截，请允许当前网站打开弹出式窗口后重试。";
-                        return;
-                    }
-                    this._challengeConfirmed = true;
-                    challengeWindow.focus();
-                    container.remove();
-                    const probe = async () => {
-                        if(finished || probing) return;
-                        if(challengeWindow.closed) {
-                            cleanup();
-                            reject(new Error("DLsite 验证窗口已关闭，但验证尚未成功"));
-                            return;
-                        }
-                        probing = true;
-                        try {
-                            const response = await this.request(probeUrl, {"Cache-Control": "no-cache"});
-                            if(response.status >= 200 && response.status < 400) {
-                                GM_deleteValue(DLSITE_REJECTED_CLEARANCE_KEY);
-                                await this.saveCookies();
-                                cleanup(false);
-                                resolve();
-                            }
-                        }catch (error) {
-                        }finally {
-                            probing = false;
-                        }
-                    };
-                    probe();
-                    poller = setInterval(probe, 1500);
-                    timeout = setTimeout(() => {
-                        cleanup();
-                        reject(new Error("DLsite Cloudflare 验证超时"));
-                    }, 5 * 60 * 1000);
-                });
-                const cancelButton = WarehouseManager.createButton("取消", () => {
-                    cleanup();
-                    reject(new Error("已取消 DLsite Cloudflare 验证"));
-                });
-                footer.append(openButton, cancelButton);
-                container.append(title, hint, footer);
-                (document.body || document.documentElement).appendChild(container);
-
-                const cleanup = (closeChallengeWindow = true) => {
-                    finished = true;
-                    clearInterval(poller);
-                    clearTimeout(timeout);
-                    container.remove();
-                    if(closeChallengeWindow && challengeWindow && !challengeWindow.closed) challengeWindow.close();
-                };
-            });
-            this._challengePromise = challengePromise.finally(() => {
-                this._challengePromise = null;
-            });
-            return this._challengePromise;
-        }
-    };
-
-    // The challenge may be completed in a separate first-party tab. Capture the
-    // resulting cookies and close the popup after a successful request is confirmed.
-    if(isInDLSite()) {
-        const isDLsiteChallengeWindow = () =>
-            window.name === "voicelinks_dlsite_challenge" ||
-            window.location.hash === "#voicelinks-dlsite-challenge";
-        let challengeSuccessShown = false;
-        const showChallengeSuccess = () => {
-            if(challengeSuccessShown) return;
-            challengeSuccessShown = true;
-            WarehouseManager.close();
-            const container = document.createElement("div");
-            container.id = `${VOICELINK_CLASS}_warehouse-container`;
-            container.className = `${VOICELINK_CLASS}_dlsite-challenge`;
-            const title = document.createElement("h1");
-            title.innerText = "DLsite 验证成功";
-            const hint = document.createElement("p");
-            hint.className = WarehouseManager.getClass("hint");
-            hint.innerText = "cf_clearance 已更新，窗口将在 2 秒后关闭。";
-            container.append(title, hint);
-            (document.body || document.documentElement).appendChild(container);
-            setTimeout(() => {
-                container.remove();
-                window.close();
-            }, 2000);
-        };
-        const captureDLsiteCookies = async () => {
-            try {
-                const response = await DLsiteAccessGate.request(window.location.href.split("#")[0], {"Cache-Control": "no-cache"});
-                if(response.status < 200 || response.status >= 400) return false;
-                GM_deleteValue(DLSITE_REJECTED_CLEARANCE_KEY);
-                const cookies = await DLsiteAccessGate.saveCookies();
-                const currentClearance = DLsiteAccessGate.findClearance(cookies);
-                if(!currentClearance || !currentClearance.value) {
-                    return false;
-                }
-
-                const savedCookies = GM_getValue(DLSITE_COOKIE_STORAGE_KEY, []);
-                const savedClearance = Array.isArray(savedCookies) ?
-                    DLsiteAccessGate.findClearance(savedCookies) : null;
-                const savedClearanceValue = GM_getValue(DLSITE_CLEARANCE_STORAGE_KEY, null);
-                if(!savedClearance || savedClearance.value !== currentClearance.value ||
-                    savedClearanceValue !== currentClearance.value) {
-                    return false;
-                }
-                if(isDLsiteChallengeWindow()) showChallengeSuccess();
+            if(/(?:^|\r?\n)cf-mitigated:\s*challenge\b/im.test(headers)) {
                 return true;
-            }catch (error) {
+            }
+            if(/お住いの国|地域からは本作品は購入できません|not available in your (country|region)/i.test(html)) {
                 return false;
             }
-        };
-        window.addEventListener("pageshow", captureDLsiteCookies);
-        window.addEventListener("load", captureDLsiteCookies, {once: true});
-        setTimeout(captureDLsiteCookies, 3000);
-        if(isDLsiteChallengeWindow()) {
-            const captureInterval = setInterval(() => {
-                captureDLsiteCookies().then(captured => {
-                    if(captured) clearInterval(captureInterval);
-                });
-            }, 1500);
-            setTimeout(() => clearInterval(captureInterval), 5 * 60 * 1000);
+
+            const isChallengeStatus = [403, 429, 503].includes(Number(resp?.status));
+            const isCloudflareResponse =
+                /(?:^|\r?\n)server:\s*cloudflare\b/im.test(headers) ||
+                /(?:^|\r?\n)cf-ray:\s*/im.test(headers);
+            const hasChallengeMarkup =
+                /cf-chl|challenge-platform|cf-browser-verification/i.test(html) ||
+                /<title>\s*Just a moment\.\.\.\s*<\/title>/i.test(html) ||
+                /Checking your browser before accessing/i.test(html);
+
+            return isChallengeStatus && isCloudflareResponse && hasChallengeMarkup;
+        },
+
+        async handleChallenge(url) {
+            if(Number(GM_getValue(DLSITE_CHALLENGE_SUPPRESS_UNTIL_KEY, 0)) > Date.now()) {
+                return false;
+            }
+
+            if(this._challengePromptPromise) return this._challengePromptPromise;
+            this._challengePromptPromise = (async () => {
+                const shouldOpen = window.confirm(
+                    "检测到 DLSite 需要 Cloudflare 验证，是否打开 DLSite 验证页面？"
+                );
+                if(!shouldOpen) {
+                    GM_setValue(
+                        DLSITE_CHALLENGE_SUPPRESS_UNTIL_KEY,
+                        Date.now() + DLSITE_CHALLENGE_SUPPRESS_MS
+                    );
+                    window.alert(
+                        "此后可以手动访问 DLSite 并完成 Cloudflare 验证。\n" +
+                        "验证完成后回到当前页面，重新悬停 RJ 号即可重试。\n\n" +
+                        "接下来 48 小时内将不再显示此提醒。"
+                    );
+                    return false;
+                }
+
+                try {
+                    GM_openInTab(url, {active: true});
+                    return true;
+                }catch (error) {
+                    window.alert(`无法打开 DLSite 验证页面：${error.message || error}`);
+                    return false;
+                }
+            })().finally(() => {
+                this._challengePromptPromise = null;
+            });
+            return this._challengePromptPromise;
         }
-    }
+    };
 
     /**
      * 全局请求队列：限制同时进行的请求数量，避免多仓库查询时并发过高。
@@ -3076,27 +2919,37 @@
     function getHttpAsync (url, anonymous = false, cacheAge = 0, customHeaders = {}, priority = "high"){
         let headers = {...customHeaders};
         headers["Accept"] = "text/xml";
-        if(!DLsiteAccessGate.isDLsiteUrl(url)) {
-            headers["User-Agent"] = "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:67.0)";
-        }
+        const dlUrl = DLSiteAccessGate.isDLSiteUrl(url);
         headers["Cache-Control"] = cacheAge <= 0 ? "no-cache" : "max-age=" + cacheAge;
-        const send = () => new Promise((resolve, reject) => {
-            getXmlHttpRequest()({
-                method: "GET", url,
-                headers: DLsiteAccessGate.isDLsiteUrl(url) ?
-                    DLsiteAccessGate.applyCookieHeader({...headers}) : {...headers},
-                onload: resolve, onerror: reject,
-                anonymous: DLsiteAccessGate.isDLsiteUrl(url) ? false : anonymous
+        const send = async () => {
+            const requestDetails = {
+                method: "GET",
+                url: url,
+                headers: {...headers},
+                anonymous: anonymous
+            };
+
+            if(dlUrl && anonymous) {
+                const clearance = await DLSiteAccessGate.getExplicitClearance(url);
+                if(clearance) requestDetails.cookie = `cf_clearance=${clearance}`;
+            }
+
+            return new Promise((resolve, reject) => {
+                getXmlHttpRequest()({
+                    ...requestDetails,
+                    onload: resolve,
+                    onerror: reject
+                });
             });
-        });
-        return DLsiteAccessGate.ensure(url).then(() => RequestQueue.enqueue(async () => {
-            let response = await send();
-            if(DLsiteAccessGate.isDLsiteUrl(url) && response.status === 403) {
-                await DLsiteAccessGate.handleForbidden(url);
-                response = await send();
+        };
+
+        return RequestQueue.enqueue(async () => {
+            const response = await send();
+            if(dlUrl && DLSiteAccessGate.meetCloudflareChallenge(response)) {
+                await DLSiteAccessGate.handleChallenge(url);
             }
             return response;
-        }, priority));
+        }, priority);
     }
 
     /**
@@ -3324,7 +3177,7 @@
             return;
         }
         // Challenge、首页及部分新版页面没有作品编号。此前这里直接读取
-        // null.length，会导致 DLsite 页面上的整个初始化流程中断。
+        // null.length，会导致 DLSite 页面上的整个初始化流程中断。
         const rjList = document.URL.match(RJ_REGEX);
         if(!rjList || rjList.length === 0) {
             return;
@@ -4327,9 +4180,9 @@
     function getWarehouses() {
         if(!Array.isArray(settings._s_search_warehouses)) return [];
         return settings._s_search_warehouses
-                        .map(warehouse => normalizeWarehouse(warehouse))
-                        .filter(warehouse => warehouse !== null)
-                        .slice(0, MAX_SEARCH_WAREHOUSES);
+            .map(warehouse => normalizeWarehouse(warehouse))
+            .filter(warehouse => warehouse !== null)
+            .slice(0, MAX_SEARCH_WAREHOUSES);
     }
 
     /**
@@ -4608,8 +4461,8 @@
             //登录请求体：内置预设直接序列化，自定义预设按模板替换用户名与密码
             const body = typeof loginConfig.buildBody === "function" ? loginConfig.buildBody() :
                 `${loginConfig.bodyTemplate === undefined ? "" : loginConfig.bodyTemplate}`
-                .replaceAll(LOGIN_USERNAME_PLACEHOLDER, this.username)
-                 .replaceAll(LOGIN_PASSWORD_PLACEHOLDER, this.password);
+                    .replaceAll(LOGIN_USERNAME_PLACEHOLDER, this.username)
+                    .replaceAll(LOGIN_PASSWORD_PLACEHOLDER, this.password);
 
             //登录接口同样可能依赖自定义请求头才能访问，故一并携带；
             //但需要过滤其中的Authorization，避免可能已失效的旧token干扰登录接口
@@ -6448,7 +6301,7 @@
             if(work_promise[rjCode]){
                 return work_promise[rjCode];
             }
-            work_promise[rjCode] = DLsite.getWorkRequestPromise(rjCode);
+            work_promise[rjCode] = DLSite.getWorkRequestPromise(rjCode);
             return work_promise[rjCode];
         },
 
@@ -6719,10 +6572,10 @@
                 case "SOU":
                     return 0;
                 case (["ACN", "QIZ", "ADV", "RPG", "TBL", "DNV", "SLN", "TYP", "STG", "PZL", "ETC"]
-                .includes(workType) ? workType : "ERR"):
+                    .includes(workType) ? workType : "ERR"):
                     return 1;
                 case (["MNG", "SCM", "WBT"]
-                .includes(workType) ? workType : "ERR"):
+                    .includes(workType) ? workType : "ERR"):
                     return 2;
                 case "ICG":
                     return 3;
@@ -6733,7 +6586,7 @@
                 case "MUS":
                     return 6;
                 case (["TOL", "IMT", "AMT"]
-                .includes(workType) ? workType : "ERR"):
+                    .includes(workType) ? workType : "ERR"):
                     return 7;
                 case "VCM":
                     return 8;
@@ -7183,7 +7036,7 @@
         },
     }
 
-    const DLsite = {
+    const DLSite = {
         parseWorkDOM: function (dom, rj) {
             // workInfo: {
             //     rj: any;
@@ -7318,7 +7171,7 @@
 
         parseApi2Data: function (rjCode, data) {
             const translation_info = data.translation_info ? data.translation_info : {};
-            data.lang = DLsite.getLangCode(translation_info.lang);
+            data.lang = DLSite.getLangCode(translation_info.lang);
 
             if(data.regist_date){
                 let reg_date = data.regist_date.replace(/-/g, '/');
@@ -7338,7 +7191,7 @@
             let resp = await getHttpAsync(url);
             if (resp.readyState === 4 && resp.status === 200) {
                 const dom = new DOMParser().parseFromString(Csp.createHTML(resp.responseText), "text/html");
-                const workInfo = DLsite.parseWorkDOM(dom, rjCode);
+                const workInfo = DLSite.parseWorkDOM(dom, rjCode);
                 workInfo.parentWork = parentRJ === rjCode ? null : parentRJ;
                 workInfo.is_announce = true;
                 return workInfo;
@@ -7357,14 +7210,14 @@
             let resp = await getHttpAsync(url);
             if (resp.readyState === 4 && resp.status === 200) {
                 const dom = new DOMParser().parseFromString(Csp.createHTML(resp.responseText), "text/html");
-                const workInfo = DLsite.parseWorkDOM(dom, rjCode);
-                workInfo.parentWork = DLsite.getParentWorkRjCode(resp.finalUrl);
+                const workInfo = DLSite.parseWorkDOM(dom, rjCode);
+                workInfo.parentWork = DLSite.getParentWorkRjCode(resp.finalUrl);
                 workInfo.parentWork = workInfo.parentWork === rjCode ? null : workInfo.parentWork;
                 workInfo.is_announce = false;
                 return workInfo;
             }
             else if (resp.readyState === 4 && resp.status === 404) {
-                return await DLsite.getAnnouncePromise(rjCode, DLsite.getParentWorkRjCode(resp.finalUrl));
+                return await DLSite.getAnnouncePromise(rjCode, DLSite.getParentWorkRjCode(resp.finalUrl));
             }
         },
 
@@ -7384,7 +7237,7 @@
                 throw new Error(`无法通过API2获取${rjCode}的信息：${resp.status} ${resp.statusText}`);
             }
 
-            return DLsite.parseApi2Data(rjCode, data);
+            return DLSite.parseApi2Data(rjCode, data);
         },
 
         getApiPromise: async function (rjCode, locale = undefined) {
@@ -7405,9 +7258,9 @@
             }
 
             const translation_info = data.translation_info ? data.translation_info : {};
-            data.lang = DLsite.getLangCode(translation_info.lang);
+            data.lang = DLSite.getLangCode(translation_info.lang);
 
-            return DLsite.parseApiData(rjCode, data);
+            return DLSite.parseApiData(rjCode, data);
         },
 
         getCirclePromise: async function (rjCode, apiPromise){
@@ -7515,7 +7368,7 @@
                     sale: undefined
                 },
             };
-            const data = await DLsite.getTranslatableApiPromise(rjCode, site);
+            const data = await DLSite.getTranslatableApiPromise(rjCode, site);
             if(!data.translationStatusForTranslator){
                 return result;
             }
@@ -7591,23 +7444,23 @@
                 _translatable: undefined,
                 _translated_title: undefined,
                 get info(){
-                    return this._info ? this._info : this._info = DLsite.getHtmlPromise(rjCode);
+                    return this._info ? this._info : this._info = DLSite.getHtmlPromise(rjCode);
                 },
                 get api() {
-                    return this._api ? this._api : this._api = DLsite.getApiPromise(rjCode);
+                    return this._api ? this._api : this._api = DLSite.getApiPromise(rjCode);
                 },
                 get api2() {
-                    return this._api2 ? this._api2 : this._api2 = DLsite.getApi2Promise(rjCode);
+                    return this._api2 ? this._api2 : this._api2 = DLSite.getApi2Promise(rjCode);
                 },
                 get circle(){
-                    return this._circle ? this._circle : this._circle = DLsite.getCirclePromise(rjCode, this.api);
+                    return this._circle ? this._circle : this._circle = DLSite.getCirclePromise(rjCode, this.api);
                 },
                 get translatable() {
                     async function getter(t){
                         let api = await t.api2;
                         if(!api.site_id) api = await t.api;
 
-                        return t._translatable ? t._translatable : t._translatable = DLsite.getTranslatablePromise(rjCode,
+                        return t._translatable ? t._translatable : t._translatable = DLSite.getTranslatablePromise(rjCode,
                             api.site_id ? api.site_id : "maniax");
                     }
                     return getter(this);
@@ -7621,7 +7474,7 @@
                             //api2有效
                             if(!api.translation_info.is_original) {
                                 //通过再次查询获得翻译标题
-                                api = await DLsite.getApi2Promise(rjCode, api.lang);
+                                api = await DLSite.getApi2Promise(rjCode, api.lang);
                             }
                             t._translated_title = api.work_name;
                             return t._translated_title;
@@ -7637,7 +7490,7 @@
 
                         if(!api.translation_info.is_original) {
                             //非原作则再次查询
-                            api = await DLsite.getApiPromise(rjCode, api.lang);
+                            api = await DLSite.getApiPromise(rjCode, api.lang);
                         }
                         t._translated_title = api.work_name;
                         return t._translated_title;
@@ -7855,6 +7708,13 @@
                                     title: localize(localizationMap.sfw_blur_transition),
                                     id: "sfw_blur_transition",
                                     indent: 1,
+                                },
+                                {
+                                    //DLSite Cloudflare 匿名请求的手动填写凭据
+                                    type: "password",
+                                    title: localize(localizationMap.dlsite_manual_cf_clearance),
+                                    id: "dlsite_manual_cf_clearance",
+                                    tooltip: localize(localizationMap.dlsite_manual_cf_clearance_tooltip)
                                 }
                             ]
                         }
@@ -10041,22 +9901,12 @@
             const style = document.createElement("style");
             style.innerHTML = Csp.createHTML(POPUP_CSS + SETTINGS_CSS);
             document.head.appendChild(style);
+            for(const key of DLSITE_OBSOLETE_STORAGE_KEYS) {
+                GM_deleteValue(key);
+            }
             // SettingsPopup.getPopup()
             GM_registerMenuCommand("Settings - 设置", () => SettingsPopup.showPopup())
             GM_registerMenuCommand("Notice - 公告", () => showUpdateNotice(true));
-            GM_registerMenuCommand("DLsite - 手动设置 cf_clearance", async () => {
-                const input = window.prompt(
-                    "请输入 cf_clearance 的值，也可以粘贴完整的 cf_clearance=... Cookie。\n\n" +
-                    "该值属于敏感凭据，请勿分享给他人。"
-                );
-                if(input === null) return;
-                try {
-                    await DLsiteAccessGate.setManualClearance(input);
-                    window.alert("cf_clearance 已设置（请求头模式），正在进行的验证轮询会自动使用它。");
-                }catch (error) {
-                    window.alert(`cf_clearance 设置失败：${error.message || error}`);
-                }
-            });
             GM_registerMenuCommand("Home / Update - 主页 / 更新", () =>
                 GM_openInTab(IS_PREVIEW ? "https://sleazyfork.org/zh-CN/scripts/521128-voicelinks-preview" : "https://sleazyfork.org/zh-CN/scripts/456775-voicelinks", {active: true}));
 
