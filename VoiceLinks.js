@@ -6,7 +6,7 @@
 // @description:en Makes RJ codes more useful.(8-bit RJCode supported.)
 // @match       *://*/*
 // @match       file:///*
-// @version     p-5.0.5
+// @version     p-5.0.7
 // @connect     dlsite.com
 // @connect     www.dlsite.com
 // @connect     media.ci-en.jp
@@ -26,8 +26,6 @@
 // @run-at      document-start
 // @require     https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.11.0/sha256.min.js
 // @homepage    https://sleazyfork.org/zh-CN/scripts/456775-voicelinks
-// @downloadURL https://update.sleazyfork.org/scripts/456775/VoiceLinks.user.js
-// @updateURL   https://update.sleazyfork.org/scripts/456775/VoiceLinks.meta.js
 // ==/UserScript==
 
 (function () {
@@ -3244,7 +3242,7 @@
 
         //其它脚本修改了标题内部，进行警告
         window.alert("警告：\n" +
-            "VoiceLinks检测到DL作品标题元素发生变化，该变化可能是脚本与其它插件冲突导致的。\n" +
+            "VoiceLinks检测到DL作品标题元素发生变化，该变化可能是脚本与其它插件冲突导致的。【如果你觉得问题不大，可以在设置中关闭“显示兼容性警告”】\n" +
             "可以关闭本脚本中的 “在DLSite显示对应语言的翻译标题” 设置项，以尝试解决冲突。（也可根据情况酌情关闭 “在DL作品标题旁添加复制为文件名按钮” 选项）\n\n" +
             "本脚本的设置方法：点击Tampermonkey等扩展程序的按钮，在弹出的脚本列表中找到当前脚本，点击下方的Settings按钮即可打开设置页面。\n\n" +
             "注意：如果不想看到该警告，可以同时关闭“显示兼容性警告”设置项。")
@@ -7064,15 +7062,17 @@
 
             workInfo.lang = dom.querySelector("html").getAttribute("lang");
             workInfo.title = dom.getElementById("work_name").innerText;
-            workInfo.circle = dom.querySelector("span.maker_name").innerText;
-            workInfo.circleId = dom.querySelector("#work_maker a").href;
+            workInfo.circle = dom.querySelector("span.maker_name, a.c-productInfo__makerName").innerText;
+            workInfo.circleId = dom.querySelector("#work_maker a, a.c-productInfo__makerName").href;
             workInfo.circleId = workInfo.circleId.substring(workInfo.circleId.lastIndexOf("/") + 1, workInfo.circleId.lastIndexOf(".")).trim();
 
-            const table_outline = dom.querySelector("table#work_outline");
-            for (let i = 0, ii = table_outline.rows.length; i < ii; i++) {
-                const row = table_outline.rows[i];
-                const row_header = row.cells[0].innerText.trim();
-                const row_data = row.cells[1];
+            //兼容旧版信息表格与新版作品信息列表。
+            const outline_rows = dom.querySelectorAll("table#work_outline tr, .c-productInfo__item");
+            for (let i = 0, ii = outline_rows.length; i < ii; i++) {
+                const row = outline_rows[i];
+                const row_header = row.querySelector("th, dt")?.innerText.trim();
+                const row_data = row.querySelector("td, dd");
+                if(!row_header || !row_data) continue;
                 const lambda = text => row_header === text;
                 switch (true) {
                     case (["販売日", "发售日", "販賣日", "Release date", "판매일", "Lanzamiento", "Veröffentlicht",
@@ -7083,7 +7083,7 @@
                     case (["更新情報", "更新信息", "更新資訊", "Update information", "갱신 정보", "Actualizar información",
                         "Aktualisierungen", "Mise à jour des informations", "Perbarui informasi", "Aggiorna informazioni",
                         "Atualizar informações", "Uppdatera information", "ข้อมูลอัปเดต", "Thông tin cập nhật"].some(lambda)):
-                        workInfo.update = row_data.firstChild.data.trim();
+                        workInfo.update = Array.from(row_data.childNodes, node => node.nodeType === 8 ? "" : node.textContent.trim()).find(Boolean);
                         break;
                     case (["年齢指定", "年龄指定", "年齡指定", "Age", "연령 지정", "Edad", "Altersfreigabe", "Âge", "Batas usia",
                         "Età", "Idade", "Ålder", "การกำหนดอายุ", "Độ tuổi chỉ định"].some(lambda)):
@@ -9904,11 +9904,13 @@
             for(const key of DLSITE_OBSOLETE_STORAGE_KEYS) {
                 GM_deleteValue(key);
             }
-            // SettingsPopup.getPopup()
-            GM_registerMenuCommand("Settings - 设置", () => SettingsPopup.showPopup())
-            GM_registerMenuCommand("Notice - 公告", () => showUpdateNotice(true));
-            GM_registerMenuCommand("Home / Update - 主页 / 更新", () =>
-                GM_openInTab(IS_PREVIEW ? "https://sleazyfork.org/zh-CN/scripts/521128-voicelinks-preview" : "https://sleazyfork.org/zh-CN/scripts/456775-voicelinks", {active: true}));
+            //仅在顶层页面注册管理菜单，避免 iframe 实例重复响应菜单操作。
+            if(window.self === window.top) {
+                GM_registerMenuCommand("Settings - 设置", () => SettingsPopup.showPopup());
+                GM_registerMenuCommand("Notice - 公告", () => showUpdateNotice(true));
+                GM_registerMenuCommand("Home / Update - 主页 / 更新", () =>
+                    GM_openInTab(IS_PREVIEW ? "https://sleazyfork.org/zh-CN/scripts/521128-voicelinks-preview" : "https://sleazyfork.org/zh-CN/scripts/456775-voicelinks", {active: true}));
+            }
 
             document.addEventListener("securitypolicyviolation", function (e) {
                 if (e.blockedURI.includes("img.dlsite.jp")) {
